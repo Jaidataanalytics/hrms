@@ -13,6 +13,11 @@ import AttendancePage from "./pages/AttendancePage";
 import LeavePage from "./pages/LeavePage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import SettingsPage from "./pages/SettingsPage";
+import PayrollPage from "./pages/PayrollPage";
+import PerformancePage from "./pages/PerformancePage";
+import AssetsPage from "./pages/AssetsPage";
+import ExpensesPage from "./pages/ExpensesPage";
+import BulkImportPage from "./pages/BulkImportPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -93,6 +98,11 @@ function AppRouter() {
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="leave" element={<LeavePage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
+        <Route path="payroll" element={<PayrollPage />} />
+        <Route path="performance" element={<PerformancePage />} />
+        <Route path="assets" element={<AssetsPage />} />
+        <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="import" element={<BulkImportPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
