@@ -200,6 +200,7 @@ async def apply_for_job(data: dict, request: Request):
     }
     
     await db.job_applications.insert_one(application)
+    application.pop('_id', None)
     return application
 
 
