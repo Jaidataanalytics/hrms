@@ -76,6 +76,7 @@ async def create_grievance(data: dict, request: Request):
         ticket["employee_name"] = "Anonymous"
     
     await db.grievances.insert_one(ticket)
+    ticket.pop('_id', None)
     return ticket
 
 
