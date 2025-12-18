@@ -1481,10 +1481,7 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
-# Include the router in the main app
-app.include_router(api_router)
-
-# Import and include additional routers
+# Import and include additional routers BEFORE mounting api_router to app
 from routes.payroll import router as payroll_router
 from routes.performance import router as performance_router
 from routes.bulk_import import router as import_router
@@ -1494,6 +1491,9 @@ api_router.include_router(payroll_router)
 api_router.include_router(performance_router)
 api_router.include_router(import_router)
 api_router.include_router(documents_router)
+
+# Include the router in the main app (after all sub-routers are added)
+app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
