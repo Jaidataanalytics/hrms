@@ -26,6 +26,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [employeeDashboard, setEmployeeDashboard] = useState(null);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAttendance, setMarkingAttendance] = useState(false);
 
@@ -35,9 +36,10 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [statsRes, empDashRes] = await Promise.all([
+      const [statsRes, empDashRes, leaveTypesRes] = await Promise.all([
         fetch(`${API_URL}/dashboard/stats`, { credentials: 'include' }),
-        fetch(`${API_URL}/dashboard/employee`, { credentials: 'include' })
+        fetch(`${API_URL}/dashboard/employee`, { credentials: 'include' }),
+        fetch(`${API_URL}/leave-types`, { credentials: 'include' })
       ]);
 
       if (statsRes.ok) {
@@ -48,6 +50,11 @@ const Dashboard = () => {
       if (empDashRes.ok) {
         const empData = await empDashRes.json();
         setEmployeeDashboard(empData);
+      }
+
+      if (leaveTypesRes.ok) {
+        const ltData = await leaveTypesRes.json();
+        setLeaveTypes(ltData);
       }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
