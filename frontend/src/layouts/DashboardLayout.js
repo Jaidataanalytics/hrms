@@ -37,7 +37,8 @@ import {
   BarChart3,
   HardHat,
   FolderOpen,
-  PieChart
+  PieChart,
+  UserCog
 } from 'lucide-react';
 
 const DashboardLayout = () => {

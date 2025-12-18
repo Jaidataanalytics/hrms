@@ -26,6 +26,7 @@ import ReportsPage from "./pages/ReportsPage";
 import LabourPage from "./pages/LabourPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ReportBuilderPage from "./pages/ReportBuilderPage";
+import UserManagementPage from "./pages/UserManagementPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -119,6 +120,7 @@ function AppRouter() {
         <Route path="labour" element={<LabourPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="report-builder" element={<ReportBuilderPage />} />
+        <Route path="user-management" element={<UserManagementPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
