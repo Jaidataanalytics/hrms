@@ -1,0 +1,179 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "Nexus HR",
+      "archetype": "Soft Utility",
+      "core_values": ["Clarity", "Trust", "Efficiency", "Human-Centric"],
+      "vibe": "A modern, breathable workspace that feels like a well-organized desk, not a spreadsheet."
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Manrope, sans-serif",
+        "body": "Public Sans, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "weights": {
+        "light": 300,
+        "regular": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700
+      },
+      "scale": {
+        "h1": "text-4xl font-bold tracking-tight lg:text-5xl",
+        "h2": "text-3xl font-semibold tracking-tight",
+        "h3": "text-2xl font-semibold tracking-tight",
+        "h4": "text-xl font-semibold tracking-tight",
+        "p": "leading-7 [&:not(:first-child)]:mt-6",
+        "small": "text-sm font-medium leading-none"
+      },
+      "imports": [
+        "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Public+Sans:wght@300;400;500;600;700&display=swap');"
+      ]
+    },
+    "colors": {
+      "primary": {
+        "DEFAULT": "#4338ca",
+        "foreground": "#ffffff",
+        "50": "#eef2ff",
+        "100": "#e0e7ff",
+        "200": "#c7d2fe",
+        "300": "#a5b4fc",
+        "400": "#818cf8",
+        "500": "#6366f1",
+        "600": "#4f46e5",
+        "700": "#4338ca",
+        "800": "#3730a3",
+        "900": "#312e81"
+      },
+      "secondary": {
+        "DEFAULT": "#f1f5f9",
+        "foreground": "#0f172a"
+      },
+      "accent": {
+        "DEFAULT": "#f97316",
+        "foreground": "#ffffff"
+      },
+      "background": {
+        "app": "#f8fafc",
+        "card": "#ffffff",
+        "sidebar": "#0f172a"
+      },
+      "semantic": {
+        "success": "#10b981",
+        "warning": "#f59e0b",
+        "error": "#ef4444",
+        "info": "#3b82f6"
+      }
+    },
+    "spacing": {
+      "container_padding": "p-6 md:p-8 lg:p-10",
+      "section_gap": "gap-8",
+      "component_gap": "gap-4"
+    },
+    "radius": {
+      "default": "0.5rem",
+      "sm": "0.3rem",
+      "lg": "0.75rem",
+      "full": "9999px"
+    },
+    "shadows": {
+      "card": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+      "hover": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+      "dropdown": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)"
+    }
+  },
+  "layout_strategies": {
+    "dashboard": {
+      "type": "Control Room Grid",
+      "structure": "grid grid-cols-1 md:grid-cols-12 gap-6",
+      "areas": {
+        "welcome": "col-span-12",
+        "stats_row": "col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4",
+        "main_chart": "col-span-12 lg:col-span-8",
+        "activity_feed": "col-span-12 lg:col-span-4",
+        "quick_actions": "col-span-12 md:col-span-6 lg:col-span-4"
+      }
+    },
+    "marketing": {
+      "type": "Tetris Grid",
+      "structure": "grid grid-cols-1 md:grid-cols-12 gap-8",
+      "hero_alignment": "Left aligned text, right aligned visual (3D or Image)"
+    },
+    "form_layouts": {
+      "type": "Single Column Focused",
+      "max_width": "max-w-2xl",
+      "grouping": "Fieldsets with clear legends and generous spacing (gap-6)"
+    }
+  },
+  "component_rules": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-all active:scale-95",
+      "secondary": "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 shadow-sm",
+      "ghost": "hover:bg-slate-100 text-slate-600 hover:text-slate-900",
+      "destructive": "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+    },
+    "cards": {
+      "base": "bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden",
+      "header": "px-6 py-4 border-b border-slate-100 bg-slate-50/50",
+      "content": "p-6"
+    },
+    "inputs": {
+      "base": "flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+      "label": "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block text-slate-700"
+    },
+    "tables": {
+      "wrapper": "rounded-md border border-slate-200 overflow-hidden",
+      "header": "bg-slate-50 text-slate-500 font-medium text-xs uppercase tracking-wider",
+      "row": "border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+    }
+  },
+  "visual_assets": {
+    "images": {
+      "hero_team": {
+        "url": "https://images.pexels.com/photos/7723554/pexels-photo-7723554.jpeg",
+        "alt": "Diverse Indian corporate team collaborating",
+        "usage": "Landing page hero or About Us section"
+      },
+      "professional_portrait": {
+        "url": "https://images.pexels.com/photos/4087571/pexels-photo-4087571.jpeg",
+        "alt": "Professional Indian business woman",
+        "usage": "Testimonials or HR Manager profile example"
+      },
+      "logo_placeholder": {
+        "url": "https://images.unsplash.com/photo-1628760584600-6c31148991e9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBtaW5pbWFsaXN0JTIwY29tcGFueSUyMGxvZ28lMjB2ZWN0b3J8ZW58MHx8fHwxNzY2MDY5Mzk2fDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Nexus HR Logo",
+        "usage": "Navbar brand logo"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px for a refined, elegant look"
+    }
+  },
+  "motion_guidelines": {
+    "transitions": "transition-all duration-200 ease-in-out",
+    "hover_lift": "hover:-translate-y-0.5 hover:shadow-md",
+    "page_enter": "animate-in fade-in slide-in-from-bottom-4 duration-500",
+    "list_stagger": "stagger-children-100"
+  },
+  "accessibility_checklist": [
+    "Ensure 4.5:1 contrast ratio for normal text",
+    "Use semantic HTML (main, nav, aside, section)",
+    "All interactive elements must have focus states (ring-2 ring-primary)",
+    "Images must have alt text",
+    "Forms must have associated labels"
+  ],
+  "instructions_to_main_agent": {
+    "general": "You are building a high-fidelity HRMS. Do not use generic 'Lorem Ipsum' if possible; use realistic Indian names (e.g., 'Priya Sharma', 'Rahul Verma') and data. Prioritize the 'Soft Utility' aesthetic: clean, white, crisp borders, and deep indigo accents.",
+    "layout_override": "Do not center the main app container. Use a full-width layout with a fixed sidebar on the left and a scrollable main content area on the right.",
+    "component_usage": "Use Shadcn UI components for all interactive elements. Customize them via Tailwind classes to match the 'Soft Utility' theme (e.g., remove excessive rounded corners, keep it 'md').",
+    "dark_mode": "Implement a 'Class' based dark mode. The sidebar should be dark by default in the 'Light' theme to create contrast (Enterprise feel).",
+    "testing": "Add data-testid to all buttons, inputs, and links."
+  },
+  "universal_guidelines": {
+    "anti_slop": "Avoid generic gradients. Use solid colors or very subtle mesh gradients if absolutely necessary. No 'Inter' for headings.",
+    "spacing": "Use 'p-6' or 'p-8' for card padding. Don't cram content.",
+    "glassmorphism": "Use 'backdrop-blur-md bg-white/80' for sticky headers only. Do not use it for main content cards."
+  }
+}
