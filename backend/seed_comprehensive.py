@@ -170,7 +170,7 @@ async def seed_all():
     # Admin user
     admin_user = {
         "user_id": "user_admin_001",
-        "email": "admin@nexushr.com",
+        "email": "admin@shardahr.com",
         "password_hash": pwd_context.hash("Admin@123"),
         "name": "System Administrator",
         "role": "super_admin",
