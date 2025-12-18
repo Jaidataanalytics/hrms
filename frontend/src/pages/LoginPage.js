@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
-import { Mail, Lock, Loader2, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -46,16 +46,6 @@ const LoginPage = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
       
       <div className="relative w-full max-w-md animate-slide-in-bottom">
-        {/* Back to Home */}
-        <Link 
-          to="/" 
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-6 transition-colors"
-          data-testid="back-to-home-link"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
-        </Link>
-
         <Card className="shadow-xl border-slate-200">
           <CardHeader className="text-center pb-4">
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -151,15 +141,8 @@ const LoginPage = () => {
               <p className="text-sm font-mono text-slate-700">admin@nexushr.com / Admin@123</p>
             </div>
 
-            <p className="text-center text-sm text-slate-600">
-              Don't have an account?{' '}
-              <Link 
-                to="/register" 
-                className="font-medium text-primary hover:underline"
-                data-testid="register-link"
-              >
-                Create account
-              </Link>
+            <p className="text-center text-sm text-slate-500">
+              Contact HR administrator if you need access
             </p>
           </CardContent>
         </Card>
