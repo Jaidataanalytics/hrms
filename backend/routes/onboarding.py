@@ -115,6 +115,7 @@ async def create_onboarding_template(data: dict, request: Request):
     }
     
     await db.onboarding_templates.insert_one(template)
+    template.pop('_id', None)
     return template
 
 
