@@ -279,7 +279,7 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {employeeDashboard.leave_balance.slice(0, 4).map((balance, idx) => {
                     const leaveType = leaveTypes.find(lt => lt.leave_type_id === balance.leave_type_id);
-                    const leaveName = leaveType?.code || leaveType?.name || balance.leave_type_id;
+                    const leaveName = leaveType?.name || leaveType?.code || balance.leave_type_id;
                     return (
                       <div key={idx} className="p-4 bg-slate-50 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
