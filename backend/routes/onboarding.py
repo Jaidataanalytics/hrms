@@ -162,6 +162,7 @@ async def apply_template_to_employee(data: dict, request: Request):
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.onboarding_tasks.insert_one(task)
+        task.pop('_id', None)
         created_tasks.append(task)
     
     return {"message": f"Created {len(created_tasks)} onboarding tasks", "tasks": created_tasks}
