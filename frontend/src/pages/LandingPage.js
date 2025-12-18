@@ -219,7 +219,7 @@ const LandingPage = () => {
               </span>
             </div>
             <p className="text-sm">
-              © {new Date().getFullYear()} Nexus HR. Built for Indian Enterprises.
+              © {new Date().getFullYear()} Sharda HR by SDPL. Built for Indian Enterprises.
             </p>
           </div>
         </div>
