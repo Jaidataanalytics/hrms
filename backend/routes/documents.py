@@ -50,6 +50,7 @@ async def upload_document(data: dict, request: Request):
     data["is_verified"] = False
     
     await db.documents.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
@@ -123,6 +124,7 @@ async def create_asset(data: dict, request: Request):
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.assets.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
@@ -258,6 +260,7 @@ async def create_asset_request(data: dict, request: Request):
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.asset_requests.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
@@ -293,10 +296,7 @@ async def create_expense(data: dict, request: Request):
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.expenses.insert_one(data)
-    
-    # Notify manager/HR
-    # TODO: Add notification
-    
+    data.pop('_id', None)
     return data
 
 
