@@ -131,7 +131,7 @@ const LandingPage = () => {
               Everything You Need to Manage HR
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              From hiring to retirement, Nexus HR covers every aspect of human resource management 
+              From hiring to retirement, Sharda HR covers every aspect of human resource management 
               with India-specific compliance built-in.
             </p>
           </div>
