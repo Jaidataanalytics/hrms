@@ -1481,6 +1481,69 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+
+# ==================== SHORTCUT ENDPOINTS FOR FRONTEND ====================
+
+@api_router.get("/my-assets")
+async def get_my_assets_shortcut(request: Request):
+    """Shortcut for getting current user's assets"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    if not employee_id:
+        return []
+    assets = await db.assets.find({"assigned_to": employee_id, "status": "assigned"}, {"_id": 0}).to_list(50)
+    return assets
+
+
+@api_router.get("/asset-requests")
+async def list_asset_requests_shortcut(request: Request):
+    """Shortcut for asset requests"""
+    user = await get_current_user(request)
+    query = {}
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin"]:
+        query["employee_id"] = user.get("employee_id")
+    requests = await db.asset_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return requests
+
+
+@api_router.post("/asset-requests")
+async def create_asset_request_shortcut(data: dict, request: Request):
+    """Shortcut for creating asset request"""
+    import uuid
+    user = await get_current_user(request)
+    req = {
+        "request_id": f"areq_{uuid.uuid4().hex[:12]}",
+        "employee_id": user.get("employee_id"),
+        "category": data.get("category"),
+        "description": data.get("description"),
+        "justification": data.get("justification"),
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.asset_requests.insert_one(req)
+    return req
+
+
+@api_router.get("/expense-categories")
+async def list_expense_categories_shortcut(request: Request):
+    """Shortcut for expense categories"""
+    await get_current_user(request)
+    existing = await db.expense_categories.find_one()
+    if not existing:
+        categories = [
+            {"code": "travel", "name": "Travel", "limit": 50000, "requires_receipt": True},
+            {"code": "food", "name": "Food & Meals", "limit": 10000, "requires_receipt": True},
+            {"code": "accommodation", "name": "Accommodation", "limit": 25000, "requires_receipt": True},
+            {"code": "client_entertainment", "name": "Client Entertainment", "limit": 20000, "requires_receipt": True},
+            {"code": "fuel", "name": "Fuel", "limit": 15000, "requires_receipt": True},
+            {"code": "office_supplies", "name": "Office Supplies", "limit": 5000, "requires_receipt": False},
+            {"code": "other", "name": "Other", "limit": 10000, "requires_receipt": True}
+        ]
+        await db.expense_categories.insert_many(categories)
+    categories = await db.expense_categories.find({}, {"_id": 0}).to_list(50)
+    return categories
+
+
 # Import and include additional routers BEFORE mounting api_router to app
 from routes.payroll import router as payroll_router
 from routes.performance import router as performance_router
