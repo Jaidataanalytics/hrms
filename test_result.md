@@ -48,7 +48,8 @@
 user_problem_statement: |
   Production-grade HRMS (Nexus HR) for an Indian company. 
   Features: User authentication, RBAC, Dashboard with stats, Employee Directory, 
-  Leave Management, Bulk Import/Export functionality.
+  Leave Management, Bulk Import/Export, Payroll, Performance & KPI, Announcements, 
+  and Master Setup for departments/designations/locations.
 
 backend:
   - task: "User Login API"
