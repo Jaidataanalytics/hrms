@@ -73,6 +73,7 @@ async def create_asset(data: dict, request: Request):
     }
     
     await db.assets.insert_one(asset)
+    asset.pop('_id', None)
     return asset
 
 
