@@ -186,7 +186,7 @@ async def seed_all():
         "user_id": "user_admin_001",
         "first_name": "System",
         "last_name": "Administrator",
-        "email": "admin@nexushr.com",
+        "email": "admin@shardahr.com",
         "phone": "9876543210",
         "department_id": "dept_it",
         "designation_id": "desig_dir",
@@ -215,7 +215,7 @@ async def seed_all():
     # Create HR Admin
     hr_admin_user = {
         "user_id": f"user_{uuid.uuid4().hex[:12]}",
-        "email": "hr.admin@nexushr.com",
+        "email": "hr.admin@shardahr.com",
         "password_hash": pwd_context.hash("HrAdmin@123"),
         "name": "Priya Sharma",
         "role": "hr_admin",
@@ -231,7 +231,7 @@ async def seed_all():
         "user_id": hr_admin_user["user_id"],
         "first_name": "Priya",
         "last_name": "Sharma",
-        "email": "hr.admin@nexushr.com",
+        "email": "hr.admin@shardahr.com",
         "phone": "9876543211",
         "department_id": "dept_hr",
         "designation_id": "desig_dir",
@@ -252,7 +252,7 @@ async def seed_all():
     # Create Finance Head
     fin_head_user = {
         "user_id": f"user_{uuid.uuid4().hex[:12]}",
-        "email": "finance.head@nexushr.com",
+        "email": "finance.head@shardahr.com",
         "password_hash": pwd_context.hash("Finance@123"),
         "name": "Rajesh Kumar",
         "role": "finance",
@@ -268,7 +268,7 @@ async def seed_all():
         "user_id": fin_head_user["user_id"],
         "first_name": "Rajesh",
         "last_name": "Kumar",
-        "email": "finance.head@nexushr.com",
+        "email": "finance.head@shardahr.com",
         "phone": "9876543212",
         "department_id": "dept_fin",
         "designation_id": "desig_dir",
@@ -293,7 +293,7 @@ async def seed_all():
             
         mgr_user = {
             "user_id": f"user_{uuid.uuid4().hex[:12]}",
-            "email": f"manager.{dept['code'].lower()}@nexushr.com",
+            "email": f"manager.{dept['code'].lower()}@shardahr.com",
             "password_hash": pwd_context.hash("Manager@123"),
             "name": f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}",
             "role": "manager",
@@ -339,7 +339,7 @@ async def seed_all():
         
         emp_user = {
             "user_id": f"user_{uuid.uuid4().hex[:12]}",
-            "email": f"{first_name.lower()}.{last_name.lower()}{emp_counter}@nexushr.com",
+            "email": f"{first_name.lower()}.{last_name.lower()}{emp_counter}@shardahr.com",
             "password_hash": pwd_context.hash("Employee@123"),
             "name": f"{first_name} {last_name}",
             "role": "employee",
@@ -488,7 +488,7 @@ async def seed_all():
             "amount": amount,
             "expense_date": random_date(45, 1),
             "description": f"Expense for {cat['name'].lower()} related activity",
-            "receipt_url": f"https://storage.nexushr.com/receipts/{uuid.uuid4().hex}.pdf" if random.random() > 0.2 else None,
+            "receipt_url": f"https://storage.shardahr.com/receipts/{uuid.uuid4().hex}.pdf" if random.random() > 0.2 else None,
             "status": status,
             "approved_amount": amount if status in ["approved", "reimbursed"] else None,
             "approved_by": dept_heads.get(emp["department_id"]) if status in ["approved", "reimbursed"] else None,
@@ -705,7 +705,7 @@ async def seed_all():
                 "name": f"{emp['first_name']}'s {dt['name']}",
                 "type": dt["type_id"],
                 "description": f"Submitted {dt['name']}",
-                "file_url": f"https://storage.nexushr.com/docs/{uuid.uuid4().hex}.pdf",
+                "file_url": f"https://storage.shardahr.com/docs/{uuid.uuid4().hex}.pdf",
                 "file_size": random.randint(100000, 5000000),
                 "is_verified": random.random() > 0.3,
                 "verified_by": dept_heads.get("dept_hr") if random.random() > 0.3 else None,
@@ -1019,11 +1019,11 @@ async def seed_all():
    - Exit Requests: {len(exit_requests)}
 
 🔐 Test Credentials:
-   - Admin: admin@nexushr.com / Admin@123
-   - HR Admin: hr.admin@nexushr.com / HrAdmin@123
-   - Finance: finance.head@nexushr.com / Finance@123
-   - Managers: manager.<dept>@nexushr.com / Manager@123
-   - Employees: <firstname>.<lastname><num>@nexushr.com / Employee@123
+   - Admin: admin@shardahr.com / Admin@123
+   - HR Admin: hr.admin@shardahr.com / HrAdmin@123
+   - Finance: finance.head@shardahr.com / Finance@123
+   - Managers: manager.<dept>@shardahr.com / Manager@123
+   - Employees: <firstname>.<lastname><num>@shardahr.com / Employee@123
 """)
 
 if __name__ == "__main__":
