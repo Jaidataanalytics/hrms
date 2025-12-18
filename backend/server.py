@@ -444,7 +444,9 @@ async def register(user_data: UserCreate, request: Request):
 async def login(credentials: UserLogin, request: Request, response: Response):
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     
-    if not user or not verify_password(credentials.password, user.get("password", "")):
+    # Support both 'password' and 'password_hash' fields for compatibility
+    stored_password = user.get("password") or user.get("password_hash", "") if user else ""
+    if not user or not verify_password(credentials.password, stored_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     if not user.get("is_active", True):
