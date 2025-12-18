@@ -99,6 +99,7 @@ const DashboardLayout = () => {
     { name: 'Report Builder', path: '/dashboard/report-builder', icon: PieChart },
     { name: 'Bulk Import', path: '/dashboard/import', icon: FileText },
     { name: 'Master Setup', path: '/dashboard/master-setup', icon: Building2 },
+    { name: 'User Management', path: '/dashboard/user-management', icon: UserCog },
   ];
 
   const isActive = (path, exact = false) => {
@@ -122,11 +123,9 @@ const DashboardLayout = () => {
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-slate-800">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">N</span>
-          </div>
+          <img src="/logo.png" alt="Sharda HR" className="h-9 w-9 object-contain" />
           <span className="font-semibold text-lg text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Nexus HR
+            Sharda HR
           </span>
         </Link>
         {mobile && (
@@ -165,7 +164,7 @@ const DashboardLayout = () => {
               Administration
             </p>
             <nav className="space-y-1">
-              {adminMenuItems.slice(0, 5).map((item) => (
+              {adminMenuItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
