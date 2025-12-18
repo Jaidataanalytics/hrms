@@ -104,6 +104,7 @@ function AppRouter() {
         <Route path="assets" element={<AssetsPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="import" element={<BulkImportPage />} />
+        <Route path="master-setup" element={<MasterSetupPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
