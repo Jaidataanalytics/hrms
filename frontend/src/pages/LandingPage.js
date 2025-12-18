@@ -166,7 +166,7 @@ const LandingPage = () => {
                 Built for Enterprise Security & Compliance
               </h2>
               <p className="text-slate-300 mb-8 text-lg leading-relaxed">
-                Nexus HR prioritizes security, auditability, and configurability. 
+                Sharda HR prioritizes security, auditability, and configurability. 
                 Every sensitive action is logged, every rule is customizable by admin.
               </p>
               <ul className="space-y-4">
@@ -213,11 +213,9 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">N</span>
-              </div>
+              <img src="/logo.png" alt="Sharda HR" className="h-8 w-8 object-contain" />
               <span className="font-semibold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                Nexus HR
+                Sharda HR
               </span>
             </div>
             <p className="text-sm">
