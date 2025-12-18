@@ -103,6 +103,7 @@ async def create_expense(data: dict, request: Request):
     }
     
     await db.expenses.insert_one(expense)
+    expense.pop('_id', None)
     return expense
 
 
