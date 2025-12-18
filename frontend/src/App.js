@@ -23,6 +23,9 @@ import GrievancePage from "./pages/GrievancePage";
 import RecruitmentPage from "./pages/RecruitmentPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ReportsPage from "./pages/ReportsPage";
+import LabourPage from "./pages/LabourPage";
+import DocumentsPage from "./pages/DocumentsPage";
+import ReportBuilderPage from "./pages/ReportBuilderPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -113,6 +116,9 @@ function AppRouter() {
         <Route path="recruitment" element={<RecruitmentPage />} />
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="labour" element={<LabourPage />} />
+        <Route path="documents" element={<DocumentsPage />} />
+        <Route path="report-builder" element={<ReportBuilderPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
