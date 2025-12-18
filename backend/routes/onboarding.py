@@ -226,6 +226,7 @@ async def create_exit_request(data: dict, request: Request):
     }
     
     await db.exit_requests.insert_one(exit_request)
+    exit_request.pop('_id', None)
     return exit_request
 
 
