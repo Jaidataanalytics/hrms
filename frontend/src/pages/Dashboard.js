@@ -277,20 +277,24 @@ const Dashboard = () => {
             <CardContent>
               {employeeDashboard?.leave_balance?.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {employeeDashboard.leave_balance.slice(0, 4).map((balance, idx) => (
-                    <div key={idx} className="p-4 bg-slate-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium text-slate-600">{balance.leave_type_id}</p>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {balance.available} / {balance.opening_balance + balance.accrued}
-                        </p>
+                  {employeeDashboard.leave_balance.slice(0, 4).map((balance, idx) => {
+                    const leaveType = leaveTypes.find(lt => lt.leave_type_id === balance.leave_type_id);
+                    const leaveName = leaveType?.code || leaveType?.name || balance.leave_type_id;
+                    return (
+                      <div key={idx} className="p-4 bg-slate-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium text-slate-600">{leaveName}</p>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {balance.available} / {balance.opening_balance + balance.accrued}
+                          </p>
+                        </div>
+                        <Progress 
+                          value={(balance.available / (balance.opening_balance + balance.accrued || 1)) * 100} 
+                          className="h-2"
+                        />
                       </div>
-                      <Progress 
-                        value={(balance.available / (balance.opening_balance + balance.accrued || 1)) * 100} 
-                        className="h-2"
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-slate-500 text-center py-4">No leave balance data available</p>
