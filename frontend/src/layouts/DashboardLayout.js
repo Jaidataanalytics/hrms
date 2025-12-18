@@ -87,6 +87,7 @@ const DashboardLayout = () => {
     { name: 'Assets', path: '/dashboard/assets', icon: Package },
     { name: 'Expenses', path: '/dashboard/expenses', icon: Receipt },
     { name: 'Bulk Import', path: '/dashboard/import', icon: FileText },
+    { name: 'Master Setup', path: '/dashboard/master-setup', icon: Building2 },
   ];
 
   const isActive = (path, exact = false) => {
