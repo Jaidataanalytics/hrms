@@ -67,6 +67,7 @@ async def create_onboarding_task(data: dict, request: Request):
     }
     
     await db.onboarding_tasks.insert_one(task)
+    task.pop('_id', None)
     return task
 
 
