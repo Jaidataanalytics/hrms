@@ -1,4 +1,4 @@
-"""Comprehensive Test Data Seeder for Nexus HR"""
+"""Comprehensive Test Data Seeder for Sharda HR"""
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timezone, timedelta
