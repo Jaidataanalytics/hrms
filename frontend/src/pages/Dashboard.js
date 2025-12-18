@@ -1,0 +1,383 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Progress } from '../components/ui/progress';
+import { toast } from 'sonner';
+import {
+  Users,
+  Clock,
+  Calendar,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  ArrowRight,
+  Megaphone,
+  RefreshCw
+} from 'lucide-react';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+
+const Dashboard = () => {
+  const { user } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [employeeDashboard, setEmployeeDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [markingAttendance, setMarkingAttendance] = useState(false);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, empDashRes] = await Promise.all([
+        fetch(`${API_URL}/dashboard/stats`, { credentials: 'include' }),
+        fetch(`${API_URL}/dashboard/employee`, { credentials: 'include' })
+      ]);
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+      }
+
+      if (empDashRes.ok) {
+        const empData = await empDashRes.json();
+        setEmployeeDashboard(empData);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAttendance = async (punchType) => {
+    setMarkingAttendance(true);
+    try {
+      const response = await fetch(`${API_URL}/attendance/mark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          punch_type: punchType,
+          source: 'manual',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`${punchType} marked at ${data.time}`);
+        fetchDashboardData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to mark attendance');
+      }
+    } catch (error) {
+      toast.error('Failed to mark attendance');
+    } finally {
+      setMarkingAttendance(false);
+    }
+  };
+
+  const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in" data-testid="dashboard-page">
+      {/* Welcome Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Welcome back, {user?.name?.split(' ')[0]}!
+          </h1>
+          <p className="text-slate-600 mt-1">
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => handleMarkAttendance('IN')}
+            disabled={markingAttendance}
+            className="gap-2"
+            data-testid="mark-in-btn"
+          >
+            <Clock className="w-4 h-4" />
+            Punch In
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleMarkAttendance('OUT')}
+            disabled={markingAttendance}
+            data-testid="mark-out-btn"
+          >
+            Punch Out
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards - Show for HR/Admin */}
+      {isHR && stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+          <Card className="card-hover" data-testid="stat-employees">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Total Employees</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total_employees}</p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover" data-testid="stat-present">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Present Today</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">{stats.present_today}</p>
+                  <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    {stats.attendance_percentage}% attendance
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover" data-testid="stat-leave">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">On Leave Today</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">{stats.on_leave_today}</p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-amber-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover" data-testid="stat-pending">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Pending Approvals</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">{stats.pending_leaves}</p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column - Attendance & Leave */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Today's Attendance Status */}
+          <Card data-testid="attendance-status-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                Today's Attendance
+              </CardTitle>
+              <CardDescription>Your attendance status for today</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {employeeDashboard?.attendance_today ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900">
+                          Status: <span className="text-emerald-600 capitalize">{employeeDashboard.attendance_today.status}</span>
+                        </p>
+                        <p className="text-sm text-slate-500">
+                          First In: {employeeDashboard.attendance_today.first_in || 'N/A'} | 
+                          Last Out: {employeeDashboard.attendance_today.last_out || 'In Progress'}
+                        </p>
+                      </div>
+                    </div>
+                    {employeeDashboard.attendance_today.total_hours && (
+                      <Badge variant="secondary" className="text-lg px-4 py-1">
+                        {employeeDashboard.attendance_today.total_hours} hrs
+                      </Badge>
+                    )}
+                  </div>
+                  {employeeDashboard.attendance_today.punches?.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {employeeDashboard.attendance_today.punches.map((punch, idx) => (
+                        <Badge key={idx} variant={punch.type === 'IN' ? 'default' : 'outline'}>
+                          {punch.type} - {punch.time}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                  <AlertCircle className="w-6 h-6 text-amber-600" />
+                  <div>
+                    <p className="font-medium text-amber-800">No attendance marked today</p>
+                    <p className="text-sm text-amber-600">Use the Punch In button above to mark your attendance</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Leave Balance */}
+          <Card data-testid="leave-balance-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    Leave Balance
+                  </CardTitle>
+                  <CardDescription>Your leave quota for this year</CardDescription>
+                </div>
+                <Link to="/dashboard/leave">
+                  <Button variant="ghost" size="sm" className="gap-1">
+                    View All <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {employeeDashboard?.leave_balance?.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {employeeDashboard.leave_balance.slice(0, 4).map((balance, idx) => (
+                    <div key={idx} className="p-4 bg-slate-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-slate-600">{balance.leave_type_id}</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {balance.available} / {balance.opening_balance + balance.accrued}
+                        </p>
+                      </div>
+                      <Progress 
+                        value={(balance.available / (balance.opening_balance + balance.accrued || 1)) * 100} 
+                        className="h-2"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-center py-4">No leave balance data available</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Announcements & Quick Actions */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Recent Announcements */}
+          <Card data-testid="announcements-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  <Megaphone className="w-5 h-5 text-primary" />
+                  Announcements
+                </CardTitle>
+                <Link to="/dashboard/announcements">
+                  <Button variant="ghost" size="sm">View All</Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {employeeDashboard?.recent_announcements?.length > 0 ? (
+                employeeDashboard.recent_announcements.slice(0, 3).map((ann, idx) => (
+                  <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <p className="font-medium text-slate-900 text-sm line-clamp-1">{ann.title}</p>
+                      <Badge variant="outline" className="text-xs shrink-0">{ann.category}</Badge>
+                    </div>
+                    <p className="text-xs text-slate-500 line-clamp-2">{ann.content}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-slate-500 text-center py-4 text-sm">No announcements</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card data-testid="quick-actions-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Link to="/dashboard/leave" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" data-testid="quick-apply-leave">
+                  <Calendar className="w-4 h-4" />
+                  Apply for Leave
+                </Button>
+              </Link>
+              <Link to="/dashboard/attendance" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" data-testid="quick-view-attendance">
+                  <Clock className="w-4 h-4" />
+                  View Attendance
+                </Button>
+              </Link>
+              <Link to="/dashboard/employees" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" data-testid="quick-directory">
+                  <Users className="w-4 h-4" />
+                  Employee Directory
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Pending Actions for Managers/HR */}
+          {(isHR || user?.role === 'manager') && stats?.pending_leaves > 0 && (
+            <Card className="border-amber-200 bg-amber-50" data-testid="pending-actions-card">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-amber-900">Pending Approvals</p>
+                    <p className="text-sm text-amber-700">{stats.pending_leaves} leave requests need your attention</p>
+                  </div>
+                  <Link to="/dashboard/leave">
+                    <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">
+                      Review
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
