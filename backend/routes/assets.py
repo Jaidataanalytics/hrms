@@ -218,6 +218,7 @@ async def create_asset_request(data: dict, request: Request):
     }
     
     await db.asset_requests.insert_one(req)
+    req.pop('_id', None)
     return req
 
 
