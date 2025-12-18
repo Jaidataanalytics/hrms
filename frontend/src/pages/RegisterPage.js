@@ -79,14 +79,12 @@ const RegisterPage = () => {
 
         <Card className="shadow-xl border-slate-200">
           <CardHeader className="text-center pb-4">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-white font-bold text-xl">N</span>
-            </div>
+            <img src="/logo.png" alt="Sharda HR" className="h-12 w-12 object-contain mx-auto mb-4" />
             <CardTitle className="text-2xl font-bold" style={{ fontFamily: 'Manrope, sans-serif' }}>
               Create Account
             </CardTitle>
             <CardDescription>
-              Get started with Nexus HR today
+              Get started with Sharda HR today
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
