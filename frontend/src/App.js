@@ -18,6 +18,7 @@ import PerformancePage from "./pages/PerformancePage";
 import AssetsPage from "./pages/AssetsPage";
 import ExpensesPage from "./pages/ExpensesPage";
 import BulkImportPage from "./pages/BulkImportPage";
+import MasterSetupPage from "./pages/MasterSetupPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
