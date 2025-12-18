@@ -67,6 +67,16 @@ const DashboardLayout = () => {
       icon: Calendar 
     },
     { 
+      name: 'Payroll', 
+      path: '/dashboard/payroll', 
+      icon: CreditCard 
+    },
+    { 
+      name: 'Performance', 
+      path: '/dashboard/performance', 
+      icon: Target 
+    },
+    { 
       name: 'Announcements', 
       path: '/dashboard/announcements', 
       icon: Megaphone 
@@ -74,16 +84,9 @@ const DashboardLayout = () => {
   ];
 
   const adminMenuItems = [
-    { name: 'Departments', path: '/dashboard/departments', icon: Building2 },
-    { name: 'Designations', path: '/dashboard/designations', icon: Briefcase },
-    { name: 'Documents', path: '/dashboard/documents', icon: FileText },
-    { name: 'Payroll', path: '/dashboard/payroll', icon: CreditCard },
-    { name: 'Performance', path: '/dashboard/performance', icon: Target },
     { name: 'Assets', path: '/dashboard/assets', icon: Package },
     { name: 'Expenses', path: '/dashboard/expenses', icon: Receipt },
-    { name: 'Exit', path: '/dashboard/exit', icon: UserMinus },
-    { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
-    { name: 'Reports', path: '/dashboard/reports', icon: BarChart3 },
+    { name: 'Bulk Import', path: '/dashboard/import', icon: FileText },
   ];
 
   const isActive = (path, exact = false) => {
