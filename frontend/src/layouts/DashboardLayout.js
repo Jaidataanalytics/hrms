@@ -34,7 +34,10 @@ import {
   Receipt,
   UserMinus,
   HelpCircle,
-  BarChart3
+  BarChart3,
+  HardHat,
+  FolderOpen,
+  PieChart
 } from 'lucide-react';
 
 const DashboardLayout = () => {
