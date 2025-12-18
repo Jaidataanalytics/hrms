@@ -23,12 +23,12 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Configuration
-JWT_SECRET = os.environ.get('JWT_SECRET', 'nexus-hr-secret-key-change-in-production')
+JWT_SECRET = os.environ.get('JWT_SECRET', 'sharda-hr-secret-key-change-in-production')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 24
 
 # Create the main app
-app = FastAPI(title="Nexus HR API", version="1.0.0")
+app = FastAPI(title="Sharda HR API", version="1.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -1475,7 +1475,7 @@ async def seed_initial_data(request: Request):
 
 @api_router.get("/")
 async def root():
-    return {"message": "Nexus HR API", "version": "1.0.0", "status": "healthy"}
+    return {"message": "Sharda HR API", "version": "1.0.0", "status": "healthy"}
 
 @api_router.get("/health")
 async def health_check():
