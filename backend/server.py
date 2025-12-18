@@ -1401,7 +1401,7 @@ async def seed_initial_data(request: Request):
             await db.locations.insert_one(doc)
     
     # Create a super admin user with employee profile if not exists
-    admin_exists = await db.users.find_one({"email": "admin@nexushr.com"})
+    admin_exists = await db.users.find_one({"email": "admin@shardahr.com"})
     if not admin_exists:
         admin_user_id = f"user_{uuid.uuid4().hex[:12]}"
         admin_emp_id = "EMP000001"
@@ -1421,7 +1421,7 @@ async def seed_initial_data(request: Request):
             "emp_code": "ADMIN001",
             "first_name": "System",
             "last_name": "Admin",
-            "email": "admin@nexushr.com",
+            "email": "admin@shardahr.com",
             "phone": "+91 9876543210",
             "department_id": hr_dept_id,
             "designation_id": ceo_desig_id,
@@ -1436,7 +1436,7 @@ async def seed_initial_data(request: Request):
         
         admin_user = {
             "user_id": admin_user_id,
-            "email": "admin@nexushr.com",
+            "email": "admin@shardahr.com",
             "password": hash_password("Admin@123"),
             "name": "System Admin",
             "picture": None,
