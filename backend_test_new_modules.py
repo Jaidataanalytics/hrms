@@ -36,6 +36,9 @@ class HRMSNewModulesAPITester:
                 "password": "Admin@123"
             })
             success = response.status_code == 200
+            if success:
+                # Store cookies for subsequent requests
+                self.session.cookies.update(response.cookies)
             self.log_test("Admin Login", success, f"Status: {response.status_code}")
             return success
         except Exception as e:
