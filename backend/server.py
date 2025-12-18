@@ -1486,11 +1486,23 @@ from routes.payroll import router as payroll_router
 from routes.performance import router as performance_router
 from routes.bulk_import import router as import_router
 from routes.documents import router as documents_router
+from routes.assets import router as assets_router
+from routes.expenses import router as expenses_router
+from routes.grievance import router as grievance_router
+from routes.recruitment import router as recruitment_router
+from routes.onboarding import router as onboarding_router
+from routes.reports import router as reports_router
 
 api_router.include_router(payroll_router)
 api_router.include_router(performance_router)
 api_router.include_router(import_router)
 api_router.include_router(documents_router)
+api_router.include_router(assets_router)
+api_router.include_router(expenses_router)
+api_router.include_router(grievance_router)
+api_router.include_router(recruitment_router)
+api_router.include_router(onboarding_router)
+api_router.include_router(reports_router)
 
 # Include the router in the main app (after all sub-routers are added)
 app.include_router(api_router)
