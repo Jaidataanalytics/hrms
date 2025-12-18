@@ -1484,6 +1484,17 @@ async def health_check():
 # Include the router in the main app
 app.include_router(api_router)
 
+# Import and include additional routers
+from routes.payroll import router as payroll_router
+from routes.performance import router as performance_router
+from routes.bulk_import import router as import_router
+from routes.documents import router as documents_router
+
+api_router.include_router(payroll_router)
+api_router.include_router(performance_router)
+api_router.include_router(import_router)
+api_router.include_router(documents_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
