@@ -1521,6 +1521,7 @@ async def create_asset_request_shortcut(data: dict, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.asset_requests.insert_one(req)
+    req.pop('_id', None)
     return req
 
 
