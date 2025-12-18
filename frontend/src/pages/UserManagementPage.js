@@ -328,7 +328,7 @@ const UserManagementPage = () => {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({...form, email: e.target.value})}
-                  placeholder="john@nexushr.com"
+                  placeholder="john@shardahr.com"
                 />
               </div>
               <div className="space-y-2">
