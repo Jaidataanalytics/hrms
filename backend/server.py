@@ -1556,6 +1556,7 @@ from routes.grievance import router as grievance_router
 from routes.recruitment import router as recruitment_router
 from routes.onboarding import router as onboarding_router
 from routes.reports import router as reports_router
+from routes.labour import router as labour_router
 
 api_router.include_router(payroll_router)
 api_router.include_router(performance_router)
@@ -1567,6 +1568,7 @@ api_router.include_router(grievance_router)
 api_router.include_router(recruitment_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(reports_router)
+api_router.include_router(labour_router)
 
 # Include the router in the main app (after all sub-routers are added)
 app.include_router(api_router)
