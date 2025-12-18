@@ -50,8 +50,8 @@ const ReportBuilderPage = () => {
     reportType: 'employee',
     columns: ['employee_id', 'name', 'email', 'department', 'designation'],
     filters: {
-      department_id: '',
-      location_id: '',
+      department_id: 'all',
+      location_id: 'all',
       employment_status: 'active',
       date_from: '',
       date_to: ''
