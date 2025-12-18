@@ -86,6 +86,10 @@ const DashboardLayout = () => {
   const adminMenuItems = [
     { name: 'Assets', path: '/dashboard/assets', icon: Package },
     { name: 'Expenses', path: '/dashboard/expenses', icon: Receipt },
+    { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
+    { name: 'Recruitment', path: '/dashboard/recruitment', icon: Briefcase },
+    { name: 'Onboarding', path: '/dashboard/onboarding', icon: UserMinus },
+    { name: 'Reports', path: '/dashboard/reports', icon: BarChart3 },
     { name: 'Bulk Import', path: '/dashboard/import', icon: FileText },
     { name: 'Master Setup', path: '/dashboard/master-setup', icon: Building2 },
   ];
