@@ -75,6 +75,7 @@ async def create_job_posting(data: dict, request: Request):
     }
     
     await db.job_postings.insert_one(job)
+    job.pop('_id', None)
     return job
 
 
