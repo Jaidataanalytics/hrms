@@ -1400,11 +1400,42 @@ async def seed_initial_data(request: Request):
             doc['created_at'] = doc['created_at'].isoformat()
             await db.locations.insert_one(doc)
     
-    # Create a super admin user if not exists
+    # Create a super admin user with employee profile if not exists
     admin_exists = await db.users.find_one({"email": "admin@nexushr.com"})
     if not admin_exists:
+        admin_user_id = f"user_{uuid.uuid4().hex[:12]}"
+        admin_emp_id = "EMP000001"
+        
+        # Get HR department ID
+        hr_dept = await db.departments.find_one({"code": "HR"}, {"_id": 0})
+        hr_dept_id = hr_dept["department_id"] if hr_dept else None
+        
+        # Get CEO designation ID
+        ceo_desig = await db.designations.find_one({"code": "CEO"}, {"_id": 0})
+        ceo_desig_id = ceo_desig["designation_id"] if ceo_desig else None
+        
+        # Create employee profile for admin
+        admin_employee = {
+            "employee_id": admin_emp_id,
+            "user_id": admin_user_id,
+            "emp_code": "ADMIN001",
+            "first_name": "System",
+            "last_name": "Admin",
+            "email": "admin@nexushr.com",
+            "phone": "+91 9876543210",
+            "department_id": hr_dept_id,
+            "designation_id": ceo_desig_id,
+            "employment_type": "management",
+            "joining_date": "2020-01-01",
+            "status": "active",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.employees.insert_one(admin_employee)
+        
         admin_user = {
-            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "user_id": admin_user_id,
             "email": "admin@nexushr.com",
             "password": hash_password("Admin@123"),
             "name": "System Admin",
@@ -1412,12 +1443,31 @@ async def seed_initial_data(request: Request):
             "role": "super_admin",
             "roles": ["super_admin"],
             "permissions": ["all"],
-            "employee_id": None,
-            "department_id": None,
+            "employee_id": admin_emp_id,
+            "department_id": hr_dept_id,
             "is_active": True,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.users.insert_one(admin_user)
+        
+        # Create leave balances for admin
+        current_year = datetime.now(timezone.utc).year
+        leave_types_list = await db.leave_types.find({}, {"_id": 0}).to_list(10)
+        for lt in leave_types_list:
+            if lt.get("annual_quota", 0) > 0:
+                balance = {
+                    "balance_id": f"lb_{uuid.uuid4().hex[:12]}",
+                    "employee_id": admin_emp_id,
+                    "leave_type_id": lt["leave_type_id"],
+                    "year": current_year,
+                    "opening_balance": lt["annual_quota"],
+                    "accrued": 0,
+                    "used": 0,
+                    "pending": 0,
+                    "available": lt["annual_quota"],
+                    "carry_forward": 0
+                }
+                await db.leave_balances.insert_one(balance)
     
     return {"message": "Initial data seeded successfully"}
 
