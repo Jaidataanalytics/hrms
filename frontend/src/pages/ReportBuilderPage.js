@@ -350,7 +350,7 @@ const ReportBuilderPage = () => {
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Departments</SelectItem>
+                    <SelectItem value="all">All Departments</SelectItem>
                     {departments.map(d => (
                       <SelectItem key={d.department_id} value={d.department_id}>{d.name}</SelectItem>
                     ))}
