@@ -522,7 +522,11 @@ const AssetsPage = () => {
                   <TableBody>
                     {filteredAssets.length > 0 ? (
                       filteredAssets.map((asset) => (
-                        <TableRow key={asset.asset_id}>
+                        <TableRow 
+                          key={asset.asset_id} 
+                          className="cursor-pointer hover:bg-slate-100"
+                          onClick={() => fetchAssetDetails(asset.asset_id)}
+                        >
                           <TableCell>
                             <div>
                               <p className="font-medium">{asset.name}</p>
@@ -536,18 +540,23 @@ const AssetsPage = () => {
                           </TableCell>
                           <TableCell>{asset.assigned_to || '-'}</TableCell>
                           <TableCell className="text-right">
-                            {asset.status === 'available' && (
-                              <Button size="sm" variant="outline" className="gap-1">
-                                <UserPlus className="w-3 h-3" />
-                                Assign
+                            <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+                              <Button size="sm" variant="ghost" onClick={() => fetchAssetDetails(asset.asset_id)}>
+                                <Eye className="w-4 h-4" />
                               </Button>
-                            )}
-                            {asset.status === 'assigned' && (
-                              <Button size="sm" variant="outline" className="gap-1">
-                                <RotateCcw className="w-3 h-3" />
-                                Return
-                              </Button>
-                            )}
+                              {asset.status === 'available' && (
+                                <Button size="sm" variant="outline" className="gap-1">
+                                  <UserPlus className="w-3 h-3" />
+                                  Assign
+                                </Button>
+                              )}
+                              {asset.status === 'assigned' && (
+                                <Button size="sm" variant="outline" className="gap-1">
+                                  <RotateCcw className="w-3 h-3" />
+                                  Return
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
