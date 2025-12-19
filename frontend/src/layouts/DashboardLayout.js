@@ -94,7 +94,7 @@ const DashboardLayout = () => {
     { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
     { name: 'Recruitment', path: '/dashboard/recruitment', icon: Briefcase },
     { name: 'Onboarding', path: '/dashboard/onboarding', icon: UserMinus },
-    { name: 'Labour', path: '/dashboard/labour', icon: HardHat },
+    { name: 'Contract Labour', path: '/dashboard/labour', icon: HardHat },
     { name: 'Reports', path: '/dashboard/reports', icon: BarChart3 },
     { name: 'Report Builder', path: '/dashboard/report-builder', icon: PieChart },
     { name: 'Bulk Import', path: '/dashboard/import', icon: FileText },
