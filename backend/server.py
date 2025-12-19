@@ -1560,6 +1560,8 @@ from routes.onboarding import router as onboarding_router
 from routes.reports import router as reports_router
 from routes.labour import router as labour_router
 from routes.user_management import router as user_management_router
+from routes.training import router as training_router
+from routes.travel import router as travel_router
 
 api_router.include_router(payroll_router)
 api_router.include_router(performance_router)
