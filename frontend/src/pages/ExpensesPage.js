@@ -413,8 +413,9 @@ const ExpensesPage = () => {
                 return (
                   <div
                     key={expense.claim_id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-lg gap-4"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-lg gap-4 cursor-pointer hover:bg-slate-100 transition-colors"
                     data-testid={`expense-${expense.claim_id}`}
+                    onClick={() => setSelectedExpense(expense)}
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-lg bg-white border flex items-center justify-center">
@@ -443,8 +444,11 @@ const ExpensesPage = () => {
                         <StatusIcon className="w-3 h-3 mr-1" />
                         {status.label}
                       </Badge>
+                      <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedExpense(expense); }}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       {isApprover && expense.status === 'pending' && expense.employee_id !== user?.employee_id && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button
                             size="sm"
                             onClick={() => handleApprove(expense.claim_id)}
