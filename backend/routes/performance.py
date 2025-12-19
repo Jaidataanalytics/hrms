@@ -1,8 +1,10 @@
 """Performance & KPI API Routes"""
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
+import io
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
