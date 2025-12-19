@@ -123,6 +123,8 @@ function AppRouter() {
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="report-builder" element={<ReportBuilderPage />} />
         <Route path="user-management" element={<UserManagementPage />} />
+        <Route path="training" element={<TrainingPage />} />
+        <Route path="travel" element={<TravelPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
