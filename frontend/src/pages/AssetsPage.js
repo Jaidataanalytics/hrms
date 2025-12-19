@@ -575,6 +575,110 @@ const AssetsPage = () => {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Asset Details Modal */}
+      <Dialog open={!!selectedAsset} onOpenChange={() => setSelectedAsset(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedAsset?.category && categoryIcons[selectedAsset.category] && 
+                React.createElement(categoryIcons[selectedAsset.category], { className: "w-5 h-5 text-primary" })
+              }
+              {selectedAsset?.name}
+            </DialogTitle>
+            <DialogDescription>Asset Details</DialogDescription>
+          </DialogHeader>
+          {selectedAsset && (
+            <div className="space-y-4">
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                <Badge className={statusColors[selectedAsset.status]}>{selectedAsset.status}</Badge>
+                <Badge variant="outline" className="capitalize">{selectedAsset.condition}</Badge>
+              </div>
+
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Tag className="w-4 h-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Asset Tag</p>
+                  </div>
+                  <p className="font-mono font-medium">{selectedAsset.asset_tag}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Hash className="w-4 h-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Serial Number</p>
+                  </div>
+                  <p className="font-mono font-medium">{selectedAsset.serial_number || '-'}</p>
+                </div>
+              </div>
+
+              {/* Brand & Model */}
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs text-slate-500 mb-1">Brand & Model</p>
+                <p className="font-medium">{selectedAsset.brand || '-'} {selectedAsset.model || ''}</p>
+              </div>
+
+              {/* Purchase Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Purchase Date</p>
+                  </div>
+                  <p className="font-medium">
+                    {selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString('en-IN') : '-'}
+                  </p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <IndianRupee className="w-4 h-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Purchase Cost</p>
+                  </div>
+                  <p className="font-medium">
+                    {selectedAsset.purchase_cost ? `₹${selectedAsset.purchase_cost.toLocaleString('en-IN')}` : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Warranty */}
+              {selectedAsset.warranty_expiry && (
+                <div className="p-3 bg-amber-50 rounded-lg">
+                  <p className="text-xs text-amber-600 mb-1">Warranty Expiry</p>
+                  <p className="font-medium text-amber-700">
+                    {new Date(selectedAsset.warranty_expiry).toLocaleDateString('en-IN')}
+                  </p>
+                </div>
+              )}
+
+              {/* Assignment Info */}
+              {selectedAsset.assigned_to && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-600 mb-1">Assigned To</p>
+                  <p className="font-medium text-blue-700">{selectedAsset.assigned_to}</p>
+                  {selectedAsset.assigned_date && (
+                    <p className="text-xs text-blue-500 mt-1">
+                      Since {new Date(selectedAsset.assigned_date).toLocaleDateString('en-IN')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedAsset.notes && (
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500 mb-1">Notes</p>
+                  <p className="text-sm text-slate-700">{selectedAsset.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedAsset(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
