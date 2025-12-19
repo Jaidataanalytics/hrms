@@ -1603,6 +1603,120 @@ const PayrollPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Custom Rule Dialog */}
+      <Dialog open={showAddCustomRule} onOpenChange={setShowAddCustomRule}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Custom Deduction Rule</DialogTitle>
+            <DialogDescription>Define conditions and actions for automatic deductions</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Rule Name</Label>
+              <Input
+                value={customRuleForm.name}
+                onChange={(e) => setCustomRuleForm({ ...customRuleForm, name: e.target.value })}
+                placeholder="e.g., Excessive Late Arrivals Penalty"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                value={customRuleForm.description}
+                onChange={(e) => setCustomRuleForm({ ...customRuleForm, description: e.target.value })}
+                placeholder="Brief description of the rule"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Condition Type</Label>
+                <Select
+                  value={customRuleForm.condition_type}
+                  onValueChange={(v) => setCustomRuleForm({ ...customRuleForm, condition_type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="late_count">Late Arrivals</SelectItem>
+                    <SelectItem value="absent_count">Total Absents</SelectItem>
+                    <SelectItem value="absent_without_leave">Unapproved Absents</SelectItem>
+                    <SelectItem value="early_departure_count">Early Departures</SelectItem>
+                    <SelectItem value="half_day_count">Half Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Operator</Label>
+                <Select
+                  value={customRuleForm.condition_operator}
+                  onValueChange={(v) => setCustomRuleForm({ ...customRuleForm, condition_operator: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="greater_than">&gt; Greater than</SelectItem>
+                    <SelectItem value="greater_equals">&gt;= Greater or equal</SelectItem>
+                    <SelectItem value="equals">= Equals</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Threshold</Label>
+                <Input
+                  type="number"
+                  value={customRuleForm.condition_threshold}
+                  onChange={(e) => setCustomRuleForm({ ...customRuleForm, condition_threshold: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Action Type</Label>
+                <Select
+                  value={customRuleForm.action_type}
+                  onValueChange={(v) => setCustomRuleForm({ ...customRuleForm, action_type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage_deduction">% of Gross</SelectItem>
+                    <SelectItem value="fixed_deduction">Fixed Amount (₹)</SelectItem>
+                    <SelectItem value="half_day_deduction">Half Day per Occurrence</SelectItem>
+                    <SelectItem value="full_day_deduction">Full Day per Occurrence</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  {customRuleForm.action_type === 'percentage_deduction' ? 'Percentage (%)' : 
+                   customRuleForm.action_type === 'fixed_deduction' ? 'Amount (₹)' : 'Multiplier'}
+                </Label>
+                <Input
+                  type="number"
+                  value={customRuleForm.action_value}
+                  onChange={(e) => setCustomRuleForm({ ...customRuleForm, action_value: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Rule Preview:</strong> If {customRuleForm.condition_type.replace(/_/g, ' ')} is {customRuleForm.condition_operator.replace(/_/g, ' ')} {customRuleForm.condition_threshold}, 
+                then deduct {customRuleForm.action_type === 'percentage_deduction' ? `${customRuleForm.action_value}% of gross salary` : 
+                customRuleForm.action_type === 'fixed_deduction' ? `₹${customRuleForm.action_value}` : 
+                `${customRuleForm.action_value} ${customRuleForm.action_type.replace(/_/g, ' ')}`}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddCustomRule(false)}>Cancel</Button>
+            <Button onClick={handleAddCustomRule}>Add Rule</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
