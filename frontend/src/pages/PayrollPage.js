@@ -1226,6 +1226,228 @@ const PayrollPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Employee Salary Breakdown Modal */}
+      <Dialog open={!!employeeBreakdown} onOpenChange={() => setEmployeeBreakdown(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <IndianRupee className="w-5 h-5 text-primary" />
+              Salary Breakdown
+            </DialogTitle>
+            <DialogDescription>
+              {employeeBreakdown?.employee?.name} - {getMonthName(employeeBreakdown?.period?.month)} {employeeBreakdown?.period?.year}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingBreakdown ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : employeeBreakdown && (
+            <div className="space-y-4">
+              {/* Employee Info */}
+              <div className="p-3 bg-slate-50 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-lg">{employeeBreakdown.employee?.name}</p>
+                  <p className="text-sm text-slate-500">
+                    {employeeBreakdown.employee?.department} • {employeeBreakdown.employee?.designation}
+                  </p>
+                </div>
+                <Badge variant="outline">{employeeBreakdown.employee?.employee_code}</Badge>
+              </div>
+
+              {/* Net Salary Summary */}
+              <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg text-center">
+                <p className="text-sm text-slate-600 mb-1">Net Salary</p>
+                <p className="text-3xl font-bold text-emerald-600">{formatCurrency(employeeBreakdown.totals?.net_salary)}</p>
+              </div>
+
+              {/* Attendance Section */}
+              <Card>
+                <CardHeader 
+                  className="pb-2 cursor-pointer hover:bg-slate-50"
+                  onClick={() => toggleBreakdownSection('attendance')}
+                >
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                      Attendance Summary
+                    </CardTitle>
+                    {breakdownExpandedSections.attendance ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </CardHeader>
+                {breakdownExpandedSections.attendance && (
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      <div className="p-2 bg-emerald-50 rounded text-center">
+                        <p className="text-xl font-bold text-emerald-600">{employeeBreakdown.attendance_summary?.present_days || 0}</p>
+                        <p className="text-xs text-slate-500">Present</p>
+                      </div>
+                      <div className="p-2 bg-red-50 rounded text-center">
+                        <p className="text-xl font-bold text-red-600">{employeeBreakdown.attendance_summary?.absent_days || 0}</p>
+                        <p className="text-xs text-slate-500">Absent</p>
+                      </div>
+                      <div className="p-2 bg-amber-50 rounded text-center">
+                        <p className="text-xl font-bold text-amber-600">{employeeBreakdown.attendance_summary?.half_days || 0}</p>
+                        <p className="text-xs text-slate-500">Half Days</p>
+                      </div>
+                      <div className="p-2 bg-blue-50 rounded text-center">
+                        <p className="text-xl font-bold text-blue-600">{employeeBreakdown.attendance_summary?.paid_leave_days || 0}</p>
+                        <p className="text-xs text-slate-500">Paid Leave</p>
+                      </div>
+                      <div className="p-2 bg-purple-50 rounded text-center">
+                        <p className="text-xl font-bold text-purple-600">{employeeBreakdown.attendance_summary?.unpaid_leave_days || 0}</p>
+                        <p className="text-xs text-slate-500">LWP</p>
+                      </div>
+                      <div className="p-2 bg-orange-50 rounded text-center">
+                        <p className="text-xl font-bold text-orange-600">{employeeBreakdown.attendance_summary?.late_arrivals || 0}</p>
+                        <p className="text-xs text-slate-500">Late</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 p-2 bg-slate-100 rounded flex justify-between text-sm">
+                      <span>Effective Working Days:</span>
+                      <span className="font-semibold">{employeeBreakdown.attendance_summary?.effective_working_days?.toFixed(1) || 0} / {employeeBreakdown.period?.working_days}</span>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Leave Breakdown Section */}
+              {employeeBreakdown.leave_breakdown?.length > 0 && (
+                <Card>
+                  <CardHeader 
+                    className="pb-2 cursor-pointer hover:bg-slate-50"
+                    onClick={() => toggleBreakdownSection('leaves')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-purple-500" />
+                        Leave Details ({employeeBreakdown.leave_breakdown.length})
+                      </CardTitle>
+                      {breakdownExpandedSections.leaves ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
+                  </CardHeader>
+                  {breakdownExpandedSections.leaves && (
+                    <CardContent className="pt-0">
+                      <div className="space-y-2">
+                        {employeeBreakdown.leave_breakdown.map((leave, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
+                            <div>
+                              <span className="font-medium">{leave.leave_type}</span>
+                              <span className="text-slate-500 ml-2">
+                                ({leave.start_date} - {leave.end_date})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span>{leave.days} day(s)</span>
+                              <Badge className={leave.is_paid ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+                                {leave.is_paid ? 'Paid' : 'Unpaid'}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              )}
+
+              {/* Earnings Section */}
+              <Card>
+                <CardHeader 
+                  className="pb-2 cursor-pointer hover:bg-slate-50"
+                  onClick={() => toggleBreakdownSection('earnings')}
+                >
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2 text-emerald-600">
+                      <IndianRupee className="w-4 h-4" />
+                      Earnings
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-emerald-600">{formatCurrency(employeeBreakdown.totals?.gross_salary)}</span>
+                      {breakdownExpandedSections.earnings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
+                  </div>
+                </CardHeader>
+                {breakdownExpandedSections.earnings && (
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      {Object.entries(employeeBreakdown.earnings_breakdown || {}).map(([key, value]) => (
+                        value > 0 && (
+                          <div key={key} className="flex justify-between text-sm p-2 bg-emerald-50 rounded">
+                            <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                            <span className="font-medium">{formatCurrency(value)}</span>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Deductions Section */}
+              <Card>
+                <CardHeader 
+                  className="pb-2 cursor-pointer hover:bg-slate-50"
+                  onClick={() => toggleBreakdownSection('deductions')}
+                >
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2 text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      Deductions
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-red-600">{formatCurrency(employeeBreakdown.totals?.total_deductions)}</span>
+                      {breakdownExpandedSections.deductions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
+                  </div>
+                </CardHeader>
+                {breakdownExpandedSections.deductions && (
+                  <CardContent className="pt-0 space-y-3">
+                    {/* Statutory Deductions */}
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2">Statutory Deductions</p>
+                      <div className="space-y-1">
+                        {Object.entries(employeeBreakdown.deductions_breakdown?.statutory || {}).map(([key, value]) => (
+                          value > 0 && (
+                            <div key={key} className="flex justify-between text-sm p-2 bg-red-50 rounded">
+                              <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                              <span className="font-medium text-red-600">{formatCurrency(value)}</span>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                    {/* Attendance-based Deductions */}
+                    {Object.values(employeeBreakdown.deductions_breakdown?.attendance_based || {}).some(v => v > 0) && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-2">Attendance-based Deductions</p>
+                        <div className="space-y-1">
+                          {Object.entries(employeeBreakdown.deductions_breakdown?.attendance_based || {}).map(([key, value]) => (
+                            value > 0 && (
+                              <div key={key} className="flex justify-between text-sm p-2 bg-orange-50 rounded">
+                                <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                                <span className="font-medium text-orange-600">{formatCurrency(value)}</span>
+                              </div>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                )}
+              </Card>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmployeeBreakdown(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
