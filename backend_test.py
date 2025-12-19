@@ -181,6 +181,95 @@ class HRMSAPITester:
         self.run_test("List notifications", "GET", "notifications", 200)
         self.run_test("Get notification count", "GET", "notifications/count", 200)
 
+    def test_payroll_endpoints(self):
+        """Test payroll endpoints"""
+        print("\n" + "="*50)
+        print("TESTING PAYROLL ENDPOINTS")
+        print("="*50)
+        
+        # Test payroll runs (HR only)
+        self.run_test("List payroll runs", "GET", "payroll/runs", 200)
+        
+        # Test creating payroll run
+        current_month = datetime.now().month
+        current_year = datetime.now().year
+        self.run_test(
+            "Create payroll run",
+            "POST", 
+            f"payroll/runs?month={current_month}&year={current_year}",
+            200
+        )
+        
+        # Test payroll rules
+        self.run_test("Get payroll rules", "GET", "payroll/rules", 200)
+        self.run_test("Get payroll config", "GET", "payroll/config", 200)
+        
+        # Test leave type rules
+        self.run_test("Get leave type payroll rules", "GET", "payroll/leave-type-rules", 200)
+        
+        # Test employee pay info
+        self.run_test("Get all employees pay", "GET", f"payroll/all-employees-pay?month={current_month}&year={current_year}", 200)
+        
+        # Test my payslips
+        self.run_test("Get my payslips", "GET", "payroll/my-payslips", 200)
+
+    def test_performance_endpoints(self):
+        """Test performance & KPI endpoints"""
+        print("\n" + "="*50)
+        print("TESTING PERFORMANCE ENDPOINTS")
+        print("="*50)
+        
+        # Test KPI templates
+        self.run_test("List KPI templates", "GET", "performance/templates", 200)
+        
+        # Test my KPIs
+        self.run_test("Get my KPIs", "GET", "performance/my-kpi", 200)
+        
+        # Test goals
+        self.run_test("List goals", "GET", "performance/goals", 200)
+        
+        # Test sample template download
+        self.run_test("Download sample KPI template", "GET", "performance/templates/sample", 200)
+
+    def test_expenses_endpoints(self):
+        """Test expense management endpoints"""
+        print("\n" + "="*50)
+        print("TESTING EXPENSES ENDPOINTS")
+        print("="*50)
+        
+        # Test expense categories
+        self.run_test("List expense categories", "GET", "expense-categories", 200)
+        
+        # Test expenses list
+        self.run_test("List expenses", "GET", "expenses", 200)
+        
+        # Test creating expense
+        expense_data = {
+            "title": "Test Travel Expense",
+            "category": "travel",
+            "amount": 1500,
+            "expense_date": "2024-12-01",
+            "description": "Client meeting travel"
+        }
+        success, response = self.run_test(
+            "Create expense claim",
+            "POST",
+            "expenses",
+            200,
+            data=expense_data
+        )
+        
+        # If expense created, test approval workflow
+        if success and response.get("claim_id"):
+            claim_id = response["claim_id"]
+            self.run_test(
+                "Approve expense",
+                "PUT",
+                f"expenses/{claim_id}/approve",
+                200,
+                data={"approved_amount": 1500}
+            )
+
     def test_seed_data(self):
         """Test seed data endpoint"""
         print("\n" + "="*50)
