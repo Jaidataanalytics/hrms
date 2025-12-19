@@ -527,41 +527,264 @@ const PerformancePage = () => {
         {/* Templates (HR only) */}
         {isHR && (
           <TabsContent value="templates">
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">KPI Templates</CardTitle>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Create Template
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {templates.length > 0 ? (
-                  <div className="space-y-3">
-                    {templates.map((template) => (
-                      <div
-                        key={template.template_id}
-                        className="flex items-center justify-between p-4 bg-slate-50 rounded-lg"
-                      >
-                        <div>
-                          <p className="font-medium text-slate-900">{template.name}</p>
-                          <p className="text-sm text-slate-500">
-                            {template.questions?.length || 0} questions • {template.total_points} points
-                          </p>
+            <div className="space-y-6">
+              {/* Actions Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <CardTitle className="text-lg">KPI Templates</CardTitle>
+                      <CardDescription>Create and manage KPI templates for employee assessments</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Dialog open={showUploadTemplate} onOpenChange={setShowUploadTemplate}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="gap-2">
+                            <Upload className="w-4 h-4" />
+                            Upload Excel Template
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Upload KPI Template</DialogTitle>
+                            <DialogDescription>
+                              Upload an Excel file with your custom KPI template
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+                              <input
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                className="hidden"
+                                id="template-upload"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  
+                                  setUploadingFile(true);
+                                  const formData = new FormData();
+                                  formData.append('file', file);
+                                  
+                                  try {
+                                    const response = await fetch(`${API_URL}/performance/templates/upload`, {
+                                      method: 'POST',
+                                      credentials: 'include',
+                                      body: formData
+                                    });
+                                    
+                                    if (response.ok) {
+                                      toast.success('Template uploaded successfully');
+                                      setShowUploadTemplate(false);
+                                      fetchData();
+                                    } else {
+                                      const error = await response.json();
+                                      toast.error(error.detail || 'Failed to upload template');
+                                    }
+                                  } catch (error) {
+                                    toast.error('Failed to upload template');
+                                  } finally {
+                                    setUploadingFile(false);
+                                  }
+                                }}
+                              />
+                              <label htmlFor="template-upload" className="cursor-pointer">
+                                <FileSpreadsheet className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                                <p className="text-sm font-medium text-slate-700">Click to upload Excel file</p>
+                                <p className="text-xs text-slate-500 mt-1">.xlsx, .xls, or .csv</p>
+                              </label>
+                            </div>
+                            <div className="bg-slate-50 p-3 rounded-lg">
+                              <p className="text-sm font-medium text-slate-700 mb-2">Template Format:</p>
+                              <ul className="text-xs text-slate-500 space-y-1">
+                                <li>• Column A: Question/KPI Name</li>
+                                <li>• Column B: Description</li>
+                                <li>• Column C: Max Points</li>
+                                <li>• Column D: Category (optional)</li>
+                              </ul>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              className="w-full gap-2"
+                              onClick={() => {
+                                // Download sample template
+                                const link = document.createElement('a');
+                                link.href = `${API_URL}/performance/templates/sample`;
+                                link.download = 'kpi_template_sample.xlsx';
+                                link.click();
+                              }}
+                            >
+                              <Download className="w-4 h-4" />
+                              Download Sample Template
+                            </Button>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowUploadTemplate(false)}>
+                              Cancel
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      
+                      <Dialog open={showCreateTemplate} onOpenChange={setShowCreateTemplate}>
+                        <DialogTrigger asChild>
+                          <Button className="gap-2">
+                            <Plus className="w-4 h-4" />
+                            Create Template
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Create KPI Template</DialogTitle>
+                            <DialogDescription>Create a new KPI assessment template</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label>Template Name</Label>
+                              <Input
+                                value={templateForm.name}
+                                onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                                placeholder="Q1 Performance Review"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Description</Label>
+                              <Textarea
+                                value={templateForm.description}
+                                onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                                placeholder="Describe the template..."
+                                rows={3}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Period Type</Label>
+                              <Select
+                                value={templateForm.period_type}
+                                onValueChange={(v) => setTemplateForm({ ...templateForm, period_type: v })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="monthly">Monthly</SelectItem>
+                                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                                  <SelectItem value="half_yearly">Half Yearly</SelectItem>
+                                  <SelectItem value="yearly">Yearly</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowCreateTemplate(false)}>Cancel</Button>
+                            <Button onClick={async () => {
+                              if (!templateForm.name) {
+                                toast.error('Please enter template name');
+                                return;
+                              }
+                              try {
+                                const response = await fetch(`${API_URL}/performance/templates`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  credentials: 'include',
+                                  body: JSON.stringify(templateForm)
+                                });
+                                if (response.ok) {
+                                  toast.success('Template created');
+                                  setShowCreateTemplate(false);
+                                  setTemplateForm({ name: '', description: '', period_type: 'quarterly' });
+                                  fetchData();
+                                } else {
+                                  toast.error('Failed to create template');
+                                }
+                              } catch (error) {
+                                toast.error('Failed to create template');
+                              }
+                            }}>Create</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {templates.length > 0 ? (
+                    <div className="space-y-3">
+                      {templates.map((template) => (
+                        <div
+                          key={template.template_id}
+                          className="flex items-center justify-between p-4 bg-slate-50 rounded-lg"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <FileSpreadsheet className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">{template.name}</p>
+                              <p className="text-sm text-slate-500">
+                                {template.questions?.length || 0} questions • {template.total_points || 100} points
+                                {template.uploaded_from_excel && (
+                                  <Badge variant="outline" className="ml-2 text-xs">Excel Import</Badge>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `${API_URL}/performance/templates/${template.template_id}/download`;
+                                link.download = `${template.name}.xlsx`;
+                                link.click();
+                              }}
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            <Button variant="outline" size="sm">Edit</Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-600"
+                              onClick={async () => {
+                                if (!window.confirm('Delete this template?')) return;
+                                try {
+                                  await fetch(`${API_URL}/performance/templates/${template.template_id}`, {
+                                    method: 'DELETE',
+                                    credentials: 'include'
+                                  });
+                                  toast.success('Template deleted');
+                                  fetchData();
+                                } catch (error) {
+                                  toast.error('Failed to delete');
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <Button variant="outline" size="sm">Edit</Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500 mb-4">No templates created yet</p>
+                      <div className="flex gap-2 justify-center">
+                        <Button variant="outline" onClick={() => setShowUploadTemplate(true)} className="gap-2">
+                          <Upload className="w-4 h-4" />
+                          Upload Excel
+                        </Button>
+                        <Button onClick={() => setShowCreateTemplate(true)} className="gap-2">
+                          <Plus className="w-4 h-4" />
+                          Create Manually
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-slate-500">No templates created yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         )}
       </Tabs>
