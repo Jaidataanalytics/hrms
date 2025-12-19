@@ -4,20 +4,24 @@
 Do not edit this section
 
 ## Current Testing Focus
-- User Management CRUD operations
-- Branding verification (Sharda HR)
-- Dashboard functionality with seeded data
+1. Payroll Rules Configuration - all editable rules for attendance, leave, overtime, PF, ESI, PT
+2. Payroll creation and processing
+3. All Employees Pay view (HR only)
+4. KPI Template Upload/Create functionality
+5. Expense filter by employee
+6. Geo-location tagging for attendance punch
 
 ## Test Credentials
 - Admin: admin@shardahr.com / Admin@123
-- HR Admin: hr.admin@shardahr.com / HrAdmin@123
-- Finance: finance.head@shardahr.com / Finance@123
 
 ## Incorporate User Feedback
-N/A
+- User requested comprehensive payroll rules configuration
+- User requested employee filter for expenses
+- User requested KPI template upload for HR/Admin
+- User requested geo-location tagging for punch in/out
 
 ## Test Status
-Pending frontend testing agent
+Pending testing agent
 
 ## Last Updated
-2025-12-18
+2025-12-19
