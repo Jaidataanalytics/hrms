@@ -61,7 +61,6 @@ async def list_expenses(
     user = await get_current_user(request)
     
     query = {}
-    print(f"[EXPENSES] employee_id param: {employee_id}, user role: {user.get('role')}")
     
     # Regular employees see only their own
     if user.get("role") not in ["super_admin", "hr_admin", "finance", "manager"]:
@@ -70,8 +69,6 @@ async def list_expenses(
         # HR/Manager/Admin can filter by specific employee
         if employee_id and employee_id != "all":
             query["employee_id"] = employee_id
-    
-    print(f"[EXPENSES] Final query: {query}")
     
     if status and status != "all":
         query["status"] = status
