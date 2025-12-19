@@ -55,12 +55,24 @@ const ExpensesPage = () => {
   const [form, setForm] = useState({
     title: '', category: 'travel', amount: '', expense_date: '', description: ''
   });
+  const [filterEmployee, setFilterEmployee] = useState('all');
+  const [employees, setEmployees] = useState([]);
 
   const isApprover = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance' || user?.role === 'manager';
 
   useEffect(() => {
     fetchData();
-  }, [filterStatus, filterCategory]);
+    if (isApprover) fetchEmployees();
+  }, [filterStatus, filterCategory, filterEmployee]);
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch(`${API_URL}/employees`, { credentials: 'include' });
+      if (res.ok) setEmployees(await res.json());
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
