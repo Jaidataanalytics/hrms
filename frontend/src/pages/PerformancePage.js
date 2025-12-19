@@ -848,6 +848,73 @@ const PerformancePage = () => {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Edit Template Dialog */}
+      <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit KPI Template</DialogTitle>
+            <DialogDescription>Modify the template details</DialogDescription>
+          </DialogHeader>
+          {editingTemplate && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Template Name</Label>
+                <Input
+                  value={editingTemplate.name || ''}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                  placeholder="Template name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={editingTemplate.description || ''}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
+                  placeholder="Template description"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Period Type</Label>
+                <Select
+                  value={editingTemplate.period_type || 'quarterly'}
+                  onValueChange={(v) => setEditingTemplate({ ...editingTemplate, period_type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="half_yearly">Half Yearly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editingTemplate.questions && editingTemplate.questions.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Questions ({editingTemplate.questions.length})</Label>
+                  <div className="max-h-40 overflow-y-auto space-y-2">
+                    {editingTemplate.questions.map((q, idx) => (
+                      <div key={q.question_id || idx} className="p-2 bg-slate-50 rounded text-sm">
+                        <p className="font-medium">{q.question}</p>
+                        <p className="text-xs text-slate-500">Max Points: {q.max_points}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTemplate(null)}>Cancel</Button>
+            <Button onClick={handleUpdateTemplate}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
