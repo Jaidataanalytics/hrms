@@ -4,24 +4,22 @@
 Do not edit this section
 
 ## Current Testing Focus
-1. Payroll Rules Configuration - all editable rules for attendance, leave, overtime, PF, ESI, PT
-2. Payroll creation and processing
-3. All Employees Pay view (HR only)
-4. KPI Template Upload/Create functionality
-5. Expense filter by employee
-6. Geo-location tagging for attendance punch
+1. Training Management module - programs, enrollments, certifications
+2. Travel Management module - requests, approvals
+3. Reports module - headcount, attrition, payroll cost, attendance, leave
+4. Payroll Rules - fully customizable by HR
+5. Asset details modal
+6. Expense details modal and employee filter
 
 ## Test Credentials
 - Admin: admin@shardahr.com / Admin@123
 
 ## Incorporate User Feedback
-- User requested comprehensive payroll rules configuration
-- User requested employee filter for expenses
-- User requested KPI template upload for HR/Admin
-- User requested geo-location tagging for punch in/out
+- All new features have been added
+- Need to verify CRUD operations work
 
 ## Test Status
-Pending testing agent
+Ready for testing
 
 ## Last Updated
 2025-12-19
