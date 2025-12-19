@@ -67,8 +67,23 @@ const AssetsPage = () => {
   const [requestForm, setRequestForm] = useState({
     category: 'laptop', description: '', justification: ''
   });
+  const [selectedAsset, setSelectedAsset] = useState(null);
 
   const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'it_admin';
+
+  const fetchAssetDetails = async (assetId) => {
+    try {
+      const response = await fetch(`${API_URL}/assets/${assetId}`, { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedAsset(data);
+      } else {
+        toast.error('Failed to fetch asset details');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch asset details');
+    }
+  };
 
   useEffect(() => {
     fetchData();
