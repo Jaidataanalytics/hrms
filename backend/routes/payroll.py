@@ -482,6 +482,156 @@ async def get_employee_salary_details(employee_id: str, request: Request):
     }
 
 
+@router.get("/employee-breakdown/{employee_id}")
+async def get_employee_salary_breakdown(
+    employee_id: str, 
+    month: int, 
+    year: int,
+    request: Request
+):
+    """Get detailed salary breakdown for an employee for a specific month"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized - HR/Admin only")
+    
+    # Get employee
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get payslip for this month
+    payslip = await db.payslips.find_one(
+        {"employee_id": employee_id, "month": month, "year": year}, {"_id": 0}
+    )
+    
+    # Get salary structure
+    salary_structure = await db.employee_salaries.find_one(
+        {"employee_id": employee_id, "is_active": True}, {"_id": 0}
+    )
+    
+    # Get attendance records for the month
+    start_date = f"{year}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year + 1}-01-01"
+    else:
+        end_date = f"{year}-{month + 1:02d}-01"
+    
+    attendance_records = await db.attendance.find({
+        "employee_id": employee_id,
+        "date": {"$gte": start_date, "$lt": end_date}
+    }, {"_id": 0}).to_list(31)
+    
+    # Analyze attendance
+    present_days = len([a for a in attendance_records if a.get("status") == "present"])
+    absent_days = len([a for a in attendance_records if a.get("status") == "absent"])
+    half_days = len([a for a in attendance_records if a.get("status") == "half_day"])
+    late_arrivals = len([a for a in attendance_records if a.get("is_late")])
+    early_departures = len([a for a in attendance_records if a.get("is_early_departure")])
+    
+    # Get leave records for the month
+    leave_records = await db.leave_requests.find({
+        "employee_id": employee_id,
+        "status": "approved",
+        "$or": [
+            {"start_date": {"$gte": start_date, "$lt": end_date}},
+            {"end_date": {"$gte": start_date, "$lt": end_date}}
+        ]
+    }, {"_id": 0}).to_list(20)
+    
+    # Categorize leaves
+    paid_leave_days = 0
+    unpaid_leave_days = 0
+    leave_breakdown = []
+    
+    for leave in leave_records:
+        leave_type = await db.leave_types.find_one(
+            {"leave_type_id": leave.get("leave_type_id")}, {"_id": 0}
+        )
+        days = leave.get("total_days", 1)
+        leave_info = {
+            "leave_type": leave_type.get("name") if leave_type else "Unknown",
+            "start_date": leave.get("start_date"),
+            "end_date": leave.get("end_date"),
+            "days": days,
+            "is_paid": leave_type.get("is_paid", False) if leave_type else False
+        }
+        leave_breakdown.append(leave_info)
+        
+        if leave_type and leave_type.get("is_paid", False):
+            paid_leave_days += days
+        else:
+            unpaid_leave_days += days
+    
+    # Get payroll config for rules
+    config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    working_days = config.get("working_days_per_month", 26) if config else 26
+    
+    # Calculate deductions breakdown
+    gross_salary = payslip.get("gross_salary", 0) if payslip else (salary_structure.get("gross", 0) if salary_structure else 0)
+    per_day_salary = gross_salary / working_days if working_days > 0 else 0
+    
+    deductions_breakdown = {
+        "statutory": {
+            "pf_employee": payslip.get("pf_employee", 0) if payslip else 0,
+            "esi_employee": payslip.get("esi_employee", 0) if payslip else 0,
+            "professional_tax": payslip.get("professional_tax", 0) if payslip else 0,
+            "tds": payslip.get("tds", 0) if payslip else 0,
+        },
+        "attendance_based": {
+            "lwp_deduction": (unpaid_leave_days * per_day_salary) if unpaid_leave_days > 0 else 0,
+            "absent_deduction": (absent_days * per_day_salary) if absent_days > 0 else 0,
+            "half_day_deduction": (half_days * per_day_salary * 0.5) if half_days > 0 else 0,
+        },
+        "other": payslip.get("other_deductions", 0) if payslip else 0
+    }
+    
+    earnings_breakdown = {
+        "basic": payslip.get("basic", 0) if payslip else 0,
+        "hra": payslip.get("hra", 0) if payslip else 0,
+        "special_allowance": payslip.get("special_allowance", 0) if payslip else 0,
+        "conveyance": payslip.get("conveyance", 0) if payslip else 0,
+        "medical": payslip.get("medical", 0) if payslip else 0,
+        "overtime": payslip.get("overtime_pay", 0) if payslip else 0,
+        "bonus": payslip.get("bonus", 0) if payslip else 0,
+    }
+    
+    return {
+        "employee": {
+            "employee_id": employee_id,
+            "name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+            "employee_code": employee.get("employee_code", employee_id),
+            "department": employee.get("department", ""),
+            "designation": employee.get("designation", "")
+        },
+        "period": {
+            "month": month,
+            "year": year,
+            "working_days": working_days
+        },
+        "attendance_summary": {
+            "present_days": present_days,
+            "absent_days": absent_days,
+            "half_days": half_days,
+            "late_arrivals": late_arrivals,
+            "early_departures": early_departures,
+            "paid_leave_days": paid_leave_days,
+            "unpaid_leave_days": unpaid_leave_days,
+            "effective_working_days": present_days + half_days * 0.5 + paid_leave_days
+        },
+        "leave_breakdown": leave_breakdown,
+        "earnings_breakdown": earnings_breakdown,
+        "deductions_breakdown": deductions_breakdown,
+        "totals": {
+            "gross_salary": payslip.get("gross_salary", 0) if payslip else gross_salary,
+            "total_earnings": sum(earnings_breakdown.values()),
+            "total_statutory_deductions": sum(deductions_breakdown["statutory"].values()),
+            "total_attendance_deductions": sum(deductions_breakdown["attendance_based"].values()),
+            "total_deductions": payslip.get("total_deductions", 0) if payslip else 0,
+            "net_salary": payslip.get("net_salary", 0) if payslip else 0
+        }
+    }
+
+
 # ==================== PAYROLL CONFIG & RULES ====================
 
 def get_default_payroll_rules():
