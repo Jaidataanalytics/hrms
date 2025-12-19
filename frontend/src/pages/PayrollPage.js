@@ -138,6 +138,30 @@ const PayrollPage = () => {
     }
   };
 
+  const fetchEmployeeBreakdown = async (employeeId) => {
+    setLoadingBreakdown(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/employee-breakdown/${employeeId}?month=${selectedMonth}&year=${selectedYear}`,
+        { credentials: 'include' }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setEmployeeBreakdown(data);
+      } else {
+        toast.error('Failed to fetch breakdown');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch employee breakdown');
+    } finally {
+      setLoadingBreakdown(false);
+    }
+  };
+
+  const toggleBreakdownSection = (section) => {
+    setBreakdownExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
   const handleCreatePayroll = async () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs?month=${selectedMonth}&year=${selectedYear}`, {
