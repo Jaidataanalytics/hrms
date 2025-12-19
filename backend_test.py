@@ -303,6 +303,11 @@ class HRMSAPITester:
         self.test_announcements_endpoints()
         self.test_notifications_endpoints()
         
+        # Test new functionality
+        self.test_payroll_endpoints()
+        self.test_performance_endpoints()
+        self.test_expenses_endpoints()
+        
         return True
 
     def print_summary(self):
