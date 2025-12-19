@@ -801,7 +801,7 @@ const PerformancePage = () => {
                             >
                               <Download className="w-4 h-4" />
                             </Button>
-                            <Button variant="outline" size="sm">Edit</Button>
+                            <Button variant="outline" size="sm" onClick={() => setEditingTemplate({...template})}>Edit</Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
