@@ -413,6 +413,75 @@ async def get_my_payslips(request: Request):
     return payslips
 
 
+# ==================== ALL EMPLOYEES PAY INFO (HR/Admin only) ====================
+
+@router.get("/all-employees-pay")
+async def get_all_employees_pay_info(
+    request: Request,
+    month: Optional[int] = None,
+    year: Optional[int] = None
+):
+    """Get pay info for all employees (HR/Admin only)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized - HR/Admin only")
+    
+    # Default to current month/year if not provided
+    if not month:
+        month = datetime.now().month
+    if not year:
+        year = datetime.now().year
+    
+    # Get all payslips for the month
+    payslips = await db.payslips.find(
+        {"month": month, "year": year}, {"_id": 0}
+    ).to_list(1000)
+    
+    # Enrich with employee details
+    enriched_payslips = []
+    for slip in payslips:
+        employee = await db.employees.find_one(
+            {"employee_id": slip["employee_id"]}, {"_id": 0}
+        )
+        if employee:
+            slip["employee_name"] = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+            slip["employee_code"] = employee.get("employee_code", slip["employee_id"])
+            slip["department"] = employee.get("department", "")
+            slip["designation"] = employee.get("designation", "")
+        enriched_payslips.append(slip)
+    
+    return enriched_payslips
+
+
+@router.get("/employee-salary-details/{employee_id}")
+async def get_employee_salary_details(employee_id: str, request: Request):
+    """Get detailed salary info for an employee (HR/Admin only)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized - HR/Admin only")
+    
+    # Get employee
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get salary structure
+    salary = await db.employee_salaries.find_one(
+        {"employee_id": employee_id, "is_active": True}, {"_id": 0}
+    )
+    
+    # Get recent payslips (last 12 months)
+    payslips = await db.payslips.find(
+        {"employee_id": employee_id}, {"_id": 0}
+    ).sort([("year", -1), ("month", -1)]).to_list(12)
+    
+    return {
+        "employee": employee,
+        "salary_structure": salary,
+        "payslips": payslips
+    }
+
+
 # ==================== PAYROLL CONFIG ====================
 
 @router.get("/config")
