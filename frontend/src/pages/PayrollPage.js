@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   Table,
@@ -26,7 +29,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import {
@@ -39,7 +41,14 @@ import {
   IndianRupee,
   Calendar,
   Users,
-  TrendingUp
+  Settings,
+  Clock,
+  AlertCircle,
+  Edit,
+  Eye,
+  Save,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -48,11 +57,17 @@ const PayrollPage = () => {
   const { user } = useAuth();
   const [payrollRuns, setPayrollRuns] = useState([]);
   const [myPayslips, setMyPayslips] = useState([]);
+  const [allEmployeesPay, setAllEmployeesPay] = useState([]);
   const [selectedPayslip, setSelectedPayslip] = useState(null);
+  const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [payrollRules, setPayrollRules] = useState(null);
+  const [editingSection, setEditingSection] = useState(null);
+  const [leaveTypeRules, setLeaveTypeRules] = useState([]);
+  const [expandedSections, setExpandedSections] = useState({});
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance';
 
@@ -60,23 +75,58 @@ const PayrollPage = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (isHR) {
+      fetchAllEmployeesPay();
+    }
+  }, [selectedMonth, selectedYear]);
+
   const fetchData = async () => {
     try {
-      const [runsRes, payslipsRes] = await Promise.all([
+      const [runsRes, payslipsRes, rulesRes, leaveRulesRes] = await Promise.all([
         isHR ? fetch(`${API_URL}/payroll/runs`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
-        fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include' })
+        fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include' }),
+        isHR ? fetch(`${API_URL}/payroll/rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
       ]);
 
-      if (runsRes.ok) {
-        setPayrollRuns(await runsRes.json());
-      }
-      if (payslipsRes.ok) {
-        setMyPayslips(await payslipsRes.json());
-      }
+      if (runsRes.ok) setPayrollRuns(await runsRes.json());
+      if (payslipsRes.ok) setMyPayslips(await payslipsRes.json());
+      if (rulesRes.ok) setPayrollRules(await rulesRes.json());
+      if (leaveRulesRes.ok) setLeaveTypeRules(await leaveRulesRes.json());
     } catch (error) {
       console.error('Error fetching payroll data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllEmployeesPay = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/all-employees-pay?month=${selectedMonth}&year=${selectedYear}`,
+        { credentials: 'include' }
+      );
+      if (response.ok) {
+        setAllEmployeesPay(await response.json());
+      }
+    } catch (error) {
+      console.error('Error fetching employees pay:', error);
+    }
+  };
+
+  const fetchEmployeeDetails = async (employeeId) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/employee-salary-details/${employeeId}`,
+        { credentials: 'include' }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedEmployeeDetails(data);
+      }
+    } catch (error) {
+      toast.error('Failed to fetch employee details');
     }
   };
 
@@ -111,6 +161,7 @@ const PayrollPage = () => {
         const data = await response.json();
         toast.success(data.message);
         fetchData();
+        fetchAllEmployeesPay();
       } else {
         const error = await response.json();
         toast.error(error.detail || 'Failed to process payroll');
@@ -141,6 +192,62 @@ const PayrollPage = () => {
     }
   };
 
+  const handleSaveRuleSection = async (section) => {
+    try {
+      const response = await fetch(`${API_URL}/payroll/rules/${section}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payrollRules[section])
+      });
+
+      if (response.ok) {
+        toast.success(`${section.replace(/_/g, ' ')} rules saved`);
+        setEditingSection(null);
+      } else {
+        toast.error('Failed to save rules');
+      }
+    } catch (error) {
+      toast.error('Failed to save rules');
+    }
+  };
+
+  const handleSaveLeaveTypeRules = async () => {
+    try {
+      const response = await fetch(`${API_URL}/payroll/leave-type-rules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(leaveTypeRules)
+      });
+
+      if (response.ok) {
+        toast.success('Leave type rules saved');
+      } else {
+        toast.error('Failed to save leave type rules');
+      }
+    } catch (error) {
+      toast.error('Failed to save leave type rules');
+    }
+  };
+
+  const updateRule = (section, path, value) => {
+    setPayrollRules(prev => {
+      const newRules = { ...prev };
+      let obj = newRules[section];
+      const keys = path.split('.');
+      for (let i = 0; i < keys.length - 1; i++) {
+        obj = obj[keys[i]];
+      }
+      obj[keys[keys.length - 1]] = value;
+      return newRules;
+    });
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -168,6 +275,37 @@ const PayrollPage = () => {
     );
   }
 
+  const RuleSection = ({ title, section, children }) => (
+    <Card className="mb-4">
+      <CardHeader 
+        className="cursor-pointer hover:bg-slate-50 transition-colors pb-3"
+        onClick={() => toggleSection(section)}
+      >
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Settings className="w-5 h-5 text-primary" />
+            {title}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {editingSection === section ? (
+              <Button size="sm" onClick={(e) => { e.stopPropagation(); handleSaveRuleSection(section); }}>
+                <Save className="w-4 h-4 mr-1" /> Save
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSection(section); }}>
+                <Edit className="w-4 h-4 mr-1" /> Edit
+              </Button>
+            )}
+            {expandedSections[section] ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
+        </div>
+      </CardHeader>
+      {expandedSections[section] && (
+        <CardContent>{children}</CardContent>
+      )}
+    </Card>
+  );
+
   return (
     <div className="space-y-6 animate-fade-in" data-testid="payroll-page">
       {/* Header */}
@@ -176,15 +314,17 @@ const PayrollPage = () => {
           <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Payroll
           </h1>
-          <p className="text-slate-600 mt-1">Manage payroll and view salary slips</p>
+          <p className="text-slate-600 mt-1">Manage payroll, rules, and view salary slips</p>
         </div>
       </div>
 
       <Tabs defaultValue={isHR ? "runs" : "my-payslips"} className="space-y-4">
-        <TabsList className="bg-white border">
+        <TabsList className="bg-white border flex-wrap h-auto">
           {isHR && <TabsTrigger value="runs" data-testid="tab-runs">Payroll Runs</TabsTrigger>}
+          {isHR && <TabsTrigger value="employees-pay" data-testid="tab-employees-pay">All Employees</TabsTrigger>}
           <TabsTrigger value="my-payslips" data-testid="tab-my-payslips">My Payslips</TabsTrigger>
-          {isHR && <TabsTrigger value="config" data-testid="tab-config">Configuration</TabsTrigger>}
+          {isHR && <TabsTrigger value="rules" data-testid="tab-rules">Payroll Rules</TabsTrigger>}
+          {isHR && <TabsTrigger value="config" data-testid="tab-config">Statutory Config</TabsTrigger>}
         </TabsList>
 
         {/* Payroll Runs (HR/Finance only) */}
@@ -307,6 +447,100 @@ const PayrollPage = () => {
           </TabsContent>
         )}
 
+        {/* All Employees Pay (HR only) */}
+        {isHR && (
+          <TabsContent value="employees-pay">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Users className="w-5 h-5 text-primary" />
+                      Employee Pay Information
+                    </CardTitle>
+                    <CardDescription>View salary details for all employees</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                      <SelectTrigger className="w-36">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...Array(12)].map((_, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>{getMonthName(i + 1)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2024, 2025, 2026].map((y) => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50">
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Gross</TableHead>
+                      <TableHead>Deductions</TableHead>
+                      <TableHead>Net</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allEmployeesPay.length > 0 ? (
+                      allEmployeesPay.map((emp) => (
+                        <TableRow key={emp.payslip_id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{emp.employee_name || emp.employee_id}</p>
+                              <p className="text-xs text-slate-500">{emp.employee_code}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{emp.department || '-'}</TableCell>
+                          <TableCell>
+                            <span className="text-sm">{emp.paid_days}/{emp.working_days}</span>
+                          </TableCell>
+                          <TableCell>{formatCurrency(emp.gross_salary)}</TableCell>
+                          <TableCell className="text-red-600">{formatCurrency(emp.total_deductions)}</TableCell>
+                          <TableCell className="font-semibold text-emerald-600">{formatCurrency(emp.net_salary)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => fetchEmployeeDetails(emp.employee_id)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                          <p className="text-slate-500">No payroll data for this period</p>
+                          <p className="text-xs text-slate-400 mt-1">Process payroll to see employee pay details</p>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
         {/* My Payslips */}
         <TabsContent value="my-payslips">
           <Card>
@@ -359,75 +593,445 @@ const PayrollPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Configuration */}
-        {isHR && (
-          <TabsContent value="config">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">PF Configuration</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-slate-600">Employee Contribution</span>
-                    <span className="font-semibold">12%</span>
+        {/* Payroll Rules */}
+        {isHR && payrollRules && (
+          <TabsContent value="rules">
+            <div className="space-y-4">
+              {/* Attendance Rules */}
+              <RuleSection title="Attendance Rules" section="attendance_rules">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Grace Period (minutes)</Label>
+                      <Input
+                        type="number"
+                        value={payrollRules.attendance_rules?.grace_period_minutes || 15}
+                        onChange={(e) => updateRule('attendance_rules', 'grace_period_minutes', Number(e.target.value))}
+                        disabled={editingSection !== 'attendance_rules'}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Min Hours for Full Day</Label>
+                      <Input
+                        type="number"
+                        value={payrollRules.attendance_rules?.half_day_rules?.min_hours_for_full_day || 8}
+                        onChange={(e) => updateRule('attendance_rules', 'half_day_rules.min_hours_for_full_day', Number(e.target.value))}
+                        disabled={editingSection !== 'attendance_rules'}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Min Hours for Half Day</Label>
+                      <Input
+                        type="number"
+                        value={payrollRules.attendance_rules?.half_day_rules?.min_hours_for_half_day || 4}
+                        onChange={(e) => updateRule('attendance_rules', 'half_day_rules.min_hours_for_half_day', Number(e.target.value))}
+                        disabled={editingSection !== 'attendance_rules'}
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-slate-600">Employer Contribution</span>
-                    <span className="font-semibold">12%</span>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Half Day Deduction %</Label>
+                      <Input
+                        type="number"
+                        value={payrollRules.attendance_rules?.half_day_rules?.half_day_deduction_percent || 50}
+                        onChange={(e) => updateRule('attendance_rules', 'half_day_rules.half_day_deduction_percent', Number(e.target.value))}
+                        disabled={editingSection !== 'attendance_rules'}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Absent Day Multiplier</Label>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        value={payrollRules.attendance_rules?.absent_deduction?.multiplier || 1}
+                        onChange={(e) => updateRule('attendance_rules', 'absent_deduction.multiplier', Number(e.target.value))}
+                        disabled={editingSection !== 'attendance_rules'}
+                      />
+                      <p className="text-xs text-slate-500">1 = 1 day deduction, 1.5 = 1.5 days, 2 = 2 days</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={payrollRules.attendance_rules?.late_coming_deduction?.enabled}
+                        onCheckedChange={(v) => updateRule('attendance_rules', 'late_coming_deduction.enabled', v)}
+                        disabled={editingSection !== 'attendance_rules'}
+                      />
+                      <Label>Enable Late Coming Deduction</Label>
+                    </div>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-slate-600">Wage Ceiling</span>
-                    <span className="font-semibold">{formatCurrency(15000)}</span>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </RuleSection>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">ESI Configuration</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-slate-600">Employee Contribution</span>
-                    <span className="font-semibold">0.75%</span>
+              {/* Leave Type Rules */}
+              <Card className="mb-4">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-primary" />
+                      Leave Type Payroll Rules
+                    </CardTitle>
+                    <Button size="sm" onClick={handleSaveLeaveTypeRules}>
+                      <Save className="w-4 h-4 mr-1" /> Save
+                    </Button>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-slate-600">Employer Contribution</span>
-                    <span className="font-semibold">3.25%</span>
-                  </div>
-                  <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-slate-600">Wage Ceiling</span>
-                    <span className="font-semibold">{formatCurrency(21000)}/month</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-lg">Professional Tax Slabs</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Monthly Salary Range</TableHead>
-                        <TableHead>PT Amount</TableHead>
+                        <TableHead>Leave Type</TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Paid Leave</TableHead>
+                        <TableHead>Deduction %</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {leaveTypeRules.map((lt, idx) => (
+                        <TableRow key={lt.leave_type_id || idx}>
+                          <TableCell className="font-medium">{lt.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{lt.code}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={lt.is_paid}
+                              onCheckedChange={(v) => {
+                                const updated = [...leaveTypeRules];
+                                updated[idx].is_paid = v;
+                                updated[idx].deduction_percent = v ? 0 : 100;
+                                setLeaveTypeRules(updated);
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              className="w-24"
+                              value={lt.deduction_percent}
+                              onChange={(e) => {
+                                const updated = [...leaveTypeRules];
+                                updated[idx].deduction_percent = Number(e.target.value);
+                                setLeaveTypeRules(updated);
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Overtime Rules */}
+              <RuleSection title="Overtime Rules" section="overtime_rules">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Switch
+                        checked={payrollRules.overtime_rules?.enabled}
+                        onCheckedChange={(v) => updateRule('overtime_rules', 'enabled', v)}
+                        disabled={editingSection !== 'overtime_rules'}
+                      />
+                      <Label>Enable Overtime</Label>
+                    </div>
+                    <Label>Weekday Multiplier</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={payrollRules.overtime_rules?.weekday_multiplier || 1.5}
+                      onChange={(e) => updateRule('overtime_rules', 'weekday_multiplier', Number(e.target.value))}
+                      disabled={editingSection !== 'overtime_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Weekend Multiplier</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={payrollRules.overtime_rules?.weekend_multiplier || 2.0}
+                      onChange={(e) => updateRule('overtime_rules', 'weekend_multiplier', Number(e.target.value))}
+                      disabled={editingSection !== 'overtime_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Holiday Multiplier</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={payrollRules.overtime_rules?.holiday_multiplier || 2.5}
+                      onChange={(e) => updateRule('overtime_rules', 'holiday_multiplier', Number(e.target.value))}
+                      disabled={editingSection !== 'overtime_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Max OT Hours/Day</Label>
+                    <Input
+                      type="number"
+                      value={payrollRules.overtime_rules?.max_ot_hours_per_day || 4}
+                      onChange={(e) => updateRule('overtime_rules', 'max_ot_hours_per_day', Number(e.target.value))}
+                      disabled={editingSection !== 'overtime_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Max OT Hours/Month</Label>
+                    <Input
+                      type="number"
+                      value={payrollRules.overtime_rules?.max_ot_hours_per_month || 50}
+                      onChange={(e) => updateRule('overtime_rules', 'max_ot_hours_per_month', Number(e.target.value))}
+                      disabled={editingSection !== 'overtime_rules'}
+                    />
+                  </div>
+                </div>
+              </RuleSection>
+
+              {/* Salary Components */}
+              <RuleSection title="Salary Components" section="salary_components">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Basic % of CTC</Label>
+                    <Input
+                      type="number"
+                      value={payrollRules.salary_components?.basic_percent_of_ctc || 40}
+                      onChange={(e) => updateRule('salary_components', 'basic_percent_of_ctc', Number(e.target.value))}
+                      disabled={editingSection !== 'salary_components'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>HRA % of Basic</Label>
+                    <Input
+                      type="number"
+                      value={payrollRules.salary_components?.hra_percent_of_basic || 40}
+                      onChange={(e) => updateRule('salary_components', 'hra_percent_of_basic', Number(e.target.value))}
+                      disabled={editingSection !== 'salary_components'}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-6">
+                    <Switch
+                      checked={payrollRules.salary_components?.special_allowance_auto_calculate}
+                      onCheckedChange={(v) => updateRule('salary_components', 'special_allowance_auto_calculate', v)}
+                      disabled={editingSection !== 'salary_components'}
+                    />
+                    <Label>Auto-calculate Special Allowance</Label>
+                  </div>
+                </div>
+              </RuleSection>
+
+              {/* Bonus Rules */}
+              <RuleSection title="Bonus & Incentives" section="bonus_rules">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={payrollRules.bonus_rules?.statutory_bonus_enabled}
+                        onCheckedChange={(v) => updateRule('bonus_rules', 'statutory_bonus_enabled', v)}
+                        disabled={editingSection !== 'bonus_rules'}
+                      />
+                      <Label>Enable Statutory Bonus</Label>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Statutory Bonus %</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={payrollRules.bonus_rules?.statutory_bonus_percent || 8.33}
+                        onChange={(e) => updateRule('bonus_rules', 'statutory_bonus_percent', Number(e.target.value))}
+                        disabled={editingSection !== 'bonus_rules'}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Statutory Bonus Ceiling (Monthly Basic)</Label>
+                      <Input
+                        type="number"
+                        value={payrollRules.bonus_rules?.statutory_bonus_ceiling || 7000}
+                        onChange={(e) => updateRule('bonus_rules', 'statutory_bonus_ceiling', Number(e.target.value))}
+                        disabled={editingSection !== 'bonus_rules'}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Annual Increment Month</Label>
+                      <Select
+                        value={String(payrollRules.bonus_rules?.annual_increment_month || 4)}
+                        onValueChange={(v) => updateRule('bonus_rules', 'annual_increment_month', Number(v))}
+                        disabled={editingSection !== 'bonus_rules'}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[...Array(12)].map((_, i) => (
+                            <SelectItem key={i + 1} value={String(i + 1)}>{getMonthName(i + 1)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </RuleSection>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Statutory Configuration */}
+        {isHR && payrollRules && (
+          <TabsContent value="config">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* PF Configuration */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">PF Configuration</CardTitle>
+                    {editingSection === 'pf_rules' ? (
+                      <Button size="sm" onClick={() => handleSaveRuleSection('pf_rules')}>
+                        <Save className="w-4 h-4 mr-1" /> Save
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setEditingSection('pf_rules')}>
+                        <Edit className="w-4 h-4 mr-1" /> Edit
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={payrollRules.pf_rules?.enabled}
+                      onCheckedChange={(v) => updateRule('pf_rules', 'enabled', v)}
+                      disabled={editingSection !== 'pf_rules'}
+                    />
+                    <Label>Enable PF</Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Employee Contribution %</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={payrollRules.pf_rules?.employee_contribution_percent || 12}
+                      onChange={(e) => updateRule('pf_rules', 'employee_contribution_percent', Number(e.target.value))}
+                      disabled={editingSection !== 'pf_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Employer Contribution %</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={payrollRules.pf_rules?.employer_contribution_percent || 12}
+                      onChange={(e) => updateRule('pf_rules', 'employer_contribution_percent', Number(e.target.value))}
+                      disabled={editingSection !== 'pf_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Wage Ceiling (₹)</Label>
+                    <Input
+                      type="number"
+                      value={payrollRules.pf_rules?.wage_ceiling || 15000}
+                      onChange={(e) => updateRule('pf_rules', 'wage_ceiling', Number(e.target.value))}
+                      disabled={editingSection !== 'pf_rules'}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ESI Configuration */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">ESI Configuration</CardTitle>
+                    {editingSection === 'esi_rules' ? (
+                      <Button size="sm" onClick={() => handleSaveRuleSection('esi_rules')}>
+                        <Save className="w-4 h-4 mr-1" /> Save
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setEditingSection('esi_rules')}>
+                        <Edit className="w-4 h-4 mr-1" /> Edit
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={payrollRules.esi_rules?.enabled}
+                      onCheckedChange={(v) => updateRule('esi_rules', 'enabled', v)}
+                      disabled={editingSection !== 'esi_rules'}
+                    />
+                    <Label>Enable ESI</Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Employee Contribution %</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={payrollRules.esi_rules?.employee_contribution_percent || 0.75}
+                      onChange={(e) => updateRule('esi_rules', 'employee_contribution_percent', Number(e.target.value))}
+                      disabled={editingSection !== 'esi_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Employer Contribution %</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={payrollRules.esi_rules?.employer_contribution_percent || 3.25}
+                      onChange={(e) => updateRule('esi_rules', 'employer_contribution_percent', Number(e.target.value))}
+                      disabled={editingSection !== 'esi_rules'}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Wage Ceiling (₹/month)</Label>
+                    <Input
+                      type="number"
+                      value={payrollRules.esi_rules?.wage_ceiling || 21000}
+                      onChange={(e) => updateRule('esi_rules', 'wage_ceiling', Number(e.target.value))}
+                      disabled={editingSection !== 'esi_rules'}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Professional Tax */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Professional Tax Slabs</CardTitle>
+                    {editingSection === 'pt_rules' ? (
+                      <Button size="sm" onClick={() => handleSaveRuleSection('pt_rules')}>
+                        <Save className="w-4 h-4 mr-1" /> Save
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setEditingSection('pt_rules')}>
+                        <Edit className="w-4 h-4 mr-1" /> Edit
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Switch
+                      checked={payrollRules.pt_rules?.enabled}
+                      onCheckedChange={(v) => updateRule('pt_rules', 'enabled', v)}
+                      disabled={editingSection !== 'pt_rules'}
+                    />
+                    <Label>Enable Professional Tax</Label>
+                  </div>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell>Up to ₹10,000</TableCell>
-                        <TableCell>₹0</TableCell>
+                        <TableHead>Min Salary (₹)</TableHead>
+                        <TableHead>Max Salary (₹)</TableHead>
+                        <TableHead>PT Amount (₹)</TableHead>
                       </TableRow>
-                      <TableRow>
-                        <TableCell>₹10,001 - ₹15,000</TableCell>
-                        <TableCell>₹150</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Above ₹15,000</TableCell>
-                        <TableCell>₹200</TableCell>
-                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payrollRules.pt_rules?.slabs?.map((slab, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{formatCurrency(slab.min)}</TableCell>
+                          <TableCell>{slab.max >= 999999999 ? '∞' : formatCurrency(slab.max)}</TableCell>
+                          <TableCell>{formatCurrency(slab.amount)}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -447,7 +1051,6 @@ const PayrollPage = () => {
           </DialogHeader>
           {selectedPayslip && (
             <div className="space-y-4">
-              {/* Earnings */}
               <div>
                 <h4 className="text-sm font-semibold text-slate-700 mb-2">Earnings</h4>
                 <div className="space-y-2 bg-emerald-50 p-3 rounded-lg">
@@ -469,8 +1072,6 @@ const PayrollPage = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Deductions */}
               <div>
                 <h4 className="text-sm font-semibold text-slate-700 mb-2">Deductions</h4>
                 <div className="space-y-2 bg-red-50 p-3 rounded-lg">
@@ -492,8 +1093,6 @@ const PayrollPage = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Net Pay */}
               <div className="bg-primary/10 p-4 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-slate-700">Net Salary</span>
@@ -502,8 +1101,6 @@ const PayrollPage = () => {
                   </span>
                 </div>
               </div>
-
-              {/* Days Info */}
               <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
                 <span>Working Days: {selectedPayslip.working_days}</span>
                 <span>Present: {selectedPayslip.present_days}</span>
@@ -518,6 +1115,75 @@ const PayrollPage = () => {
             <Button className="gap-2">
               <Download className="w-4 h-4" />
               Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employee Details Dialog */}
+      <Dialog open={!!selectedEmployeeDetails} onOpenChange={() => setSelectedEmployeeDetails(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Employee Salary Details
+            </DialogTitle>
+            <DialogDescription>
+              {selectedEmployeeDetails?.employee?.first_name} {selectedEmployeeDetails?.employee?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedEmployeeDetails && (
+            <div className="space-y-4">
+              {selectedEmployeeDetails.salary_structure && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Current Salary Structure</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-slate-50 rounded-lg">
+                        <p className="text-xs text-slate-500">Gross Salary</p>
+                        <p className="text-lg font-semibold">{formatCurrency(selectedEmployeeDetails.salary_structure.gross)}</p>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-lg">
+                        <p className="text-xs text-slate-500">Effective From</p>
+                        <p className="font-medium">{selectedEmployeeDetails.salary_structure.effective_from}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Recent Payslips</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Gross</TableHead>
+                        <TableHead>Deductions</TableHead>
+                        <TableHead>Net</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedEmployeeDetails.payslips?.map((slip) => (
+                        <TableRow key={slip.payslip_id}>
+                          <TableCell>{getMonthName(slip.month)} {slip.year}</TableCell>
+                          <TableCell>{formatCurrency(slip.gross_salary)}</TableCell>
+                          <TableCell className="text-red-600">{formatCurrency(slip.total_deductions)}</TableCell>
+                          <TableCell className="font-semibold text-emerald-600">{formatCurrency(slip.net_salary)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedEmployeeDetails(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
