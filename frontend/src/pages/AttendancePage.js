@@ -61,22 +61,57 @@ const AttendancePage = () => {
     }
   };
 
+  const getGeoLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+        },
+        (error) => {
+          console.warn('Geolocation error:', error);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    });
+  };
+
   const handleMarkAttendance = async (punchType) => {
     setMarkingAttendance(true);
     try {
+      // Get geo-location
+      toast.info('Getting your location...');
+      const geoLocation = await getGeoLocation();
+      
+      const payload = {
+        punch_type: punchType,
+        source: attendanceSource,
+      };
+      
+      if (geoLocation) {
+        payload.location = `${geoLocation.latitude.toFixed(6)}, ${geoLocation.longitude.toFixed(6)}`;
+        payload.geo_coordinates = geoLocation;
+      }
+
       const response = await fetch(`${API_URL}/attendance/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          punch_type: punchType,
-          source: attendanceSource,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         const data = await response.json();
-        toast.success(`${punchType} marked at ${data.time}`);
+        const locationMsg = geoLocation ? ' (Location tagged)' : '';
+        toast.success(`${punchType} marked at ${data.time}${locationMsg}`);
         fetchAttendance();
       } else {
         const error = await response.json();
