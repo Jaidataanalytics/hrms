@@ -129,15 +129,15 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ session_id: sessionId }),
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Google authentication failed');
+        throw new Error(data.detail || 'Google authentication failed');
       }
 
-      const userData = await response.json();
-      setUser(userData);
+      setUser(data);
       
-      return userData;
+      return data;
     } catch (error) {
       throw error;
     }
