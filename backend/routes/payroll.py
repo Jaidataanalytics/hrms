@@ -482,16 +482,175 @@ async def get_employee_salary_details(employee_id: str, request: Request):
     }
 
 
-# ==================== PAYROLL CONFIG ====================
+# ==================== PAYROLL CONFIG & RULES ====================
+
+def get_default_payroll_rules():
+    """Return default payroll rules configuration"""
+    return {
+        # General Settings
+        "working_days_per_month": 26,
+        "pay_cycle": "monthly",  # monthly, bi-weekly, weekly
+        "salary_credit_day": 1,  # Day of month for salary credit
+        
+        # Attendance Rules
+        "attendance_rules": {
+            "grace_period_minutes": 15,  # Minutes allowed after shift start
+            "late_coming_deduction": {
+                "enabled": True,
+                "occurrences_before_deduction": 3,  # Free late comings per month
+                "deduction_type": "half_day",  # half_day, hourly, fixed
+                "deduction_amount": 0,  # Used if deduction_type is "fixed"
+            },
+            "early_leaving_deduction": {
+                "enabled": True,
+                "min_early_minutes": 30,  # Minutes early to count as early leaving
+                "deduction_type": "half_day",
+            },
+            "half_day_rules": {
+                "min_hours_for_full_day": 8,
+                "min_hours_for_half_day": 4,
+                "half_day_deduction_percent": 50,  # Percentage of daily wage deducted
+            },
+            "absent_deduction": {
+                "deduction_type": "full_day",  # full_day, 1.5_day, 2_day
+                "multiplier": 1.0,  # 1.0 = 1 day, 1.5 = 1.5 days, 2.0 = 2 days
+            },
+        },
+        
+        # Leave Rules for Payroll
+        "leave_rules": {
+            "CL": {"is_paid": True, "deduction_percent": 0},  # Casual Leave
+            "SL": {"is_paid": True, "deduction_percent": 0},  # Sick Leave
+            "EL": {"is_paid": True, "deduction_percent": 0},  # Earned Leave
+            "PL": {"is_paid": True, "deduction_percent": 0},  # Privilege Leave
+            "ML": {"is_paid": True, "deduction_percent": 0},  # Maternity Leave
+            "PTL": {"is_paid": True, "deduction_percent": 0},  # Paternity Leave
+            "CO": {"is_paid": True, "deduction_percent": 0},  # Compensatory Off
+            "LWP": {"is_paid": False, "deduction_percent": 100},  # Leave Without Pay
+            "default": {"is_paid": False, "deduction_percent": 100},
+        },
+        
+        # Overtime Rules
+        "overtime_rules": {
+            "enabled": True,
+            "min_hours_for_ot": 1,  # Minimum OT hours to qualify
+            "weekday_multiplier": 1.5,  # 1.5x for weekday OT
+            "weekend_multiplier": 2.0,  # 2x for weekend OT
+            "holiday_multiplier": 2.5,  # 2.5x for holiday OT
+            "max_ot_hours_per_day": 4,
+            "max_ot_hours_per_month": 50,
+        },
+        
+        # PF (Provident Fund) Configuration
+        "pf_rules": {
+            "enabled": True,
+            "employee_contribution_percent": 12.0,
+            "employer_contribution_percent": 12.0,
+            "wage_ceiling": 15000,  # Max basic for PF calculation
+            "include_basic_only": True,  # PF on basic only or gross
+            "admin_charges_percent": 0.5,
+            "edli_charges_percent": 0.5,
+        },
+        
+        # ESI (Employee State Insurance) Configuration
+        "esi_rules": {
+            "enabled": True,
+            "employee_contribution_percent": 0.75,
+            "employer_contribution_percent": 3.25,
+            "wage_ceiling": 21000,  # Max gross for ESI eligibility
+        },
+        
+        # Professional Tax Slabs
+        "pt_rules": {
+            "enabled": True,
+            "state": "Maharashtra",  # State for PT calculation
+            "slabs": [
+                {"min": 0, "max": 10000, "amount": 0},
+                {"min": 10001, "max": 15000, "amount": 150},
+                {"min": 15001, "max": 999999999, "amount": 200},
+            ],
+        },
+        
+        # TDS (Tax Deducted at Source) Rules
+        "tds_rules": {
+            "enabled": True,
+            "standard_deduction": 50000,
+            "tax_slabs_old_regime": [
+                {"min": 0, "max": 250000, "rate": 0},
+                {"min": 250001, "max": 500000, "rate": 5},
+                {"min": 500001, "max": 1000000, "rate": 20},
+                {"min": 1000001, "max": 999999999, "rate": 30},
+            ],
+            "tax_slabs_new_regime": [
+                {"min": 0, "max": 300000, "rate": 0},
+                {"min": 300001, "max": 600000, "rate": 5},
+                {"min": 600001, "max": 900000, "rate": 10},
+                {"min": 900001, "max": 1200000, "rate": 15},
+                {"min": 1200001, "max": 1500000, "rate": 20},
+                {"min": 1500001, "max": 999999999, "rate": 30},
+            ],
+            "cess_percent": 4,
+            "rebate_limit": 500000,
+        },
+        
+        # Salary Components Rules
+        "salary_components": {
+            "basic_percent_of_ctc": 40,  # Basic as % of CTC
+            "hra_percent_of_basic": 40,  # HRA as % of Basic
+            "special_allowance_auto_calculate": True,  # Auto-calculate remaining as special allowance
+        },
+        
+        # Bonus & Incentives
+        "bonus_rules": {
+            "statutory_bonus_enabled": True,
+            "statutory_bonus_percent": 8.33,
+            "statutory_bonus_ceiling": 7000,  # Monthly basic ceiling
+            "performance_bonus_enabled": False,
+            "annual_increment_month": 4,  # April
+        },
+        
+        # Loan & Advance Deductions
+        "loan_deduction_rules": {
+            "max_emi_percent_of_salary": 50,  # Max EMI deduction as % of net salary
+            "salary_advance_max_percent": 50,  # Max advance as % of salary
+        },
+        
+        # Reimbursements
+        "reimbursement_rules": {
+            "process_with_salary": True,
+            "max_pending_months": 3,
+        },
+    }
+
 
 @router.get("/config")
 async def get_payroll_config(request: Request):
-    """Get payroll configuration"""
+    """Get payroll configuration with all rules"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    
+    # Return default rules if no config exists
+    if not config:
+        config = get_default_payroll_rules()
+        config["config_id"] = "default"
+        config["is_active"] = True
+    
+    return config
+
+
+@router.get("/rules")
+async def get_payroll_rules(request: Request):
+    """Get all payroll rules (separate endpoint for clarity)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    if not config:
+        return get_default_payroll_rules()
     return config
 
 
@@ -504,10 +663,125 @@ async def update_payroll_config(data: dict, request: Request):
     
     data["config_id"] = f"cfg_{uuid.uuid4().hex[:12]}"
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    data["updated_by"] = user.get("user_id")
     data["is_active"] = True
     
     # Deactivate old config
     await db.payroll_config.update_many({}, {"$set": {"is_active": False}})
     
     await db.payroll_config.insert_one(data)
+    data.pop('_id', None)
     return data
+
+
+@router.put("/rules/{rule_section}")
+async def update_payroll_rule_section(rule_section: str, data: dict, request: Request):
+    """Update a specific section of payroll rules"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    valid_sections = [
+        "attendance_rules", "leave_rules", "overtime_rules", 
+        "pf_rules", "esi_rules", "pt_rules", "tds_rules",
+        "salary_components", "bonus_rules", "loan_deduction_rules",
+        "reimbursement_rules"
+    ]
+    
+    if rule_section not in valid_sections:
+        raise HTTPException(status_code=400, detail=f"Invalid rule section. Valid: {valid_sections}")
+    
+    # Get current config
+    config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    if not config:
+        config = get_default_payroll_rules()
+    
+    # Update the specific section
+    config[rule_section] = data
+    config["updated_at"] = datetime.now(timezone.utc).isoformat()
+    config["updated_by"] = user.get("user_id")
+    
+    # Save updated config
+    if config.get("config_id") and config["config_id"] != "default":
+        await db.payroll_config.update_one(
+            {"config_id": config["config_id"]},
+            {"$set": {rule_section: data, "updated_at": config["updated_at"]}}
+        )
+    else:
+        config["config_id"] = f"cfg_{uuid.uuid4().hex[:12]}"
+        config["is_active"] = True
+        await db.payroll_config.insert_one(config)
+        config.pop('_id', None)
+    
+    return {"message": f"{rule_section} updated successfully", "data": data}
+
+
+@router.get("/leave-type-rules")
+async def get_leave_type_payroll_rules(request: Request):
+    """Get payroll rules for each leave type"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get leave types
+    leave_types = await db.leave_types.find({}, {"_id": 0}).to_list(50)
+    
+    # Get current payroll config
+    config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    leave_rules = config.get("leave_rules", {}) if config else {}
+    
+    # Combine leave types with their payroll rules
+    result = []
+    for lt in leave_types:
+        code = lt.get("code", "")
+        rule = leave_rules.get(code, {"is_paid": False, "deduction_percent": 100})
+        result.append({
+            "leave_type_id": lt.get("leave_type_id"),
+            "name": lt.get("name"),
+            "code": code,
+            "is_paid": rule.get("is_paid", False),
+            "deduction_percent": rule.get("deduction_percent", 100),
+        })
+    
+    return result
+
+
+@router.put("/leave-type-rules")
+async def update_leave_type_payroll_rules(data: List[dict], request: Request):
+    """Update payroll rules for leave types"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get current config
+    config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    if not config:
+        config = get_default_payroll_rules()
+    
+    # Build leave rules dict
+    leave_rules = {}
+    for item in data:
+        code = item.get("code")
+        if code:
+            leave_rules[code] = {
+                "is_paid": item.get("is_paid", False),
+                "deduction_percent": item.get("deduction_percent", 100),
+            }
+    
+    config["leave_rules"] = leave_rules
+    config["updated_at"] = datetime.now(timezone.utc).isoformat()
+    config["updated_by"] = user.get("user_id")
+    
+    # Save
+    if config.get("config_id") and config["config_id"] != "default":
+        await db.payroll_config.update_one(
+            {"config_id": config["config_id"]},
+            {"$set": {"leave_rules": leave_rules, "updated_at": config["updated_at"]}}
+        )
+    else:
+        config["config_id"] = f"cfg_{uuid.uuid4().hex[:12]}"
+        config["is_active"] = True
+        await db.payroll_config.insert_one(config)
+        config.pop('_id', None)
+    
+    return {"message": "Leave type payroll rules updated", "leave_rules": leave_rules}
