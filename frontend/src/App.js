@@ -27,6 +27,8 @@ import LabourPage from "./pages/LabourPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ReportBuilderPage from "./pages/ReportBuilderPage";
 import UserManagementPage from "./pages/UserManagementPage";
+import TrainingPage from "./pages/TrainingPage";
+import TravelPage from "./pages/TravelPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
