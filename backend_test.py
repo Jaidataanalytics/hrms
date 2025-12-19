@@ -90,13 +90,13 @@ class HRMSAPITester:
         print("TESTING AUTHENTICATION")
         print("="*50)
         
-        # Test login with demo credentials
+        # Test login with admin credentials
         success, response = self.run_test(
-            "Login with demo credentials",
+            "Login with admin credentials",
             "POST",
             "auth/login",
             200,
-            data={"email": "admin@nexushr.com", "password": "Admin@123"}
+            data={"email": "admin@shardahr.com", "password": "Admin@123"}
         )
         
         if success and 'access_token' in response:
