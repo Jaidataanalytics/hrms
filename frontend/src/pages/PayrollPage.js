@@ -277,6 +277,66 @@ const PayrollPage = () => {
     }
   };
 
+  const handleAddCustomRule = async () => {
+    if (!customRuleForm.name) {
+      toast.error('Please enter a rule name');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/payroll/custom-rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(customRuleForm)
+      });
+      if (response.ok) {
+        toast.success('Custom rule added');
+        setShowAddCustomRule(false);
+        setCustomRuleForm({
+          name: '', description: '', condition_type: 'late_count',
+          condition_threshold: 3, condition_operator: 'greater_than',
+          action_type: 'percentage_deduction', action_value: 5, apply_per_occurrence: false
+        });
+        fetchData();
+      } else {
+        toast.error('Failed to add rule');
+      }
+    } catch (error) {
+      toast.error('Failed to add rule');
+    }
+  };
+
+  const handleToggleCustomRule = async (ruleId) => {
+    try {
+      const response = await fetch(`${API_URL}/payroll/custom-rules/${ruleId}/toggle`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        toast.success('Rule toggled');
+        fetchData();
+      }
+    } catch (error) {
+      toast.error('Failed to toggle rule');
+    }
+  };
+
+  const handleDeleteCustomRule = async (ruleId) => {
+    if (!window.confirm('Delete this rule?')) return;
+    try {
+      const response = await fetch(`${API_URL}/payroll/custom-rules/${ruleId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        toast.success('Rule deleted');
+        fetchData();
+      }
+    } catch (error) {
+      toast.error('Failed to delete rule');
+    }
+  };
+
   const updateRule = (section, path, value) => {
     setPayrollRules(prev => {
       const newRules = { ...prev };
