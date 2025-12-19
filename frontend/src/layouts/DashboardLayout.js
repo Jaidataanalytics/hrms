@@ -38,7 +38,9 @@ import {
   HardHat,
   FolderOpen,
   PieChart,
-  UserCog
+  UserCog,
+  GraduationCap,
+  Plane
 } from 'lucide-react';
 
 const DashboardLayout = () => {
