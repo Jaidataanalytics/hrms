@@ -52,6 +52,10 @@ const PerformancePage = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateKPI, setShowCreateKPI] = useState(false);
   const [showCreateGoal, setShowCreateGoal] = useState(false);
+  const [showUploadTemplate, setShowUploadTemplate] = useState(false);
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [templateForm, setTemplateForm] = useState({ name: '', description: '', period_type: 'quarterly' });
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [kpiResponses, setKpiResponses] = useState([]);
   const [goalForm, setGoalForm] = useState({ title: '', description: '', target_date: '', priority: 'medium' });
