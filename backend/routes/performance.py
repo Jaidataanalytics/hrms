@@ -434,6 +434,7 @@ async def create_goal(data: dict, request: Request):
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.goals.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
