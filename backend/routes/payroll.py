@@ -42,6 +42,7 @@ async def create_salary_component(data: dict, request: Request):
     data["is_active"] = True
     
     await db.salary_components.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
@@ -67,6 +68,7 @@ async def create_salary_template(data: dict, request: Request):
     data["is_active"] = True
     
     await db.salary_templates.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
@@ -107,6 +109,7 @@ async def assign_employee_salary(employee_id: str, data: dict, request: Request)
     data["is_active"] = True
     
     await db.employee_salaries.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
