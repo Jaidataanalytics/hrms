@@ -1575,6 +1575,8 @@ api_router.include_router(onboarding_router)
 api_router.include_router(reports_router)
 api_router.include_router(labour_router)
 api_router.include_router(user_management_router)
+api_router.include_router(training_router)
+api_router.include_router(travel_router)
 
 # Include the router in the main app (after all sub-routers are added)
 app.include_router(api_router)
