@@ -482,6 +482,115 @@ const ExpensesPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Expense Details Modal */}
+      <Dialog open={!!selectedExpense} onOpenChange={() => setSelectedExpense(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-primary" />
+              Expense Details
+            </DialogTitle>
+            <DialogDescription>{selectedExpense?.title}</DialogDescription>
+          </DialogHeader>
+          {selectedExpense && (
+            <div className="space-y-4">
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                <Badge className={statusConfig[selectedExpense.status]?.color}>
+                  {statusConfig[selectedExpense.status]?.label}
+                </Badge>
+                <Badge variant="outline" className="capitalize">
+                  {selectedExpense.category?.replace('_', ' ')}
+                </Badge>
+              </div>
+
+              {/* Amount */}
+              <div className="p-4 bg-primary/5 rounded-lg text-center">
+                <p className="text-xs text-slate-500 mb-1">Claimed Amount</p>
+                <p className="text-2xl font-bold text-primary">{formatCurrency(selectedExpense.amount)}</p>
+                {selectedExpense.approved_amount && selectedExpense.approved_amount !== selectedExpense.amount && (
+                  <p className="text-sm text-emerald-600 mt-1">
+                    Approved: {formatCurrency(selectedExpense.approved_amount)}
+                  </p>
+                )}
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Expense Date</p>
+                  </div>
+                  <p className="font-medium">
+                    {new Date(selectedExpense.expense_date).toLocaleDateString('en-IN', {
+                      day: 'numeric', month: 'short', year: 'numeric'
+                    })}
+                  </p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Submitted</p>
+                  </div>
+                  <p className="font-medium">
+                    {selectedExpense.created_at ? new Date(selectedExpense.created_at).toLocaleDateString('en-IN', {
+                      day: 'numeric', month: 'short', year: 'numeric'
+                    }) : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Description */}
+              {selectedExpense.description && (
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="w-4 h-4 text-slate-400" />
+                    <p className="text-xs text-slate-500">Description</p>
+                  </div>
+                  <p className="text-sm text-slate-700">{selectedExpense.description}</p>
+                </div>
+              )}
+
+              {/* Employee Info (for approvers) */}
+              {isApprover && selectedExpense.employee_id && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <User className="w-4 h-4 text-blue-400" />
+                    <p className="text-xs text-blue-600">Employee ID</p>
+                  </div>
+                  <p className="font-medium text-blue-700">{selectedExpense.employee_id}</p>
+                </div>
+              )}
+
+              {/* Approval Info */}
+              {selectedExpense.status === 'approved' && selectedExpense.approved_by && (
+                <div className="p-3 bg-emerald-50 rounded-lg">
+                  <p className="text-xs text-emerald-600 mb-1">Approved By</p>
+                  <p className="font-medium text-emerald-700">{selectedExpense.approved_by}</p>
+                  {selectedExpense.approved_at && (
+                    <p className="text-xs text-emerald-500 mt-1">
+                      on {new Date(selectedExpense.approved_at).toLocaleDateString('en-IN')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Rejection Info */}
+              {selectedExpense.status === 'rejected' && (
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <p className="text-xs text-red-600 mb-1">Rejection Reason</p>
+                  <p className="text-sm text-red-700">{selectedExpense.rejection_reason || 'No reason provided'}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedExpense(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
