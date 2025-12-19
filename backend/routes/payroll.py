@@ -935,3 +935,137 @@ async def update_leave_type_payroll_rules(data: List[dict], request: Request):
         config.pop('_id', None)
     
     return {"message": "Leave type payroll rules updated", "leave_rules": leave_rules}
+
+
+# ==================== CUSTOM DEDUCTION RULES ====================
+
+@router.get("/custom-rules")
+async def get_custom_deduction_rules(request: Request):
+    """Get custom deduction rules (e.g., late coming penalties)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    rules = await db.custom_payroll_rules.find({"is_active": True}, {"_id": 0}).to_list(50)
+    
+    # Return default rules if none exist
+    if not rules:
+        rules = [
+            {
+                "rule_id": "default_late",
+                "name": "Late Coming Penalty",
+                "description": "Deduction for excessive late arrivals",
+                "condition_type": "late_count",
+                "condition_threshold": 3,
+                "condition_operator": "greater_than",
+                "action_type": "percentage_deduction",
+                "action_value": 5,
+                "is_active": True,
+                "is_default": True
+            },
+            {
+                "rule_id": "default_absent",
+                "name": "Unauthorized Absence Penalty",
+                "description": "Extra deduction for unapproved absences",
+                "condition_type": "absent_without_leave",
+                "condition_threshold": 2,
+                "condition_operator": "greater_than",
+                "action_type": "fixed_deduction",
+                "action_value": 500,
+                "is_active": True,
+                "is_default": True
+            }
+        ]
+    
+    return rules
+
+
+@router.post("/custom-rules")
+async def create_custom_deduction_rule(data: dict, request: Request):
+    """Create a new custom deduction rule"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    rule = {
+        "rule_id": f"rule_{uuid.uuid4().hex[:12]}",
+        "name": data.get("name", "Custom Rule"),
+        "description": data.get("description", ""),
+        "condition_type": data.get("condition_type"),  # late_count, absent_count, absent_without_leave, early_departure_count
+        "condition_threshold": data.get("condition_threshold", 0),
+        "condition_operator": data.get("condition_operator", "greater_than"),  # greater_than, equals, less_than
+        "action_type": data.get("action_type"),  # percentage_deduction, fixed_deduction, half_day_deduction, full_day_deduction
+        "action_value": data.get("action_value", 0),
+        "apply_per_occurrence": data.get("apply_per_occurrence", False),  # If true, apply for each occurrence above threshold
+        "is_active": True,
+        "is_default": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("user_id")
+    }
+    
+    await db.custom_payroll_rules.insert_one(rule)
+    rule.pop('_id', None)
+    return rule
+
+
+@router.put("/custom-rules/{rule_id}")
+async def update_custom_deduction_rule(rule_id: str, data: dict, request: Request):
+    """Update a custom deduction rule"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Don't allow editing default rules
+    existing = await db.custom_payroll_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+    if existing and existing.get("is_default"):
+        raise HTTPException(status_code=400, detail="Cannot edit default rules")
+    
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    data["updated_by"] = user.get("user_id")
+    
+    await db.custom_payroll_rules.update_one(
+        {"rule_id": rule_id},
+        {"$set": data}
+    )
+    
+    return await db.custom_payroll_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+
+
+@router.delete("/custom-rules/{rule_id}")
+async def delete_custom_deduction_rule(rule_id: str, request: Request):
+    """Delete a custom deduction rule"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Don't allow deleting default rules
+    existing = await db.custom_payroll_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+    if existing and existing.get("is_default"):
+        raise HTTPException(status_code=400, detail="Cannot delete default rules")
+    
+    await db.custom_payroll_rules.update_one(
+        {"rule_id": rule_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    return {"message": "Rule deleted"}
+
+
+@router.put("/custom-rules/{rule_id}/toggle")
+async def toggle_custom_rule(rule_id: str, request: Request):
+    """Toggle a custom rule on/off"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    rule = await db.custom_payroll_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    
+    new_status = not rule.get("is_active", True)
+    await db.custom_payroll_rules.update_one(
+        {"rule_id": rule_id},
+        {"$set": {"is_active": new_status}}
+    )
+    
+    return {"message": f"Rule {'enabled' if new_status else 'disabled'}", "is_active": new_status}
