@@ -57,6 +57,7 @@ const ExpensesPage = () => {
   });
   const [filterEmployee, setFilterEmployee] = useState('all');
   const [employees, setEmployees] = useState([]);
+  const [selectedExpense, setSelectedExpense] = useState(null);
 
   const isApprover = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance' || user?.role === 'manager';
 
