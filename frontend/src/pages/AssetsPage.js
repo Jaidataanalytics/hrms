@@ -42,7 +42,12 @@ import {
   Search,
   RefreshCw,
   UserPlus,
-  RotateCcw
+  RotateCcw,
+  Eye,
+  Calendar,
+  IndianRupee,
+  Tag,
+  Hash
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
