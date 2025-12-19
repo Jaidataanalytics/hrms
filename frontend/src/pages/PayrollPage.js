@@ -60,6 +60,8 @@ const PayrollPage = () => {
   const [allEmployeesPay, setAllEmployeesPay] = useState([]);
   const [selectedPayslip, setSelectedPayslip] = useState(null);
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState(null);
+  const [employeeBreakdown, setEmployeeBreakdown] = useState(null);
+  const [loadingBreakdown, setLoadingBreakdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -68,6 +70,12 @@ const PayrollPage = () => {
   const [editingSection, setEditingSection] = useState(null);
   const [leaveTypeRules, setLeaveTypeRules] = useState([]);
   const [expandedSections, setExpandedSections] = useState({});
+  const [breakdownExpandedSections, setBreakdownExpandedSections] = useState({
+    attendance: true,
+    leaves: false,
+    earnings: true,
+    deductions: true
+  });
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance';
 
