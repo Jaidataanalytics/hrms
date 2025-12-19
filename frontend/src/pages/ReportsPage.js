@@ -162,16 +162,18 @@ const ReportsPage = () => {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-lg">By Gender</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-lg">By Designation</CardTitle></CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center gap-8 py-4">
-                  {headcount?.by_gender?.map((g, i) => (
-                    <div key={i} className="text-center">
-                      <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${g.gender === 'Male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
-                        {g.count}
+                <div className="space-y-3">
+                  {headcount?.by_designation?.slice(0, 6).map((desig, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">{desig.designation}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(desig.count / headcount.total_headcount) * 100}%` }} />
+                        </div>
+                        <span className="text-sm font-medium w-8">{desig.count}</span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-600">{g.gender}</p>
-                      <p className="text-xs text-slate-400">{Math.round((g.count / headcount.total_headcount) * 100)}%</p>
                     </div>
                   ))}
                 </div>
