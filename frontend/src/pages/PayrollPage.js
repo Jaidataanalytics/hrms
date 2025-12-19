@@ -76,6 +76,18 @@ const PayrollPage = () => {
     earnings: true,
     deductions: true
   });
+  const [customRules, setCustomRules] = useState([]);
+  const [showAddCustomRule, setShowAddCustomRule] = useState(false);
+  const [customRuleForm, setCustomRuleForm] = useState({
+    name: '',
+    description: '',
+    condition_type: 'late_count',
+    condition_threshold: 3,
+    condition_operator: 'greater_than',
+    action_type: 'percentage_deduction',
+    action_value: 5,
+    apply_per_occurrence: false
+  });
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance';
 
