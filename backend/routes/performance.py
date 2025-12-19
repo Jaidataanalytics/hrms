@@ -278,6 +278,7 @@ async def create_employee_kpi(data: dict, request: Request):
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.employee_kpis.insert_one(data)
+    data.pop('_id', None)
     return data
 
 
