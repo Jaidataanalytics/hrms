@@ -907,6 +907,85 @@ const PayrollPage = () => {
                   </div>
                 </div>
               </RuleSection>
+
+              {/* Custom Deduction Rules */}
+              <Card className="mb-4">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-500" />
+                        Custom Deduction Rules
+                      </CardTitle>
+                      <CardDescription>Define automatic deductions based on attendance patterns</CardDescription>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="gap-1"
+                      onClick={() => setShowAddCustomRule(true)}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Rule
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {customRules.length > 0 ? (
+                    <div className="space-y-3">
+                      {customRules.map((rule) => (
+                        <div 
+                          key={rule.rule_id}
+                          className={`p-4 rounded-lg border ${rule.is_active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-medium">{rule.name}</p>
+                                {rule.is_default && (
+                                  <Badge variant="outline" className="text-xs">Default</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-slate-500 mb-2">{rule.description}</p>
+                              <div className="flex flex-wrap gap-2">
+                                <Badge className="bg-blue-100 text-blue-700">
+                                  If {rule.condition_type?.replace(/_/g, ' ')} {rule.condition_operator?.replace(/_/g, ' ')} {rule.condition_threshold}
+                                </Badge>
+                                <Badge className="bg-amber-100 text-amber-700">
+                                  Then {rule.action_type?.replace(/_/g, ' ')}: {rule.action_type === 'percentage_deduction' ? `${rule.action_value}%` : `₹${rule.action_value}`}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={rule.is_active}
+                                onCheckedChange={() => handleToggleCustomRule(rule.rule_id)}
+                              />
+                              {!rule.is_default && (
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="text-red-500"
+                                  onClick={() => handleDeleteCustomRule(rule.rule_id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                      <p className="text-slate-500 mb-4">No custom deduction rules defined</p>
+                      <Button variant="outline" onClick={() => setShowAddCustomRule(true)}>
+                        Add First Rule
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         )}
