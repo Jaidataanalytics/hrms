@@ -532,7 +532,11 @@ const PayrollPage = () => {
                   <TableBody>
                     {allEmployeesPay.length > 0 ? (
                       allEmployeesPay.map((emp) => (
-                        <TableRow key={emp.payslip_id}>
+                        <TableRow 
+                          key={emp.payslip_id}
+                          className="cursor-pointer hover:bg-slate-100"
+                          onClick={() => fetchEmployeeBreakdown(emp.employee_id)}
+                        >
                           <TableCell>
                             <div>
                               <p className="font-medium">{emp.employee_name || emp.employee_id}</p>
@@ -546,13 +550,15 @@ const PayrollPage = () => {
                           <TableCell>{formatCurrency(emp.gross_salary)}</TableCell>
                           <TableCell className="text-red-600">{formatCurrency(emp.total_deductions)}</TableCell>
                           <TableCell className="font-semibold text-emerald-600">{formatCurrency(emp.net_salary)}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              onClick={() => fetchEmployeeDetails(emp.employee_id)}
+                              variant="outline"
+                              onClick={() => fetchEmployeeBreakdown(emp.employee_id)}
+                              className="gap-1"
                             >
                               <Eye className="w-4 h-4" />
+                              Breakdown
                             </Button>
                           </TableCell>
                         </TableRow>
