@@ -86,6 +86,44 @@ const PerformancePage = () => {
     }
   };
 
+  const getPeriodDates = (periodType) => {
+    const now = new Date();
+    let periodStart, periodEnd;
+    
+    switch (periodType) {
+      case 'daily':
+        periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        periodEnd = periodStart;
+        break;
+      case 'weekly':
+        periodStart = new Date(now);
+        periodStart.setDate(now.getDate() - now.getDay());
+        periodEnd = new Date(periodStart);
+        periodEnd.setDate(periodStart.getDate() + 6);
+        break;
+      case 'monthly':
+        periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'quarterly':
+        periodStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+        periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 3, 0);
+        break;
+      case 'half_yearly':
+        periodStart = new Date(now.getFullYear(), now.getMonth() < 6 ? 0 : 6, 1);
+        periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 6, 0);
+        break;
+      case 'yearly':
+        periodStart = new Date(now.getFullYear(), 0, 1);
+        periodEnd = new Date(now.getFullYear(), 11, 31);
+        break;
+      default:
+        periodStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+        periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 3, 0);
+    }
+    return { periodStart, periodEnd };
+  };
+
   const handleCreateKPI = async () => {
     if (!selectedTemplate) {
       toast.error('Please select a KPI template');
@@ -93,9 +131,7 @@ const PerformancePage = () => {
     }
 
     try {
-      const now = new Date();
-      const periodStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-      const periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 3, 0);
+      const { periodStart, periodEnd } = getPeriodDates(selectedPeriodType);
 
       const response = await fetch(`${API_URL}/performance/kpi`, {
         method: 'POST',
@@ -103,7 +139,7 @@ const PerformancePage = () => {
         credentials: 'include',
         body: JSON.stringify({
           template_id: selectedTemplate,
-          period_type: 'quarterly',
+          period_type: selectedPeriodType,
           period_start: periodStart.toISOString().split('T')[0],
           period_end: periodEnd.toISOString().split('T')[0],
           responses: kpiResponses
@@ -115,6 +151,7 @@ const PerformancePage = () => {
         setShowCreateKPI(false);
         setSelectedTemplate(null);
         setKpiResponses([]);
+        setSelectedPeriodType('quarterly');
         fetchData();
       } else {
         const error = await response.json();
@@ -122,6 +159,27 @@ const PerformancePage = () => {
       }
     } catch (error) {
       toast.error('Failed to create KPI');
+    }
+  };
+
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate) return;
+    try {
+      const response = await fetch(`${API_URL}/performance/templates/${editingTemplate.template_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(editingTemplate)
+      });
+      if (response.ok) {
+        toast.success('Template updated');
+        setEditingTemplate(null);
+        fetchData();
+      } else {
+        toast.error('Failed to update template');
+      }
+    } catch (error) {
+      toast.error('Failed to update template');
     }
   };
 
