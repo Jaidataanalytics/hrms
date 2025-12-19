@@ -374,17 +374,44 @@ const PerformancePage = () => {
                             <SelectValue placeholder="Select template" />
                           </SelectTrigger>
                           <SelectContent>
-                            {templates.map(t => (
+                            {templates.length > 0 ? templates.map(t => (
                               <SelectItem key={t.template_id} value={t.template_id}>
                                 {t.name}
                               </SelectItem>
-                            ))}
+                            )) : (
+                              <SelectItem value="none" disabled>No templates available</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {templates.length === 0 && (
+                          <p className="text-xs text-amber-600">Please create a KPI template first in the Templates tab</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Period Type</Label>
+                        <Select value={selectedPeriodType} onValueChange={setSelectedPeriodType}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                            <SelectItem value="half_yearly">Half Yearly</SelectItem>
+                            <SelectItem value="yearly">Yearly</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <p className="text-sm text-slate-500">
-                        Period: Current Quarter
-                      </p>
+                      <div className="p-3 bg-slate-50 rounded-lg">
+                        <p className="text-xs text-slate-500 mb-1">Selected Period</p>
+                        <p className="text-sm font-medium">
+                          {(() => {
+                            const { periodStart, periodEnd } = getPeriodDates(selectedPeriodType);
+                            return `${periodStart.toLocaleDateString('en-IN')} - ${periodEnd.toLocaleDateString('en-IN')}`;
+                          })()}
+                        </p>
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setShowCreateKPI(false)}>Cancel</Button>
