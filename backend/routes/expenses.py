@@ -65,9 +65,10 @@ async def list_expenses(
     # Regular employees see only their own
     if user.get("role") not in ["super_admin", "hr_admin", "finance", "manager"]:
         query["employee_id"] = user.get("employee_id")
-    elif employee_id and employee_id != "all":
-        # HR/Manager can filter by specific employee
-        query["employee_id"] = employee_id
+    else:
+        # HR/Manager/Admin can filter by specific employee
+        if employee_id and employee_id != "all":
+            query["employee_id"] = employee_id
     
     if status and status != "all":
         query["status"] = status
