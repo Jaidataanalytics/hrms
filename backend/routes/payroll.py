@@ -156,6 +156,7 @@ async def create_payroll_run(month: int, year: int, request: Request):
     }
     
     await db.payroll_runs.insert_one(payroll_run)
+    payroll_run.pop('_id', None)
     return payroll_run
 
 
