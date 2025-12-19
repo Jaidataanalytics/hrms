@@ -46,7 +46,169 @@ async def create_kpi_template(data: dict, request: Request):
     data["total_points"] = total_points
     
     await db.kpi_templates.insert_one(data)
+    data.pop('_id', None)
     return data
+
+
+@router.post("/templates/upload")
+async def upload_kpi_template(request: Request, file: UploadFile = File(...)):
+    """Upload KPI template from Excel file"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Read file content
+    content = await file.read()
+    
+    try:
+        import pandas as pd
+        
+        # Read Excel/CSV file
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(content))
+        else:
+            df = pd.read_excel(io.BytesIO(content))
+        
+        # Expected columns: Question/KPI Name, Description, Max Points, Category (optional)
+        questions = []
+        for idx, row in df.iterrows():
+            question = {
+                "question_id": f"q_{uuid.uuid4().hex[:8]}",
+                "question": str(row.iloc[0]) if pd.notna(row.iloc[0]) else f"Question {idx+1}",
+                "description": str(row.iloc[1]) if len(row) > 1 and pd.notna(row.iloc[1]) else "",
+                "max_points": int(row.iloc[2]) if len(row) > 2 and pd.notna(row.iloc[2]) else 10,
+                "category": str(row.iloc[3]) if len(row) > 3 and pd.notna(row.iloc[3]) else "General",
+                "weightage": 1
+            }
+            questions.append(question)
+        
+        # Create template
+        template_name = file.filename.rsplit('.', 1)[0]
+        total_points = sum(q["max_points"] * q["weightage"] for q in questions)
+        
+        template_data = {
+            "template_id": f"kpi_{uuid.uuid4().hex[:12]}",
+            "name": template_name,
+            "description": f"Imported from {file.filename}",
+            "questions": questions,
+            "total_points": total_points,
+            "uploaded_from_excel": True,
+            "original_filename": file.filename,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": user.get("user_id"),
+            "is_active": True
+        }
+        
+        await db.kpi_templates.insert_one(template_data)
+        template_data.pop('_id', None)
+        
+        return {
+            "message": f"Template created with {len(questions)} questions",
+            "template": template_data
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse file: {str(e)}")
+
+
+@router.get("/templates/sample")
+async def download_sample_template(request: Request):
+    """Download sample KPI template Excel file"""
+    await get_current_user(request)
+    
+    try:
+        import pandas as pd
+        
+        # Create sample data
+        sample_data = {
+            "KPI Name": [
+                "Project Delivery",
+                "Code Quality",
+                "Team Collaboration",
+                "Communication Skills",
+                "Initiative & Innovation"
+            ],
+            "Description": [
+                "Timely delivery of assigned projects",
+                "Code review scores and bug count",
+                "Contribution to team activities",
+                "Clear and effective communication",
+                "New ideas and process improvements"
+            ],
+            "Max Points": [20, 20, 20, 20, 20],
+            "Category": ["Delivery", "Technical", "Teamwork", "Soft Skills", "Growth"]
+        }
+        
+        df = pd.DataFrame(sample_data)
+        
+        # Create Excel file in memory
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='KPI Template')
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=kpi_template_sample.xlsx"}
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel export not available. Install openpyxl.")
+
+
+@router.get("/templates/{template_id}/download")
+async def download_template(template_id: str, request: Request):
+    """Download KPI template as Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    template = await db.kpi_templates.find_one({"template_id": template_id}, {"_id": 0})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    try:
+        import pandas as pd
+        
+        # Create dataframe from questions
+        questions = template.get("questions", [])
+        data = {
+            "KPI Name": [q.get("question", "") for q in questions],
+            "Description": [q.get("description", "") for q in questions],
+            "Max Points": [q.get("max_points", 10) for q in questions],
+            "Category": [q.get("category", "General") for q in questions]
+        }
+        
+        df = pd.DataFrame(data)
+        
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='KPI Template')
+        output.seek(0)
+        
+        filename = f"{template.get('name', 'template')}.xlsx".replace(' ', '_')
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel export not available")
+
+
+@router.delete("/templates/{template_id}")
+async def delete_kpi_template(template_id: str, request: Request):
+    """Delete KPI template"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    result = await db.kpi_templates.delete_one({"template_id": template_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return {"message": "Template deleted successfully"}
 
 
 @router.get("/templates/{template_id}")
