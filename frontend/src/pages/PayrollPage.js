@@ -103,17 +103,19 @@ const PayrollPage = () => {
 
   const fetchData = async () => {
     try {
-      const [runsRes, payslipsRes, rulesRes, leaveRulesRes] = await Promise.all([
+      const [runsRes, payslipsRes, rulesRes, leaveRulesRes, customRulesRes] = await Promise.all([
         isHR ? fetch(`${API_URL}/payroll/runs`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
         fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include' }),
         isHR ? fetch(`${API_URL}/payroll/rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
         isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/custom-rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
       ]);
 
       if (runsRes.ok) setPayrollRuns(await runsRes.json());
       if (payslipsRes.ok) setMyPayslips(await payslipsRes.json());
       if (rulesRes.ok) setPayrollRules(await rulesRes.json());
       if (leaveRulesRes.ok) setLeaveTypeRules(await leaveRulesRes.json());
+      if (customRulesRes.ok) setCustomRules(await customRulesRes.json());
     } catch (error) {
       console.error('Error fetching payroll data:', error);
     } finally {
