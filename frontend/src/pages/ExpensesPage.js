@@ -38,7 +38,10 @@ import {
   Utensils,
   Hotel,
   Users,
-  Fuel
+  Fuel,
+  Eye,
+  FileText,
+  User
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
