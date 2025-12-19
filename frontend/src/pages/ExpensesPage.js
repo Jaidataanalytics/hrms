@@ -79,6 +79,7 @@ const ExpensesPage = () => {
       let url = `${API_URL}/expenses?`;
       if (filterStatus !== 'all') url += `status=${filterStatus}&`;
       if (filterCategory !== 'all') url += `category=${filterCategory}&`;
+      if (filterEmployee !== 'all') url += `employee_id=${filterEmployee}&`;
 
       const [expensesRes, categoriesRes] = await Promise.all([
         fetch(url, { credentials: 'include' }),
