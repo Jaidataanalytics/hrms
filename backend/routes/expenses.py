@@ -53,6 +53,7 @@ async def list_expenses(
     request: Request,
     status: Optional[str] = None,
     category: Optional[str] = None,
+    employee_id: Optional[str] = None,
     skip: int = 0,
     limit: int = 100
 ):
@@ -64,6 +65,9 @@ async def list_expenses(
     # Regular employees see only their own
     if user.get("role") not in ["super_admin", "hr_admin", "finance", "manager"]:
         query["employee_id"] = user.get("employee_id")
+    elif employee_id and employee_id != "all":
+        # HR/Manager can filter by specific employee
+        query["employee_id"] = employee_id
     
     if status and status != "all":
         query["status"] = status
@@ -71,6 +75,15 @@ async def list_expenses(
         query["category"] = category
     
     expenses = await db.expenses.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Enrich with employee names for HR/Manager
+    if user.get("role") in ["super_admin", "hr_admin", "finance", "manager"]:
+        for exp in expenses:
+            if exp.get("employee_id"):
+                emp = await db.employees.find_one({"employee_id": exp["employee_id"]}, {"_id": 0})
+                if emp:
+                    exp["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+    
     return expenses
 
 
