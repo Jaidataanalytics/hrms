@@ -146,12 +146,6 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
-      
-      return data;
-    } catch (error) {
-      throw error;
-    }
-  };
 
   // Process Google OAuth session
   const processGoogleSession = async (sessionId) => {
