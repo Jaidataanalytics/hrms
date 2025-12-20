@@ -223,7 +223,15 @@ class KPIAPITester:
         # Calculate period dates
         now = datetime.now()
         period_start = datetime(now.year, ((now.month - 1) // 3) * 3 + 1, 1)
-        period_end = datetime(period_start.year, period_start.month + 3, 1) - timedelta(days=1)
+        
+        # Handle year rollover for quarter calculation
+        end_month = period_start.month + 3
+        end_year = period_start.year
+        if end_month > 12:
+            end_month = end_month - 12
+            end_year += 1
+        
+        period_end = datetime(end_year, end_month, 1) - timedelta(days=1)
         
         kpi_data = {
             "template_id": self.template_id,
