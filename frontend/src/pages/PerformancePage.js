@@ -66,8 +66,14 @@ const PerformancePage = () => {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [editingKPI, setEditingKPI] = useState(null);
   const [kpiFormResponses, setKpiFormResponses] = useState({});
+  const [teamPerformance, setTeamPerformance] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [employeePerformance, setEmployeePerformance] = useState(null);
+  const [loadingEmployeePerf, setLoadingEmployeePerf] = useState(false);
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin';
+  const isManager = user?.role === 'manager';
+  const canViewTeam = isHR || isManager;
 
   useEffect(() => {
     fetchData();
