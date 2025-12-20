@@ -39,7 +39,10 @@ import {
   Upload,
   Download,
   FileSpreadsheet,
-  Trash2
+  Trash2,
+  Edit,
+  Save,
+  X
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
