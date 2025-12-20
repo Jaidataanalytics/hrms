@@ -42,7 +42,12 @@ import {
   Trash2,
   Edit,
   Save,
-  X
+  X,
+  Users,
+  Eye,
+  ChevronRight,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
