@@ -995,7 +995,243 @@ const PerformancePage = () => {
             </div>
           </TabsContent>
         )}
+
+        {/* Team Performance (HR/Manager only) */}
+        {canViewTeam && (
+          <TabsContent value="team">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Users className="w-5 h-5 text-primary" />
+                      Team Performance History
+                    </CardTitle>
+                    <CardDescription>View performance records for all employees</CardDescription>
+                  </div>
+                  <Badge variant="outline">{teamPerformance.length} Employees</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {teamPerformance.length > 0 ? (
+                  <div className="space-y-3">
+                    {teamPerformance.map((emp) => (
+                      <div
+                        key={emp.employee_id}
+                        className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+                        onClick={() => fetchEmployeePerformance(emp.employee_id)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-lg font-bold text-primary">
+                              {emp.employee_name?.charAt(0) || '?'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{emp.employee_name}</p>
+                            <p className="text-sm text-slate-500">
+                              {emp.department} • {emp.designation}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-slate-900">{emp.total_kpis}</p>
+                            <p className="text-xs text-slate-500">Total KPIs</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-emerald-600">{emp.approved_kpis}</p>
+                            <p className="text-xs text-slate-500">Approved</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-amber-600">{emp.pending_kpis}</p>
+                            <p className="text-xs text-slate-500">Pending</p>
+                          </div>
+                          <div className="text-center min-w-[60px]">
+                            {emp.average_score !== null ? (
+                              <>
+                                <p className={`text-lg font-bold ${emp.average_score >= 70 ? 'text-emerald-600' : emp.average_score >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                  {emp.average_score}%
+                                </p>
+                                <p className="text-xs text-slate-500">Avg Score</p>
+                              </>
+                            ) : (
+                              <p className="text-sm text-slate-400">No score</p>
+                            )}
+                          </div>
+                          <Button size="sm" variant="ghost">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500">No employee performance data available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Employee Performance Detail Modal */}
+      <Dialog open={!!selectedEmployee} onOpenChange={() => { setSelectedEmployee(null); setEmployeePerformance(null); }}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Employee Performance History
+            </DialogTitle>
+            <DialogDescription>
+              {employeePerformance?.employee?.name} - {employeePerformance?.employee?.department}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingEmployeePerf ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : employeePerformance && (
+            <div className="space-y-4">
+              {/* Employee Info */}
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-lg font-semibold">{employeePerformance.employee?.name}</p>
+                    <p className="text-sm text-slate-500">
+                      {employeePerformance.employee?.designation} • {employeePerformance.employee?.department}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Employee Code: {employeePerformance.employee?.employee_code}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {employeePerformance.statistics?.average_score !== null && (
+                      <div className={`text-3xl font-bold ${
+                        employeePerformance.statistics.average_score >= 70 ? 'text-emerald-600' : 
+                        employeePerformance.statistics.average_score >= 50 ? 'text-amber-600' : 'text-red-600'
+                      }`}>
+                        {employeePerformance.statistics.average_score}%
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-500">Average Score</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Statistics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 bg-blue-50 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-blue-600">{employeePerformance.statistics?.total_kpis || 0}</p>
+                  <p className="text-xs text-blue-600">Total KPIs</p>
+                </div>
+                <div className="p-3 bg-emerald-50 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-emerald-600">{employeePerformance.statistics?.approved_kpis || 0}</p>
+                  <p className="text-xs text-emerald-600">Approved</p>
+                </div>
+                <div className="p-3 bg-purple-50 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-purple-600">
+                    {employeePerformance.statistics?.highest_score?.toFixed(1) || '-'}%
+                  </p>
+                  <p className="text-xs text-purple-600">Highest Score</p>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-amber-600">
+                    {employeePerformance.statistics?.completed_goals || 0}/{employeePerformance.statistics?.total_goals || 0}
+                  </p>
+                  <p className="text-xs text-amber-600">Goals Completed</p>
+                </div>
+              </div>
+
+              {/* Score Trend */}
+              {employeePerformance.score_trend?.length > 0 && (
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <p className="text-sm font-medium mb-3">Score Trend</p>
+                  <div className="flex items-end justify-between gap-2 h-24">
+                    {employeePerformance.score_trend.map((item, idx) => (
+                      <div key={idx} className="flex-1 flex flex-col items-center">
+                        <div 
+                          className={`w-full rounded-t ${
+                            item.score >= 70 ? 'bg-emerald-500' : 
+                            item.score >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                          }`}
+                          style={{ height: `${Math.max(item.score, 10)}%` }}
+                        />
+                        <p className="text-xs mt-1 font-medium">{item.score?.toFixed(0)}%</p>
+                        <p className="text-xs text-slate-400 capitalize">{item.period?.substring(0, 3)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* KPI History */}
+              <div>
+                <p className="text-sm font-medium mb-2">KPI History</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {employeePerformance.kpis?.length > 0 ? employeePerformance.kpis.map((kpi) => (
+                    <div key={kpi.kpi_id} className="flex items-center justify-between p-3 bg-white rounded border">
+                      <div>
+                        <p className="font-medium text-sm capitalize">{kpi.period_type} Review</p>
+                        <p className="text-xs text-slate-500">{kpi.period_start} to {kpi.period_end}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {kpi.final_score !== undefined && kpi.final_score !== null && (
+                          <span className={`font-bold ${
+                            kpi.final_score >= 70 ? 'text-emerald-600' : 
+                            kpi.final_score >= 50 ? 'text-amber-600' : 'text-red-600'
+                          }`}>
+                            {kpi.final_score.toFixed(1)}%
+                          </span>
+                        )}
+                        <Badge className={statusColors[kpi.status]}>{kpi.status}</Badge>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-slate-400 text-center py-4">No KPI records</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Goals */}
+              {employeePerformance.goals?.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Goals</p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {employeePerformance.goals.map((goal) => (
+                      <div key={goal.goal_id} className="flex items-center justify-between p-3 bg-white rounded border">
+                        <div>
+                          <p className="font-medium text-sm">{goal.title}</p>
+                          <p className="text-xs text-slate-500">Target: {goal.target_date}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-20 bg-slate-200 rounded-full h-2">
+                            <div 
+                              className="bg-primary rounded-full h-2" 
+                              style={{ width: `${goal.progress || 0}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{goal.progress || 0}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSelectedEmployee(null); setEmployeePerformance(null); }}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Template Dialog - Enhanced with Question Editing */}
       <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
