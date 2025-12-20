@@ -61,6 +61,8 @@ const PerformancePage = () => {
   const [goalForm, setGoalForm] = useState({ title: '', description: '', target_date: '', priority: 'medium' });
   const [selectedPeriodType, setSelectedPeriodType] = useState('quarterly');
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [editingKPI, setEditingKPI] = useState(null);
+  const [kpiFormResponses, setKpiFormResponses] = useState({});
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin';
 
