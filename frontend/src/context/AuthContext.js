@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -13,177 +13,171 @@ export const useAuth = () => {
   return context;
 };
 
+// Safe JSON parse helper
+const safeParseJson = async (response) => {
+  try {
+    const text = await response.text();
+    if (!text) return null;
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-  const isCheckingAuth = useRef(false);
-  const hasCheckedAuth = useRef(false);
+  
+  // Refs to prevent race conditions
+  const authCheckInProgress = useRef(false);
+  const initialCheckDone = useRef(false);
 
-  // Check authentication status on mount (only once)
-  useEffect(() => {
-    // Skip auth check if we're on public routes or processing session_id
+  // Check authentication status
+  const checkAuth = useCallback(async (forceCheck = false) => {
+    // Skip if already checking or already done initial check (unless forced)
+    if (authCheckInProgress.current || (initialCheckDone.current && !forceCheck)) {
+      return;
+    }
+
     const publicPaths = ['/', '/login', '/register'];
     const isPublicPath = publicPaths.includes(location.pathname);
-    const hasSessionId = location.hash?.includes('session_id=');
     
-    if (hasSessionId) {
+    // Skip if on public path and we already have user state determined
+    if (isPublicPath && initialCheckDone.current) {
       setLoading(false);
       return;
     }
 
-    // If user data was passed from AuthCallback, use it
-    if (location.state?.user) {
-      setUser(location.state.user);
-      setLoading(false);
-      hasCheckedAuth.current = true;
-      return;
-    }
+    authCheckInProgress.current = true;
 
-    // Prevent multiple simultaneous auth checks
-    if (isCheckingAuth.current) {
-      return;
-    }
+    try {
+      const response = await fetch(`${API_URL}/auth/me`, {
+        credentials: 'include',
+      });
 
-    // If we already have a user or have checked, don't check again on route changes
-    if (user || (hasCheckedAuth.current && isPublicPath)) {
-      setLoading(false);
-      return;
-    }
-
-    const checkAuth = async () => {
-      isCheckingAuth.current = true;
-      
-      try {
-        const response = await fetch(`${API_URL}/auth/me`, {
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          const text = await response.text();
-          if (text) {
-            const userData = JSON.parse(text);
-            setUser(userData);
-          }
-        } else {
-          setUser(null);
-          if (!isPublicPath) {
-            navigate('/login');
-          }
+      if (response.ok) {
+        const userData = await safeParseJson(response);
+        if (userData) {
+          setUser(userData);
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
+      } else {
         setUser(null);
         if (!isPublicPath) {
           navigate('/login');
         }
-      } finally {
-        setLoading(false);
-        isCheckingAuth.current = false;
-        hasCheckedAuth.current = true;
       }
-    };
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setUser(null);
+      if (!isPublicPath) {
+        navigate('/login');
+      }
+    } finally {
+      setLoading(false);
+      authCheckInProgress.current = false;
+      initialCheckDone.current = true;
+    }
+  }, [location.pathname, navigate]);
+
+  // Initial auth check on mount
+  useEffect(() => {
+    // Handle session_id in hash (Google OAuth callback)
+    if (location.hash?.includes('session_id=')) {
+      setLoading(false);
+      return;
+    }
+
+    // Handle user passed from AuthCallback
+    if (location.state?.user) {
+      setUser(location.state.user);
+      setLoading(false);
+      initialCheckDone.current = true;
+      return;
+    }
 
     checkAuth();
-  }, [location.pathname, user]);
+  }, []);
 
   // Login with email/password
   const login = async (email, password) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
+    });
 
-      // Read as text first to avoid body stream issues
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error('Invalid server response');
-      }
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
-      }
+    const data = await safeParseJson(response);
 
-      setUser(data.user);
-      localStorage.setItem('access_token', data.access_token);
-      hasCheckedAuth.current = true;
-      
-      return data;
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(data?.detail || 'Login failed');
     }
+
+    if (data?.user) {
+      setUser(data.user);
+    }
+    if (data?.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+    }
+    initialCheckDone.current = true;
+
+    return data;
   };
 
   // Register new user
   const register = async (name, email, password) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name, email, password }),
-      });
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, email, password }),
+    });
 
-      // Read as text first to avoid body stream issues
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error('Invalid server response');
-      }
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Registration failed');
-      }
+    const data = await safeParseJson(response);
 
-      setUser(data.user);
-      localStorage.setItem('access_token', data.access_token);
-      hasCheckedAuth.current = true;
-      
-      return data;
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(data?.detail || 'Registration failed');
     }
+
+    if (data?.user) {
+      setUser(data.user);
+    }
+    if (data?.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+    }
+    initialCheckDone.current = true;
+
+    return data;
   };
 
   // Process Google OAuth session
   const processGoogleSession = async (sessionId) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/google-session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ session_id: sessionId }),
-      });
+    const response = await fetch(`${API_URL}/auth/google-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ session_id: sessionId }),
+    });
 
-      // Read as text first to avoid body stream issues
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error('Invalid server response');
-      }
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Google authentication failed');
-      }
+    const data = await safeParseJson(response);
 
-      setUser(data);
-      hasCheckedAuth.current = true;
-      
-      return data;
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(data?.detail || 'Google authentication failed');
     }
+
+    if (data) {
+      setUser(data);
+    }
+    initialCheckDone.current = true;
+
+    return data;
+  };
+
+  // Initiate Google login
+  const loginWithGoogle = () => {
+    window.location.href = `${API_URL}/auth/google`;
   };
 
   // Logout
@@ -198,26 +192,20 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       localStorage.removeItem('access_token');
+      initialCheckDone.current = false;
       navigate('/login');
     }
   };
 
-  // Start Google OAuth flow
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-  const loginWithGoogle = () => {
-    const redirectUrl = window.location.origin + '/';
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  };
-
   const value = {
     user,
-    setUser,
     loading,
     login,
     register,
     logout,
     loginWithGoogle,
     processGoogleSession,
+    checkAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
