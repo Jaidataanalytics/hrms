@@ -385,6 +385,129 @@ async def review_kpi(kpi_id: str, data: dict, request: Request):
     return {"message": "KPI reviewed and approved"}
 
 
+# ==================== TEAM PERFORMANCE (HR/Manager View) ====================
+
+@router.get("/team-performance")
+async def get_team_performance(
+    request: Request,
+    department: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Get performance history for all employees (HR/Manager only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized - HR/Manager only")
+    
+    # Get all employees
+    emp_query = {}
+    if department:
+        emp_query["department"] = department
+    
+    employees = await db.employees.find(emp_query, {"_id": 0}).to_list(500)
+    
+    # Get all KPIs
+    kpi_query = {}
+    if status:
+        kpi_query["status"] = status
+    
+    all_kpis = await db.employee_kpis.find(kpi_query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Group KPIs by employee
+    employee_kpis = {}
+    for kpi in all_kpis:
+        emp_id = kpi.get("employee_id")
+        if emp_id not in employee_kpis:
+            employee_kpis[emp_id] = []
+        employee_kpis[emp_id].append(kpi)
+    
+    # Build response with employee details and their KPIs
+    result = []
+    for emp in employees:
+        emp_id = emp.get("employee_id")
+        kpis = employee_kpis.get(emp_id, [])
+        
+        # Calculate average score for completed KPIs
+        completed_kpis = [k for k in kpis if k.get("status") == "approved" and k.get("final_score")]
+        avg_score = sum(k["final_score"] for k in completed_kpis) / len(completed_kpis) if completed_kpis else None
+        
+        result.append({
+            "employee_id": emp_id,
+            "employee_name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
+            "employee_code": emp.get("employee_code", emp_id),
+            "department": emp.get("department", ""),
+            "designation": emp.get("designation", ""),
+            "total_kpis": len(kpis),
+            "pending_kpis": len([k for k in kpis if k.get("status") in ["draft", "submitted", "under_review"]]),
+            "approved_kpis": len([k for k in kpis if k.get("status") == "approved"]),
+            "average_score": round(avg_score, 1) if avg_score else None,
+            "kpis": kpis[:10]  # Return last 10 KPIs for each employee
+        })
+    
+    # Sort by average score (descending), then by name
+    result.sort(key=lambda x: (-(x["average_score"] or 0), x["employee_name"]))
+    
+    return result
+
+
+@router.get("/employee-performance/{employee_id}")
+async def get_employee_performance_history(employee_id: str, request: Request):
+    """Get detailed performance history for a specific employee (HR/Manager only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized - HR/Manager only")
+    
+    # Get employee details
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get all KPIs for this employee
+    kpis = await db.employee_kpis.find(
+        {"employee_id": employee_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Get all goals for this employee
+    goals = await db.employee_goals.find(
+        {"employee_id": employee_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    # Calculate statistics
+    completed_kpis = [k for k in kpis if k.get("status") == "approved" and k.get("final_score")]
+    avg_score = sum(k["final_score"] for k in completed_kpis) / len(completed_kpis) if completed_kpis else None
+    
+    # Get score trend (last 6 approved KPIs)
+    score_trend = [{"period": k.get("period_type"), "score": k.get("final_score"), "date": k.get("reviewed_at") or k.get("created_at")} 
+                   for k in completed_kpis[:6]]
+    score_trend.reverse()  # Oldest first for trend
+    
+    return {
+        "employee": {
+            "employee_id": employee_id,
+            "name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+            "employee_code": employee.get("employee_code", employee_id),
+            "department": employee.get("department", ""),
+            "designation": employee.get("designation", ""),
+            "email": employee.get("email", ""),
+            "join_date": employee.get("join_date", "")
+        },
+        "statistics": {
+            "total_kpis": len(kpis),
+            "approved_kpis": len(completed_kpis),
+            "pending_kpis": len([k for k in kpis if k.get("status") in ["draft", "submitted", "under_review"]]),
+            "average_score": round(avg_score, 1) if avg_score else None,
+            "highest_score": max([k.get("final_score", 0) for k in completed_kpis]) if completed_kpis else None,
+            "lowest_score": min([k.get("final_score", 0) for k in completed_kpis]) if completed_kpis else None,
+            "total_goals": len(goals),
+            "completed_goals": len([g for g in goals if g.get("status") == "completed"])
+        },
+        "score_trend": score_trend,
+        "kpis": kpis,
+        "goals": goals
+    }
+
+
 # ==================== MY KPI ====================
 
 @router.get("/my-kpi")
