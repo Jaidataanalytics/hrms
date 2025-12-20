@@ -39,10 +39,17 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
+    // Cancel any pending requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     const checkAuth = async () => {
       try {
         const response = await fetch(`${API_URL}/auth/me`, {
           credentials: 'include',
+          signal: abortControllerRef.current.signal
         });
         
         if (response.ok) {
@@ -55,6 +62,10 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (error) {
+        // Ignore abort errors
+        if (error.name === 'AbortError') {
+          return;
+        }
         console.error('Auth check failed:', error);
         setUser(null);
         if (!isPublicPath) {
@@ -66,6 +77,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuth();
+
+    // Cleanup function to abort pending requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [location.pathname]);
 
   // Login with email/password
