@@ -958,22 +958,43 @@ const PerformancePage = () => {
         )}
       </Tabs>
 
-      {/* Edit Template Dialog */}
+      {/* Edit Template Dialog - Enhanced with Question Editing */}
       <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit KPI Template</DialogTitle>
-            <DialogDescription>Modify the template details</DialogDescription>
+            <DialogDescription>Modify template details and questions</DialogDescription>
           </DialogHeader>
           {editingTemplate && (
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Template Name</Label>
-                <Input
-                  value={editingTemplate.name || ''}
-                  onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                  placeholder="Template name"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Template Name</Label>
+                  <Input
+                    value={editingTemplate.name || ''}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                    placeholder="Template name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Period Type</Label>
+                  <Select
+                    value={editingTemplate.period_type || 'quarterly'}
+                    onValueChange={(v) => setEditingTemplate({ ...editingTemplate, period_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="half_yearly">Half Yearly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
@@ -981,46 +1002,338 @@ const PerformancePage = () => {
                   value={editingTemplate.description || ''}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
                   placeholder="Template description"
-                  rows={3}
+                  rows={2}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Period Type</Label>
-                <Select
-                  value={editingTemplate.period_type || 'quarterly'}
-                  onValueChange={(v) => setEditingTemplate({ ...editingTemplate, period_type: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="half_yearly">Half Yearly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {editingTemplate.questions && editingTemplate.questions.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Questions ({editingTemplate.questions.length})</Label>
-                  <div className="max-h-40 overflow-y-auto space-y-2">
-                    {editingTemplate.questions.map((q, idx) => (
-                      <div key={q.question_id || idx} className="p-2 bg-slate-50 rounded text-sm">
-                        <p className="font-medium">{q.question}</p>
-                        <p className="text-xs text-slate-500">Max Points: {q.max_points}</p>
+              
+              {/* Questions Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base">Questions ({editingTemplate.questions?.length || 0})</Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const newQuestion = {
+                        question_id: `q_${Date.now()}`,
+                        question: '',
+                        max_points: 10,
+                        answer_type: 'score',
+                        options: []
+                      };
+                      setEditingTemplate({
+                        ...editingTemplate,
+                        questions: [...(editingTemplate.questions || []), newQuestion]
+                      });
+                    }}
+                    className="gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add Question
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {(editingTemplate.questions || []).map((q, idx) => (
+                    <div key={q.question_id || idx} className="p-3 bg-slate-50 rounded-lg border space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            value={q.question}
+                            onChange={(e) => {
+                              const updated = [...editingTemplate.questions];
+                              updated[idx] = { ...updated[idx], question: e.target.value };
+                              setEditingTemplate({ ...editingTemplate, questions: updated });
+                            }}
+                            placeholder="Enter question text"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500"
+                          onClick={() => {
+                            const updated = editingTemplate.questions.filter((_, i) => i !== idx);
+                            setEditingTemplate({ ...editingTemplate, questions: updated });
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
-                    ))}
+                      
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Max Points</Label>
+                          <Input
+                            type="number"
+                            value={q.max_points}
+                            onChange={(e) => {
+                              const updated = [...editingTemplate.questions];
+                              updated[idx] = { ...updated[idx], max_points: Number(e.target.value) };
+                              setEditingTemplate({ ...editingTemplate, questions: updated });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Answer Type</Label>
+                          <Select
+                            value={q.answer_type || 'score'}
+                            onValueChange={(v) => {
+                              const updated = [...editingTemplate.questions];
+                              updated[idx] = { ...updated[idx], answer_type: v };
+                              setEditingTemplate({ ...editingTemplate, questions: updated });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="score">Score (0-Max)</SelectItem>
+                              <SelectItem value="dropdown">Dropdown Options</SelectItem>
+                              <SelectItem value="text">Text Response</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Category</Label>
+                          <Input
+                            value={q.category || ''}
+                            onChange={(e) => {
+                              const updated = [...editingTemplate.questions];
+                              updated[idx] = { ...updated[idx], category: e.target.value };
+                              setEditingTemplate({ ...editingTemplate, questions: updated });
+                            }}
+                            placeholder="e.g., Skills"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Dropdown Options */}
+                      {q.answer_type === 'dropdown' && (
+                        <div className="space-y-2 p-2 bg-white rounded border">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">Dropdown Options</Label>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-xs"
+                              onClick={() => {
+                                const updated = [...editingTemplate.questions];
+                                const options = updated[idx].options || [];
+                                options.push({ label: '', value: options.length, points: 0 });
+                                updated[idx] = { ...updated[idx], options };
+                                setEditingTemplate({ ...editingTemplate, questions: updated });
+                              }}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Add Option
+                            </Button>
+                          </div>
+                          {(q.options || []).map((opt, optIdx) => (
+                            <div key={optIdx} className="flex items-center gap-2">
+                              <Input
+                                value={opt.label}
+                                onChange={(e) => {
+                                  const updated = [...editingTemplate.questions];
+                                  updated[idx].options[optIdx] = { ...opt, label: e.target.value };
+                                  setEditingTemplate({ ...editingTemplate, questions: updated });
+                                }}
+                                placeholder="Option text"
+                                className="flex-1"
+                              />
+                              <Input
+                                type="number"
+                                value={opt.points || 0}
+                                onChange={(e) => {
+                                  const updated = [...editingTemplate.questions];
+                                  updated[idx].options[optIdx] = { ...opt, points: Number(e.target.value) };
+                                  setEditingTemplate({ ...editingTemplate, questions: updated });
+                                }}
+                                placeholder="Points"
+                                className="w-20"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-500 h-8 w-8 p-0"
+                                onClick={() => {
+                                  const updated = [...editingTemplate.questions];
+                                  updated[idx].options = updated[idx].options.filter((_, i) => i !== optIdx);
+                                  setEditingTemplate({ ...editingTemplate, questions: updated });
+                                }}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTemplate(null)}>Cancel</Button>
+            <Button onClick={handleUpdateTemplate}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fill KPI Dialog */}
+      <Dialog open={!!editingKPI} onOpenChange={() => { setEditingKPI(null); setKpiFormResponses({}); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Fill KPI Assessment</DialogTitle>
+            <DialogDescription>
+              {editingKPI?.period_type?.charAt(0).toUpperCase() + editingKPI?.period_type?.slice(1)} Review: {editingKPI?.period_start} to {editingKPI?.period_end}
+            </DialogDescription>
+          </DialogHeader>
+          {editingKPI && (
+            <div className="space-y-4 py-4">
+              {editingKPI.questions && editingKPI.questions.length > 0 ? (
+                editingKPI.questions.map((q, idx) => (
+                  <div key={q.question_id || idx} className="p-4 bg-slate-50 rounded-lg border space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900">{q.question}</p>
+                        {q.category && <p className="text-xs text-slate-500 mt-1">Category: {q.category}</p>}
+                      </div>
+                      <Badge variant="outline">Max: {q.max_points} pts</Badge>
+                    </div>
+                    
+                    {/* Answer based on type */}
+                    {q.answer_type === 'dropdown' && q.options?.length > 0 ? (
+                      <div className="space-y-2">
+                        <Label className="text-sm">Select Answer</Label>
+                        <Select
+                          value={kpiFormResponses[q.question_id]?.selected_option || ''}
+                          onValueChange={(v) => {
+                            const selectedOpt = q.options.find(o => o.label === v);
+                            setKpiFormResponses({
+                              ...kpiFormResponses,
+                              [q.question_id]: {
+                                ...kpiFormResponses[q.question_id],
+                                selected_option: v,
+                                score: selectedOpt?.points || 0
+                              }
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {q.options.map((opt, optIdx) => (
+                              <SelectItem key={optIdx} value={opt.label}>
+                                {opt.label} ({opt.points} pts)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : q.answer_type === 'text' ? (
+                      <div className="space-y-2">
+                        <Label className="text-sm">Your Response</Label>
+                        <Textarea
+                          value={kpiFormResponses[q.question_id]?.comments || ''}
+                          onChange={(e) => setKpiFormResponses({
+                            ...kpiFormResponses,
+                            [q.question_id]: {
+                              ...kpiFormResponses[q.question_id],
+                              comments: e.target.value
+                            }
+                          })}
+                          placeholder="Enter your response..."
+                          rows={2}
+                        />
+                        <div className="space-y-1">
+                          <Label className="text-sm">Score (0-{q.max_points})</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max={q.max_points}
+                            value={kpiFormResponses[q.question_id]?.score || 0}
+                            onChange={(e) => setKpiFormResponses({
+                              ...kpiFormResponses,
+                              [q.question_id]: {
+                                ...kpiFormResponses[q.question_id],
+                                score: Math.min(Number(e.target.value), q.max_points)
+                              }
+                            })}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label className="text-sm">Score (0-{q.max_points})</Label>
+                        <div className="flex items-center gap-4">
+                          <Input
+                            type="range"
+                            min="0"
+                            max={q.max_points}
+                            value={kpiFormResponses[q.question_id]?.score || 0}
+                            onChange={(e) => setKpiFormResponses({
+                              ...kpiFormResponses,
+                              [q.question_id]: {
+                                ...kpiFormResponses[q.question_id],
+                                score: Number(e.target.value)
+                              }
+                            })}
+                            className="flex-1"
+                          />
+                          <span className="w-16 text-center font-bold text-primary">
+                            {kpiFormResponses[q.question_id]?.score || 0}/{q.max_points}
+                          </span>
+                        </div>
+                        <Textarea
+                          value={kpiFormResponses[q.question_id]?.comments || ''}
+                          onChange={(e) => setKpiFormResponses({
+                            ...kpiFormResponses,
+                            [q.question_id]: {
+                              ...kpiFormResponses[q.question_id],
+                              comments: e.target.value
+                            }
+                          })}
+                          placeholder="Add comments (optional)"
+                          rows={2}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <Target className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">No questions found for this KPI template</p>
+                  <p className="text-xs text-slate-400 mt-2">Please contact HR to set up the KPI template questions</p>
+                </div>
+              )}
+              
+              {/* Score Summary */}
+              {editingKPI.questions && editingKPI.questions.length > 0 && (
+                <div className="p-4 bg-primary/5 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Current Score</span>
+                    <span className="text-xl font-bold text-primary">
+                      {(() => {
+                        const total = Object.values(kpiFormResponses).reduce((sum, r) => sum + (r.score || 0), 0);
+                        const max = editingKPI.questions.reduce((sum, q) => sum + q.max_points, 0);
+                        return max > 0 ? `${((total / max) * 100).toFixed(1)}%` : '0%';
+                      })()}
+                    </span>
                   </div>
                 </div>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingTemplate(null)}>Cancel</Button>
-            <Button onClick={handleUpdateTemplate}>Save Changes</Button>
+            <Button variant="outline" onClick={() => { setEditingKPI(null); setKpiFormResponses({}); }}>Cancel</Button>
+            <Button onClick={handleSaveKPIResponses} className="gap-1">
+              <Save className="w-4 h-4" />
+              Save Responses
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
