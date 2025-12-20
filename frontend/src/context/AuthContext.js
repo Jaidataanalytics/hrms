@@ -18,9 +18,10 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-  const abortControllerRef = useRef(null);
+  const isCheckingAuth = useRef(false);
+  const hasCheckedAuth = useRef(false);
 
-  // Check authentication status on mount
+  // Check authentication status on mount (only once)
   useEffect(() => {
     // Skip auth check if we're on public routes or processing session_id
     const publicPaths = ['/', '/login', '/register'];
@@ -36,25 +37,35 @@ export const AuthProvider = ({ children }) => {
     if (location.state?.user) {
       setUser(location.state.user);
       setLoading(false);
+      hasCheckedAuth.current = true;
       return;
     }
 
-    // Cancel any pending requests
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    // Prevent multiple simultaneous auth checks
+    if (isCheckingAuth.current) {
+      return;
     }
-    abortControllerRef.current = new AbortController();
+
+    // If we already have a user or have checked, don't check again on route changes
+    if (user || (hasCheckedAuth.current && isPublicPath)) {
+      setLoading(false);
+      return;
+    }
 
     const checkAuth = async () => {
+      isCheckingAuth.current = true;
+      
       try {
         const response = await fetch(`${API_URL}/auth/me`, {
           credentials: 'include',
-          signal: abortControllerRef.current.signal
         });
         
         if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
+          const text = await response.text();
+          if (text) {
+            const userData = JSON.parse(text);
+            setUser(userData);
+          }
         } else {
           setUser(null);
           if (!isPublicPath) {
@@ -62,10 +73,6 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        // Ignore abort errors
-        if (error.name === 'AbortError') {
-          return;
-        }
         console.error('Auth check failed:', error);
         setUser(null);
         if (!isPublicPath) {
@@ -73,18 +80,13 @@ export const AuthProvider = ({ children }) => {
         }
       } finally {
         setLoading(false);
+        isCheckingAuth.current = false;
+        hasCheckedAuth.current = true;
       }
     };
 
     checkAuth();
-
-    // Cleanup function to abort pending requests
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [location.pathname]);
+  }, [location.pathname, user]);
 
   // Login with email/password
   const login = async (email, password) => {
