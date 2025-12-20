@@ -520,9 +520,9 @@ const PerformancePage = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        {kpi.final_score && (
+                        {kpi.final_score !== undefined && kpi.final_score !== null && (
                           <div className="text-right">
-                            <p className="text-lg font-bold text-primary">{kpi.final_score.toFixed(1)}</p>
+                            <p className="text-lg font-bold text-primary">{kpi.final_score.toFixed(1)}%</p>
                             <p className="text-xs text-slate-500">Score</p>
                           </div>
                         )}
@@ -530,9 +530,15 @@ const PerformancePage = () => {
                           {kpi.status}
                         </Badge>
                         {kpi.status === 'draft' && (
-                          <Button size="sm" onClick={() => handleSubmitKPI(kpi.kpi_id)}>
-                            Submit
-                          </Button>
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => handleEditKPI(kpi)} className="gap-1">
+                              <Edit className="w-3 h-3" />
+                              Fill
+                            </Button>
+                            <Button size="sm" onClick={() => handleSubmitKPI(kpi.kpi_id)}>
+                              Submit
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
