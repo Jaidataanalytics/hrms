@@ -164,13 +164,21 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ session_id: sessionId }),
       });
 
-      const data = await response.json();
+      // Read as text first to avoid body stream issues
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Invalid server response');
+      }
       
       if (!response.ok) {
         throw new Error(data.detail || 'Google authentication failed');
       }
 
       setUser(data);
+      hasCheckedAuth.current = true;
       
       return data;
     } catch (error) {
