@@ -453,6 +453,7 @@ const PerformancePage = () => {
         <TabsList className="bg-white border">
           <TabsTrigger value="kpi" data-testid="tab-kpi">My KPI</TabsTrigger>
           <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
+          {canViewTeam && <TabsTrigger value="team" data-testid="tab-team">Team Performance</TabsTrigger>}
           {isHR && <TabsTrigger value="templates" data-testid="tab-templates">Templates</TabsTrigger>}
         </TabsList>
 
