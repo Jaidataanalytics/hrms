@@ -96,12 +96,15 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      // Clone response before reading to avoid "body stream already read" error
+      const responseClone = response.clone();
       
       if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
+        const errorData = await responseClone.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Login failed');
       }
 
+      const data = await response.json();
       setUser(data.user);
       
       // Store token for API calls
