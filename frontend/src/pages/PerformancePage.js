@@ -81,19 +81,46 @@ const PerformancePage = () => {
 
   const fetchData = async () => {
     try {
-      const [templatesRes, kpisRes, goalsRes] = await Promise.all([
+      const promises = [
         fetch(`${API_URL}/performance/templates`, { credentials: 'include' }),
         fetch(`${API_URL}/performance/my-kpi`, { credentials: 'include' }),
         fetch(`${API_URL}/performance/goals`, { credentials: 'include' })
-      ]);
+      ];
+      
+      // Fetch team performance for HR/Managers
+      if (canViewTeam) {
+        promises.push(fetch(`${API_URL}/performance/team-performance`, { credentials: 'include' }));
+      }
+
+      const responses = await Promise.all(promises);
+      const [templatesRes, kpisRes, goalsRes, teamRes] = responses;
 
       if (templatesRes.ok) setTemplates(await templatesRes.json());
       if (kpisRes.ok) setMyKpis(await kpisRes.json());
       if (goalsRes.ok) setGoals(await goalsRes.json());
+      if (teamRes && teamRes.ok) setTeamPerformance(await teamRes.json());
     } catch (error) {
       console.error('Error fetching performance data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEmployeePerformance = async (employeeId) => {
+    setLoadingEmployeePerf(true);
+    try {
+      const response = await fetch(`${API_URL}/performance/employee-performance/${employeeId}`, { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setEmployeePerformance(data);
+        setSelectedEmployee(employeeId);
+      } else {
+        toast.error('Failed to fetch employee performance');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch employee performance');
+    } finally {
+      setLoadingEmployeePerf(false);
     }
   };
 
