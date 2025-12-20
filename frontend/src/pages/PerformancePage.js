@@ -185,6 +185,77 @@ const PerformancePage = () => {
     }
   };
 
+  const handleEditKPI = async (kpi) => {
+    // Fetch template questions if we have a template_id
+    let questions = [];
+    if (kpi.template_id) {
+      try {
+        const response = await fetch(`${API_URL}/performance/templates/${kpi.template_id}`, { credentials: 'include' });
+        if (response.ok) {
+          const template = await response.json();
+          questions = template.questions || [];
+        }
+      } catch (error) {
+        console.error('Error fetching template:', error);
+      }
+    }
+    
+    // Initialize responses from existing KPI responses or empty
+    const existingResponses = kpi.responses || [];
+    const initialResponses = {};
+    questions.forEach((q, idx) => {
+      const existingResponse = existingResponses.find(r => r.question_id === q.question_id);
+      initialResponses[q.question_id] = existingResponse ? {
+        score: existingResponse.score || 0,
+        comments: existingResponse.comments || '',
+        selected_option: existingResponse.selected_option || ''
+      } : { score: 0, comments: '', selected_option: '' };
+    });
+    
+    setEditingKPI({ ...kpi, questions });
+    setKpiFormResponses(initialResponses);
+  };
+
+  const handleSaveKPIResponses = async () => {
+    if (!editingKPI) return;
+    
+    // Build responses array
+    const responses = editingKPI.questions.map(q => ({
+      question_id: q.question_id,
+      question: q.question,
+      score: kpiFormResponses[q.question_id]?.score || 0,
+      max_points: q.max_points,
+      comments: kpiFormResponses[q.question_id]?.comments || '',
+      selected_option: kpiFormResponses[q.question_id]?.selected_option || ''
+    }));
+    
+    // Calculate total score
+    const totalScore = responses.reduce((sum, r) => sum + r.score, 0);
+    const maxScore = responses.reduce((sum, r) => sum + r.max_points, 0);
+    const finalScore = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+    
+    try {
+      const response = await fetch(`${API_URL}/performance/kpi/${editingKPI.kpi_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ responses, final_score: finalScore })
+      });
+      
+      if (response.ok) {
+        toast.success('KPI responses saved');
+        setEditingKPI(null);
+        setKpiFormResponses({});
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to save responses');
+      }
+    } catch (error) {
+      toast.error('Failed to save KPI responses');
+    }
+  };
+
   const handleSubmitKPI = async (kpiId) => {
     try {
       const response = await fetch(`${API_URL}/performance/kpi/${kpiId}/submit`, {
