@@ -96,15 +96,13 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      // Clone response before reading to avoid "body stream already read" error
-      const responseClone = response.clone();
+      // Read body once
+      const data = await response.json();
       
       if (!response.ok) {
-        const errorData = await responseClone.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Login failed');
+        throw new Error(data.detail || 'Login failed');
       }
 
-      const data = await response.json();
       setUser(data.user);
       
       // Store token for API calls
@@ -112,6 +110,10 @@ export const AuthProvider = ({ children }) => {
       
       return data;
     } catch (error) {
+      // Handle network errors or JSON parse errors
+      if (error.name === 'SyntaxError') {
+        throw new Error('Server error - please try again');
+      }
       throw error;
     }
   };
@@ -126,17 +128,24 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ name, email, password }),
       });
 
-      // Clone response before reading to avoid "body stream already read" error
-      const responseClone = response.clone();
+      // Read body once
+      const data = await response.json();
       
       if (!response.ok) {
-        const errorData = await responseClone.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Registration failed');
+        throw new Error(data.detail || 'Registration failed');
       }
 
-      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('access_token', data.access_token);
+      
+      return data;
+    } catch (error) {
+      if (error.name === 'SyntaxError') {
+        throw new Error('Server error - please try again');
+      }
+      throw error;
+    }
+  };
       
       return data;
     } catch (error) {
