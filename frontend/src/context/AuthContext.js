@@ -98,24 +98,25 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      // Read body once
-      const data = await response.json();
+      // Read as text first to avoid body stream issues
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Invalid server response');
+      }
       
       if (!response.ok) {
         throw new Error(data.detail || 'Login failed');
       }
 
       setUser(data.user);
-      
-      // Store token for API calls
       localStorage.setItem('access_token', data.access_token);
+      hasCheckedAuth.current = true;
       
       return data;
     } catch (error) {
-      // Handle network errors or JSON parse errors
-      if (error.name === 'SyntaxError') {
-        throw new Error('Server error - please try again');
-      }
       throw error;
     }
   };
@@ -130,8 +131,14 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ name, email, password }),
       });
 
-      // Read body once
-      const data = await response.json();
+      // Read as text first to avoid body stream issues
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Invalid server response');
+      }
       
       if (!response.ok) {
         throw new Error(data.detail || 'Registration failed');
@@ -139,12 +146,10 @@ export const AuthProvider = ({ children }) => {
 
       setUser(data.user);
       localStorage.setItem('access_token', data.access_token);
+      hasCheckedAuth.current = true;
       
       return data;
     } catch (error) {
-      if (error.name === 'SyntaxError') {
-        throw new Error('Server error - please try again');
-      }
       throw error;
     }
   };
