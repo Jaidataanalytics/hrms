@@ -467,15 +467,28 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     }
     await db.user_sessions.insert_one(session_doc)
     
-    # Set cookie
+    # Set cookie - detect if running over HTTPS
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=is_secure,
+        samesite="lax" if not is_secure else "none",
         path="/",
-        max_age=7*24*60*60
+        max_age=7*24*60*60  # 7 days
+    )
+    
+    # Also set the JWT token as a cookie for redundancy
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax" if not is_secure else "none",
+        path="/",
+        max_age=7*24*60*60  # 7 days
     )
     
     user_response = UserResponse(
