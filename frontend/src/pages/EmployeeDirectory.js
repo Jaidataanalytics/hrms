@@ -66,6 +66,47 @@ const EmployeeDirectory = () => {
     employment_type: 'management'
   });
 
+  const handleExport = () => {
+    try {
+      // Prepare CSV data
+      const headers = ['Employee Code', 'First Name', 'Last Name', 'Email', 'Phone', 'Department', 'Designation', 'Employment Type', 'Status', 'Join Date'];
+      
+      const csvData = filteredEmployees.map(emp => [
+        emp.employee_code || emp.employee_id,
+        emp.first_name || '',
+        emp.last_name || '',
+        emp.email || '',
+        emp.phone || '',
+        emp.department || '',
+        emp.designation || '',
+        emp.employment_type || '',
+        emp.status || 'active',
+        emp.join_date || ''
+      ]);
+      
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `employees_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Exported ${filteredEmployees.length} employees`);
+    } catch (error) {
+      toast.error('Failed to export employees');
+    }
+  };
+
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
   useEffect(() => {
