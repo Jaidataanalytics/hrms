@@ -630,7 +630,45 @@ async def logout(request: Request, response: Response):
         await db.user_sessions.delete_one({"session_token": session_token})
     
     response.delete_cookie(key="session_token", path="/")
+    response.delete_cookie(key="access_token", path="/")
     return {"message": "Logged out successfully"}
+
+
+@api_router.post("/auth/refresh")
+async def refresh_token(request: Request, response: Response):
+    """Refresh the authentication token to extend session"""
+    try:
+        user = await get_current_user(request)
+        
+        # Create new JWT token
+        token = create_jwt_token(user["user_id"], user["email"], user.get("role", "employee"))
+        
+        # Update session expiry
+        session_token = request.cookies.get("session_token")
+        if session_token:
+            await db.user_sessions.update_one(
+                {"session_token": session_token},
+                {"$set": {"expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()}}
+            )
+        
+        # Detect if running over HTTPS
+        is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+        
+        # Set new access token cookie
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=is_secure,
+            samesite="lax" if not is_secure else "none",
+            path="/",
+            max_age=7*24*60*60
+        )
+        
+        return {"access_token": token, "message": "Token refreshed"}
+    except:
+        raise HTTPException(status_code=401, detail="Unable to refresh token")
+
 
 # ==================== EMPLOYEE ROUTES ====================
 
