@@ -25,7 +25,7 @@ db = client[os.environ['DB_NAME']]
 # JWT Configuration
 JWT_SECRET = os.environ.get('JWT_SECRET', 'sharda-hr-secret-key-change-in-production')
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRY_HOURS = 24
+JWT_EXPIRY_HOURS = 168  # 7 days for better UX
 
 # Create the main app
 app = FastAPI(title="Sharda HR API", version="1.0.0")
