@@ -3,6 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
+// Token refresh interval (every 30 minutes)
+const TOKEN_REFRESH_INTERVAL = 30 * 60 * 1000;
+
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -33,6 +36,45 @@ export const AuthProvider = ({ children }) => {
   // Refs to prevent race conditions
   const authCheckInProgress = useRef(false);
   const initialCheckDone = useRef(false);
+  const refreshIntervalRef = useRef(null);
+
+  // Refresh token to extend session
+  const refreshToken = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await safeParseJson(response);
+        if (data?.access_token) {
+          localStorage.setItem('access_token', data.access_token);
+        }
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+    }
+  }, [user]);
+
+  // Set up automatic token refresh
+  useEffect(() => {
+    if (user) {
+      // Refresh immediately when user logs in
+      refreshToken();
+      
+      // Set up interval for periodic refresh
+      refreshIntervalRef.current = setInterval(refreshToken, TOKEN_REFRESH_INTERVAL);
+      
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+        }
+      };
+    }
+  }, [user, refreshToken]);
 
   // Check authentication status
   const checkAuth = useCallback(async (forceCheck = false) => {
