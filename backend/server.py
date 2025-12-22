@@ -334,6 +334,7 @@ def decode_jwt_token(token: str) -> dict:
 async def get_current_user(request: Request) -> dict:
     # Check cookie first, then Authorization header
     session_token = request.cookies.get("session_token")
+    access_token_cookie = request.cookies.get("access_token")
     
     if session_token:
         # Verify session token from Google OAuth
@@ -348,6 +349,16 @@ async def get_current_user(request: Request) -> dict:
                 user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
                 if user:
                     return user
+    
+    # Check access_token cookie (JWT)
+    if access_token_cookie:
+        try:
+            payload = decode_jwt_token(access_token_cookie)
+            user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
+            if user:
+                return user
+        except:
+            pass  # Token invalid, try other methods
     
     # Check Authorization header for JWT
     auth_header = request.headers.get("Authorization")
