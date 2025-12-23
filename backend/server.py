@@ -1624,6 +1624,10 @@ from routes.labour import router as labour_router
 from routes.user_management import router as user_management_router
 from routes.training import router as training_router
 from routes.travel import router as travel_router
+from routes.data_management import router as data_management_router, set_db as set_data_management_db
+
+# Set database for data management
+set_data_management_db(db)
 
 api_router.include_router(payroll_router)
 api_router.include_router(performance_router)
@@ -1639,6 +1643,7 @@ api_router.include_router(labour_router)
 api_router.include_router(user_management_router)
 api_router.include_router(training_router)
 api_router.include_router(travel_router)
+api_router.include_router(data_management_router)
 
 # Include the router in the main app (after all sub-routers are added)
 app.include_router(api_router)
