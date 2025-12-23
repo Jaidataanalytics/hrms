@@ -20,9 +20,9 @@ class DataManagementAPITester:
             "email": "admin@shardahr.com",
             "password": "Admin@123"
         }
-        self.template_id = None
-        self.kpi_id = None
-        self.goal_id = None
+        self.data_stats = []
+        self.departments = []
+        self.employees = []
 
     def log_test(self, name, success, details=""):
         """Log test results"""
