@@ -508,7 +508,7 @@ const DataManagementPage = () => {
                     <SelectValue placeholder="All Employees" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Employees</SelectItem>
+                    <SelectItem value="all">All Employees</SelectItem>
                     {employees.map((e) => (
                       <SelectItem key={e.employee_id} value={e.employee_id}>
                         {e.name} ({e.code})
