@@ -56,7 +56,12 @@ async def download_employee_template(request: Request):
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=employee_import_template.csv"}
+        headers={
+            "Content-Disposition": "attachment; filename=employee_import_template.csv",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
     )
 
 
