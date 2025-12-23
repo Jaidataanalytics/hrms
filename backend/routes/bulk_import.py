@@ -84,7 +84,12 @@ async def download_attendance_template(request: Request):
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=attendance_import_template.csv"}
+        headers={
+            "Content-Disposition": "attachment; filename=attendance_import_template.csv",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
     )
 
 
