@@ -76,9 +76,9 @@ const DataManagementPage = () => {
   const [filters, setFilters] = useState({
     date_from: '',
     date_to: '',
-    department: '',
-    employee_id: '',
-    status: ''
+    department: 'all',
+    employee_id: 'all',
+    status: 'all'
   });
 
   const isAuthorized = user?.role === 'super_admin' || user?.role === 'hr_admin';
