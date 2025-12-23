@@ -122,7 +122,7 @@ const DataManagementPage = () => {
 
   const openBulkDeleteDialog = (dataType) => {
     setCurrentDataType(dataType);
-    setFilters({ date_from: '', date_to: '', department: '', employee_id: '', status: '' });
+    setFilters({ date_from: '', date_to: '', department: 'all', employee_id: 'all', status: 'all' });
     setDeleteType('soft');
     setConfirmStep(1);
     setShowBulkDeleteDialog(true);
