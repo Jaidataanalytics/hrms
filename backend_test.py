@@ -259,8 +259,8 @@ class DataManagementAPITester:
             return False
 
     def run_all_tests(self):
-        """Run all KPI-related API tests"""
-        print("🚀 Starting Sharda HR HRMS KPI API Testing")
+        """Run all Data Management API tests"""
+        print("🚀 Starting Sharda HR HRMS Data Management API Testing")
         print("=" * 60)
         
         # Authentication
@@ -268,22 +268,19 @@ class DataManagementAPITester:
             print("❌ Authentication failed - stopping tests")
             return False
         
-        print("\n📋 Testing KPI Templates...")
-        self.test_list_templates()
-        self.test_create_template()
-        self.test_get_template()
-        self.test_update_template()
+        print("\n📊 Testing Data Management Core APIs...")
+        self.test_data_stats()
+        self.test_departments_list()
+        self.test_employees_list()
         
-        print("\n📊 Testing Employee KPIs...")
-        self.test_create_kpi()
-        self.test_fill_kpi_responses()
-        self.test_submit_kpi()
-        self.test_my_kpis()
+        print("\n🗑️ Testing Delete Operations...")
+        self.test_bulk_delete_with_filters()
+        self.test_restore_soft_deleted()
         
-        print("\n🎯 Testing Goals...")
-        self.test_create_goal()
-        self.test_update_goal_progress()
-        self.test_list_goals()
+        print("\n🔒 Testing Validation & Security...")
+        self.test_delete_all_type_validation()
+        self.test_delete_everything_validation()
+        self.test_unauthorized_access()
         
         # Summary
         print("\n" + "=" * 60)
@@ -292,7 +289,7 @@ class DataManagementAPITester:
         print(f"✅ Success Rate: {success_rate:.1f}%")
         
         if success_rate >= 80:
-            print("🎉 Backend APIs are working well!")
+            print("🎉 Data Management APIs are working well!")
             return True
         else:
             print("⚠️  Some backend issues detected")
@@ -300,7 +297,7 @@ class DataManagementAPITester:
 
 def main():
     """Main test execution"""
-    tester = KPIAPITester()
+    tester = DataManagementAPITester()
     success = tester.run_all_tests()
     return 0 if success else 1
 
