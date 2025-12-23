@@ -559,9 +559,9 @@ const DataManagementPage = () => {
                 <p><strong>Delete Type:</strong> {deleteType === 'hard' ? 'Permanent (Unrecoverable)' : 'Soft (Recoverable)'}</p>
                 {filters.date_from && <p><strong>From:</strong> {filters.date_from}</p>}
                 {filters.date_to && <p><strong>To:</strong> {filters.date_to}</p>}
-                {filters.department && <p><strong>Department:</strong> {filters.department}</p>}
-                {filters.employee_id && <p><strong>Employee:</strong> {employees.find(e => e.employee_id === filters.employee_id)?.name}</p>}
-                {filters.status && <p><strong>Status:</strong> {filters.status}</p>}
+                {filters.department && filters.department !== 'all' && <p><strong>Department:</strong> {filters.department}</p>}
+                {filters.employee_id && filters.employee_id !== 'all' && <p><strong>Employee:</strong> {employees.find(e => e.employee_id === filters.employee_id)?.name}</p>}
+                {filters.status && filters.status !== 'all' && <p><strong>Status:</strong> {filters.status}</p>}
               </div>
             </div>
           )}
