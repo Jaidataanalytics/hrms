@@ -29,6 +29,7 @@ import ReportBuilderPage from "./pages/ReportBuilderPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import TrainingPage from "./pages/TrainingPage";
 import TravelPage from "./pages/TravelPage";
+import DataManagementPage from "./pages/DataManagementPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -125,6 +126,7 @@ function AppRouter() {
         <Route path="user-management" element={<UserManagementPage />} />
         <Route path="training" element={<TrainingPage />} />
         <Route path="travel" element={<TravelPage />} />
+        <Route path="data-management" element={<DataManagementPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
