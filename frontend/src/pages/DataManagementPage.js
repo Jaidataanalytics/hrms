@@ -143,6 +143,14 @@ const DataManagementPage = () => {
 
     setProcessing(true);
     try {
+      // Process filters to convert "all" values to empty strings
+      const processedFilters = {
+        ...filters,
+        department: filters.department === 'all' ? '' : filters.department,
+        employee_id: filters.employee_id === 'all' ? '' : filters.employee_id,
+        status: filters.status === 'all' ? '' : filters.status
+      };
+      
       const response = await fetch(`${API_URL}/data-management/bulk-delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,7 +158,7 @@ const DataManagementPage = () => {
         body: JSON.stringify({
           data_type: currentDataType,
           delete_type: deleteType,
-          filters: filters
+          filters: processedFilters
         })
       });
 
