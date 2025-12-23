@@ -40,7 +40,8 @@ import {
   PieChart,
   UserCog,
   GraduationCap,
-  Plane
+  Plane,
+  Database
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -104,6 +105,7 @@ const DashboardLayout = () => {
     { name: 'Bulk Import', path: '/dashboard/import', icon: FileText },
     { name: 'Master Setup', path: '/dashboard/master-setup', icon: Building2 },
     { name: 'User Management', path: '/dashboard/user-management', icon: UserCog },
+    { name: 'Data Management', path: '/dashboard/data-management', icon: Database },
   ];
 
   const isActive = (path, exact = false) => {
