@@ -1646,6 +1646,7 @@ api_router.include_router(user_management_router)
 api_router.include_router(training_router)
 api_router.include_router(travel_router)
 api_router.include_router(data_management_router)
+api_router.include_router(biometric_router)
 
 # Include the router in the main app (after all sub-routers are added)
 app.include_router(api_router)
