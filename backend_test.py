@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend API Testing for Sharda HR HRMS - KPI Performance Module
-Tests all KPI-related endpoints including templates, employee KPIs, and goals
+Backend API Testing for Sharda HR HRMS - Data Management Module
+Tests all data management endpoints including stats, bulk delete, restore operations
 """
 
 import requests
@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timedelta
 import uuid
 
-class KPIAPITester:
+class DataManagementAPITester:
     def __init__(self, base_url="https://sharda-hrms-bugs.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
