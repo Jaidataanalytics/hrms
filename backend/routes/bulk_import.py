@@ -379,5 +379,101 @@ async def export_employees(request: Request):
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=employees_export_{datetime.now().strftime('%Y%m%d')}.csv"}
+        headers={
+            "Content-Disposition": f"attachment; filename=employees_export_{datetime.now().strftime('%Y%m%d')}.csv",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@router.get("/export/attendance")
+async def export_attendance(request: Request):
+    """Export attendance records to CSV"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get last 30 days of attendance
+    from datetime import timedelta
+    thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    
+    attendance = await db.attendance.find(
+        {"date": {"$gte": thirty_days_ago}}, 
+        {"_id": 0}
+    ).to_list(50000)
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    headers = ["employee_id", "date", "first_in", "last_out", "status", "total_hours", "is_late", "remarks"]
+    writer.writerow(headers)
+    
+    for record in attendance:
+        writer.writerow([record.get(h, "") for h in headers])
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=attendance_export_{datetime.now().strftime('%Y%m%d')}.csv",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@router.get("/export/salary")
+async def export_salary(request: Request):
+    """Export salary structures to CSV"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employees = await db.employees.find({"is_active": True}, {"_id": 0}).to_list(10000)
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    headers = [
+        "employee_id", "emp_code", "first_name", "last_name",
+        "ctc", "basic_salary", "hra", "special_allowance",
+        "bank_name", "bank_account_number", "ifsc_code", "pan_number", "uan_number"
+    ]
+    writer.writerow(headers)
+    
+    for emp in employees:
+        salary = emp.get("salary_info", {})
+        bank = emp.get("bank_details", {})
+        writer.writerow([
+            emp.get("employee_id", ""),
+            emp.get("emp_code", ""),
+            emp.get("first_name", ""),
+            emp.get("last_name", ""),
+            salary.get("ctc", ""),
+            salary.get("basic_salary", salary.get("basic", "")),
+            salary.get("hra", ""),
+            salary.get("special_allowance", ""),
+            bank.get("bank_name", ""),
+            bank.get("account_number", bank.get("bank_account", "")),
+            bank.get("ifsc_code", ""),
+            bank.get("pan_number", emp.get("pan_number", "")),
+            bank.get("uan_number", emp.get("uan_number", ""))
+        ])
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=salary_export_{datetime.now().strftime('%Y%m%d')}.csv",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
     )
