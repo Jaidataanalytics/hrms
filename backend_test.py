@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import uuid
 
 class KPIAPITester:
-    def __init__(self, base_url="https://sharda-hr-system.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://sharda-hrms-bugs.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.tests_run = 0
