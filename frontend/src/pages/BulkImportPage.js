@@ -3,19 +3,34 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
 import { toast } from 'sonner';
 import {
   Upload,
   Download,
-  FileSpreadsheet,
   Users,
   Clock,
   IndianRupee,
   CheckCircle2,
   AlertTriangle,
-  Loader2
+  Loader2,
+  FileWarning,
+  X
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -24,6 +39,7 @@ const BulkImportPage = () => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
+  const [showResultDialog, setShowResultDialog] = useState(false);
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin';
 
@@ -52,6 +68,29 @@ const BulkImportPage = () => {
     }
   };
 
+  // Function to generate and download error report
+  const downloadErrorReport = (type, errors) => {
+    if (!errors || errors.length === 0) return;
+
+    // Create CSV content
+    const headers = ['Row Number', 'Error Description'];
+    const csvContent = [
+      headers.join(','),
+      ...errors.map(err => `${err.row},"${err.error.replace(/"/g, '""')}"`)
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}_import_errors_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  };
+
   const handleFileUpload = async (type, event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -77,21 +116,35 @@ const BulkImportPage = () => {
       const result = await response.json();
 
       if (response.ok) {
-        setUploadResult({
+        const uploadData = {
           type,
+          typeName: importTypes.find(t => t.id === type)?.title || type,
           success: true,
           imported: result.imported,
-          errors: result.errors,
+          errors: result.errors || [],
           total: result.total_rows
-        });
-        toast.success(`Imported ${result.imported} records`);
+        };
+        
+        setUploadResult(uploadData);
+        setShowResultDialog(true);
+
+        // Auto-download error report if there are errors
+        if (result.errors && result.errors.length > 0) {
+          setTimeout(() => {
+            downloadErrorReport(type, result.errors);
+          }, 500);
+        }
       } else {
         setUploadResult({
           type,
+          typeName: importTypes.find(t => t.id === type)?.title || type,
           success: false,
-          error: result.detail || 'Import failed'
+          error: result.detail || 'Import failed',
+          imported: 0,
+          errors: [],
+          total: 0
         });
-        toast.error(result.detail || 'Import failed');
+        setShowResultDialog(true);
       }
     } catch (error) {
       toast.error('Failed to upload file');
@@ -124,6 +177,10 @@ const BulkImportPage = () => {
     } catch (error) {
       toast.error('Failed to export data');
     }
+  };
+
+  const closeDialog = () => {
+    setShowResultDialog(false);
   };
 
   if (!isHR) {
@@ -177,34 +234,6 @@ const BulkImportPage = () => {
           Export All Employees
         </Button>
       </div>
-
-      {/* Upload Result */}
-      {uploadResult && (
-        <Alert className={uploadResult.success ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}>
-          {uploadResult.success ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          ) : (
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          )}
-          <AlertTitle className={uploadResult.success ? 'text-emerald-800' : 'text-red-800'}>
-            {uploadResult.success ? 'Import Completed' : 'Import Failed'}
-          </AlertTitle>
-          <AlertDescription className={uploadResult.success ? 'text-emerald-700' : 'text-red-700'}>
-            {uploadResult.success ? (
-              <>
-                Successfully imported {uploadResult.imported} out of {uploadResult.total} records.
-                {uploadResult.errors?.length > 0 && (
-                  <span className="block mt-1">
-                    {uploadResult.errors.length} records had errors.
-                  </span>
-                )}
-              </>
-            ) : (
-              uploadResult.error
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Import Cards */}
       <div className="grid md:grid-cols-3 gap-6">
@@ -281,59 +310,129 @@ const BulkImportPage = () => {
         })}
       </div>
 
-      {/* Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-primary" />
-            Import Instructions
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-2">How to Import</h4>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-slate-600">
-                <li>Download the template CSV file for the data type you want to import</li>
-                <li>Fill in the data following the template format</li>
-                <li>Save the file as CSV (UTF-8 encoded)</li>
-                <li>Upload the file using the Upload button</li>
-                <li>Review the import results for any errors</li>
-              </ol>
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-2">Important Notes</h4>
-              <ul className="list-disc list-inside space-y-2 text-sm text-slate-600">
-                <li>First row must contain column headers</li>
-                <li>Date format: YYYY-MM-DD (e.g., 2025-01-15)</li>
-                <li>Time format: HH:MM (e.g., 09:30)</li>
-                <li>Use department/designation codes, not names</li>
-                <li>Email addresses must be unique</li>
-                <li>Maximum 1000 records per upload</li>
-              </ul>
-            </div>
-          </div>
+      {/* Import Result Dialog */}
+      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {uploadResult?.success ? (
+                uploadResult?.errors?.length > 0 ? (
+                  <>
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    Import Completed with Errors
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    Import Successful
+                  </>
+                )
+              ) : (
+                <>
+                  <X className="w-5 h-5 text-red-500" />
+                  Import Failed
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {uploadResult?.typeName} import results
+            </DialogDescription>
+          </DialogHeader>
 
-          {/* Error Examples */}
-          {uploadResult?.errors?.length > 0 && (
-            <div className="mt-4 p-4 bg-red-50 rounded-lg">
-              <h4 className="font-semibold text-red-800 mb-2">Import Errors</h4>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {uploadResult.errors.slice(0, 10).map((err, idx) => (
-                  <p key={idx} className="text-sm text-red-600">
-                    Row {err.row}: {err.error}
-                  </p>
-                ))}
-                {uploadResult.errors.length > 10 && (
-                  <p className="text-sm text-red-600 font-medium">
-                    ... and {uploadResult.errors.length - 10} more errors
-                  </p>
+          <div className="py-4">
+            {uploadResult?.success ? (
+              <div className="space-y-4">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-3 bg-slate-50 rounded-lg">
+                    <p className="text-2xl font-bold text-slate-900">{uploadResult.total}</p>
+                    <p className="text-xs text-slate-500">Total Records</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600">{uploadResult.imported}</p>
+                    <p className="text-xs text-green-600">Imported</p>
+                  </div>
+                  <div className="text-center p-3 bg-red-50 rounded-lg">
+                    <p className="text-2xl font-bold text-red-600">{uploadResult.errors?.length || 0}</p>
+                    <p className="text-xs text-red-600">Errors</p>
+                  </div>
+                </div>
+
+                {/* Error Details */}
+                {uploadResult.errors?.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm text-slate-700 flex items-center gap-2">
+                        <FileWarning className="w-4 h-4 text-amber-500" />
+                        Error Details
+                      </h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={() => downloadErrorReport(uploadResult.type, uploadResult.errors)}
+                      >
+                        <Download className="w-3 h-3" />
+                        Download Error Report
+                      </Button>
+                    </div>
+                    
+                    <div className="border rounded-lg max-h-48 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-20">Row</TableHead>
+                            <TableHead>Error</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {uploadResult.errors.slice(0, 10).map((err, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-mono text-sm">{err.row}</TableCell>
+                              <TableCell className="text-sm text-red-600">{err.error}</TableCell>
+                            </TableRow>
+                          ))}
+                          {uploadResult.errors.length > 10 && (
+                            <TableRow>
+                              <TableCell colSpan={2} className="text-center text-slate-500 text-sm">
+                                ... and {uploadResult.errors.length - 10} more errors (see downloaded report)
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      Error report has been automatically downloaded
+                    </p>
+                  </div>
+                )}
+
+                {uploadResult.errors?.length === 0 && (
+                  <div className="text-center py-4 bg-green-50 rounded-lg">
+                    <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                    <p className="text-green-700 font-medium">All records imported successfully!</p>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="text-center py-6 bg-red-50 rounded-lg">
+                <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                <p className="text-red-700 font-medium">{uploadResult?.error}</p>
+                <p className="text-red-600 text-sm mt-1">Please check your file and try again</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={closeDialog}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
