@@ -143,10 +143,21 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
     decoded = content.decode('utf-8-sig')  # Handle BOM
     reader = csv.DictReader(io.StringIO(decoded))
     
-    # Get lookup data
-    departments = {d["code"]: d["department_id"] for d in await db.departments.find({}, {"_id": 0}).to_list(100)}
-    designations = {d["code"]: d["designation_id"] for d in await db.designations.find({}, {"_id": 0}).to_list(100)}
-    locations = {l["code"]: l["location_id"] for l in await db.locations.find({}, {"_id": 0}).to_list(100)}
+    # Get lookup data - handle missing fields gracefully
+    departments = {}
+    for d in await db.departments.find({}, {"_id": 0}).to_list(100):
+        if "code" in d and "department_id" in d:
+            departments[d["code"]] = d["department_id"]
+    
+    designations = {}
+    for d in await db.designations.find({}, {"_id": 0}).to_list(100):
+        if "code" in d and "designation_id" in d:
+            designations[d["code"]] = d["designation_id"]
+    
+    locations = {}
+    for l in await db.locations.find({}, {"_id": 0}).to_list(100):
+        if "code" in l and "location_id" in l:
+            locations[l["code"]] = l["location_id"]
     
     imported = 0
     errors = []
