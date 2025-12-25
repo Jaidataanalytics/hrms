@@ -669,7 +669,18 @@ async def refresh_token(request: Request, response: Response):
             value=token,
             httponly=True,
             secure=is_secure,
-            samesite="lax" if not is_secure else "none",
+            samesite="lax",
+            path="/",
+            max_age=7*24*60*60
+        )
+        
+        # Also refresh the session token cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=is_secure,
+            samesite="lax",
             path="/",
             max_age=7*24*60*60
         )
