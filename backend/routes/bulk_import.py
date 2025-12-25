@@ -1,11 +1,12 @@
 """Bulk Import API Routes"""
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 import io
 import csv
+import calendar
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
@@ -21,127 +22,291 @@ async def get_current_user(request: Request) -> dict:
     return await auth_get_user(request)
 
 
-# ==================== TEMPLATES ====================
+# ==================== EXCEL TEMPLATES ====================
 
 @router.get("/templates/employees")
 async def download_employee_template(request: Request):
-    """Download employee import template"""
+    """Download employee import template as Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    # Header row
-    headers = [
-        "first_name", "last_name", "email", "phone", "date_of_birth", "gender",
-        "address", "city", "state", "pincode",
-        "department_code", "designation_code", "location_code",
-        "employment_type", "joining_date", "reporting_manager_email"
-    ]
-    writer.writerow(headers)
-    
-    # Sample row
-    sample = [
-        "Rahul", "Sharma", "rahul.sharma@company.com", "+91 9876543210", "1990-05-15", "male",
-        "123 Main Street", "Mumbai", "Maharashtra", "400001",
-        "ENG", "SE", "HO-MUM",
-        "management", "2024-01-15", "manager@company.com"
-    ]
-    writer.writerow(sample)
-    
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=employee_import_template.csv",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
-
-
-@router.get("/templates/attendance")
-async def download_attendance_template(request: Request):
-    """Download attendance import template"""
-    user = await get_current_user(request)
-    if user.get("role") not in ["super_admin", "hr_admin"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    headers = ["employee_id", "date", "first_in", "last_out", "status"]
-    writer.writerow(headers)
-    writer.writerow(["EMP000001", "2025-01-15", "09:00", "18:00", "present"])
-    
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=attendance_import_template.csv",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Employees')
+        
+        # Header format
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#4472C4',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        headers = [
+            "emp_code", "first_name", "last_name", "email", "phone", 
+            "date_of_birth", "gender", "address", "city", "state", "pincode",
+            "department_code", "designation_code", "location_code",
+            "employment_type", "joining_date", "reporting_manager_email"
+        ]
+        
+        for col, header in enumerate(headers):
+            worksheet.write(0, col, header, header_format)
+            worksheet.set_column(col, col, 15)
+        
+        # Sample row
+        sample = [
+            "EMP001", "Rahul", "Sharma", "rahul.sharma@company.com", "+91 9876543210",
+            "1990-05-15", "male", "123 Main Street", "Mumbai", "Maharashtra", "400001",
+            "ENG", "SE", "HO-MUM", "permanent", "2024-01-15", "manager@company.com"
+        ]
+        for col, val in enumerate(sample):
+            worksheet.write(1, col, val)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=employee_import_template.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
 
 
 @router.get("/templates/salary")
 async def download_salary_template(request: Request):
-    """Download salary import template"""
+    """Download salary structure import template as Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    output = io.StringIO()
-    writer = csv.writer(output)
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Salary Structure')
+        
+        # Header formats
+        header_blue = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 
+            'border': 1, 'align': 'center'
+        })
+        header_green = workbook.add_format({
+            'bold': True, 'bg_color': '#70AD47', 'font_color': 'white', 
+            'border': 1, 'align': 'center'
+        })
+        header_orange = workbook.add_format({
+            'bold': True, 'bg_color': '#ED7D31', 'font_color': 'white', 
+            'border': 1, 'align': 'center'
+        })
+        header_red = workbook.add_format({
+            'bold': True, 'bg_color': '#C00000', 'font_color': 'white', 
+            'border': 1, 'align': 'center'
+        })
+        header_purple = workbook.add_format({
+            'bold': True, 'bg_color': '#7030A0', 'font_color': 'white', 
+            'border': 1, 'align': 'center'
+        })
+        
+        # All headers in order
+        headers = [
+            # Employee Info
+            ("Emp Code", header_blue),
+            ("Name of Employees", header_blue),
+            # Fixed Salary
+            ("BASIC", header_green),
+            ("DA", header_green),
+            ("HRA", header_green),
+            ("Conveyance", header_green),
+            ("GRADE PAY", header_green),
+            ("OTHER ALLOW", header_green),
+            ("Med./Spl. Allow", header_green),
+            ("Total Salary (FIXED)", header_green),
+            # Attendance
+            ("Work from office", header_orange),
+            ("Sunday + Holiday Leave Days", header_orange),
+            ("Leave Days", header_orange),
+            ("Work from Home @50%", header_orange),
+            # Earned (calculated columns - user fills)
+            ("Late Deduction", header_orange),
+            ("Basic+DA (Earned)", header_orange),
+            ("HRA (Earned)", header_orange),
+            ("Conveyance (Earned)", header_orange),
+            ("GRADE PAY (Earned)", header_orange),
+            ("OTHER ALLOW (Earned)", header_orange),
+            ("Med./Spl. Allow (Earned)", header_orange),
+            ("Total Earned Days", header_orange),
+            ("Total Salary Earned", header_orange),
+            # Deductions
+            ("EPF Employees", header_red),
+            ("ESI Employees", header_red),
+            ("SEWA", header_red),
+            ("Sewa Advance", header_red),
+            ("Other Deduction", header_red),
+            ("Total Deduction", header_red),
+            # Final
+            ("NET PAYABLE", header_purple),
+        ]
+        
+        for col, (header, fmt) in enumerate(headers):
+            worksheet.write(0, col, header, fmt)
+            worksheet.set_column(col, col, 18)
+        
+        # Sample row
+        sample = [
+            "EMP001", "Rahul Sharma",
+            25000, 2500, 10000, 2000, 3000, 2000, 1500, 46000,  # Fixed
+            22, 4, 2, 2,  # Attendance
+            500, 22000, 8000, 1600, 2400, 1600, 1200, 22, 36800,  # Earned
+            3000, 150, 500, 0, 0, 3650,  # Deductions
+            33150  # Net
+        ]
+        for col, val in enumerate(sample):
+            worksheet.write(1, col, val)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=salary_structure_template.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
+
+
+@router.get("/templates/attendance")
+async def download_attendance_template(request: Request, month: int = None, year: int = None):
+    """Download attendance import template as Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
     
-    headers = [
-        "employee_id", "ctc", "basic", "hra", "special_allowance",
-        "bank_name", "bank_account", "ifsc_code", "pan_number", "uan_number"
-    ]
-    writer.writerow(headers)
-    writer.writerow([
-        "EMP000001", "600000", "240000", "96000", "264000",
-        "HDFC Bank", "1234567890", "HDFC0001234", "ABCDE1234F", "100123456789"
-    ])
+    # Default to current month if not specified
+    now = datetime.now()
+    month = month or now.month
+    year = year or now.year
     
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=salary_import_template.csv",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Attendance')
+        
+        # Header format
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        day_header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#70AD47', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        weekend_header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#ED7D31', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        
+        # Get days in month
+        days_in_month = calendar.monthrange(year, month)[1]
+        
+        # Headers
+        headers = ["SL NO", "Emp Code", "Name of Employees"]
+        worksheet.write(0, 0, headers[0], header_format)
+        worksheet.write(0, 1, headers[1], header_format)
+        worksheet.write(0, 2, headers[2], header_format)
+        worksheet.set_column(0, 0, 8)
+        worksheet.set_column(1, 1, 12)
+        worksheet.set_column(2, 2, 25)
+        
+        # Day columns
+        for day in range(1, days_in_month + 1):
+            col = day + 2
+            # Check if weekend (Sunday)
+            date = datetime(year, month, day)
+            fmt = weekend_header_format if date.weekday() == 6 else day_header_format
+            worksheet.write(0, col, str(day), fmt)
+            worksheet.set_column(col, col, 5)
+        
+        # Add legend row
+        legend_row = days_in_month + 5
+        worksheet.write(legend_row, 0, "Legend:", header_format)
+        worksheet.write(legend_row, 1, "P = Present", None)
+        worksheet.write(legend_row, 2, "A = Absent", None)
+        worksheet.write(legend_row, 3, "L = Leave", None)
+        worksheet.write(legend_row, 4, "H = Holiday", None)
+        worksheet.write(legend_row, 5, "WFH = Work from Home", None)
+        
+        # Sample row
+        worksheet.write(1, 0, 1)
+        worksheet.write(1, 1, "EMP001")
+        worksheet.write(1, 2, "Rahul Sharma")
+        for day in range(1, days_in_month + 1):
+            date = datetime(year, month, day)
+            if date.weekday() == 6:  # Sunday
+                worksheet.write(1, day + 2, "H")
+            else:
+                worksheet.write(1, day + 2, "P")
+        
+        workbook.close()
+        output.seek(0)
+        
+        month_name = calendar.month_name[month]
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=attendance_template_{month_name}_{year}.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
 
 
 # ==================== IMPORTS ====================
 
 @router.post("/employees")
 async def import_employees(request: Request, file: UploadFile = File(...)):
-    """Bulk import employees from CSV"""
+    """Bulk import employees from CSV or Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported")
-    
+    filename = file.filename.lower()
     content = await file.read()
-    decoded = content.decode('utf-8-sig')  # Handle BOM
-    reader = csv.DictReader(io.StringIO(decoded))
+    
+    if filename.endswith('.xlsx'):
+        # Parse Excel
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content))
+        ws = wb.active
+        headers = [cell.value for cell in ws[1]]
+        rows = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if any(row):  # Skip empty rows
+                rows.append(dict(zip(headers, row)))
+    elif filename.endswith('.csv'):
+        # Parse CSV
+        decoded = content.decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(decoded))
+        rows = list(reader)
+    else:
+        raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
     
     # Get lookup data - handle missing fields gracefully
     departments = {}
@@ -162,37 +327,44 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
     imported = 0
     errors = []
     
-    for idx, row in enumerate(reader, start=2):
+    for idx, row in enumerate(rows, start=2):
         try:
-            # Check required fields
-            if not row.get("first_name") or not row.get("last_name") or not row.get("email"):
+            first_name = str(row.get("first_name") or "").strip()
+            last_name = str(row.get("last_name") or "").strip()
+            email = str(row.get("email") or "").strip()
+            
+            if not first_name or not last_name or not email:
                 errors.append({"row": idx, "error": "Missing required fields (first_name, last_name, email)"})
                 continue
             
             # Check for duplicate email
-            existing = await db.employees.find_one({"email": row["email"]})
+            existing = await db.employees.find_one({"email": email.lower()})
             if existing:
-                errors.append({"row": idx, "error": f"Email {row['email']} already exists"})
+                errors.append({"row": idx, "error": f"Email {email} already exists"})
                 continue
+            
+            emp_code = str(row.get("emp_code") or "").strip()
+            if not emp_code:
+                emp_code = f"EMP{str(imported + 1).zfill(5)}"
             
             employee = {
                 "employee_id": f"EMP{uuid.uuid4().hex[:8].upper()}",
-                "emp_code": f"EMP{str(imported + 1).zfill(5)}",
-                "first_name": row["first_name"].strip(),
-                "last_name": row["last_name"].strip(),
-                "email": row["email"].strip().lower(),
-                "phone": row.get("phone", "").strip() or None,
-                "date_of_birth": row.get("date_of_birth", "").strip() or None,
-                "gender": row.get("gender", "").strip().lower() or None,
-                "address": row.get("address", "").strip() or None,
-                "city": row.get("city", "").strip() or None,
-                "state": row.get("state", "").strip() or None,
-                "pincode": row.get("pincode", "").strip() or None,
-                "department_id": departments.get(row.get("department_code", "").strip()),
-                "designation_id": designations.get(row.get("designation_code", "").strip()),
-                "location_id": locations.get(row.get("location_code", "").strip()),
-                "employment_type": row.get("employment_type", "management").strip().lower(),
-                "joining_date": row.get("joining_date", "").strip() or None,
+                "emp_code": emp_code,
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email.lower(),
+                "phone": str(row.get("phone") or "").strip() or None,
+                "date_of_birth": str(row.get("date_of_birth") or "").strip() or None,
+                "gender": str(row.get("gender") or "").strip().lower() or None,
+                "address": str(row.get("address") or "").strip() or None,
+                "city": str(row.get("city") or "").strip() or None,
+                "state": str(row.get("state") or "").strip() or None,
+                "pincode": str(row.get("pincode") or "").strip() or None,
+                "department_id": departments.get(str(row.get("department_code") or "").strip()),
+                "designation_id": designations.get(str(row.get("designation_code") or "").strip()),
+                "location_id": locations.get(str(row.get("location_code") or "").strip()),
+                "employment_type": str(row.get("employment_type") or "permanent").strip().lower(),
+                "joining_date": str(row.get("joining_date") or "").strip() or None,
                 "status": "active",
                 "is_active": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -205,21 +377,8 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
         except Exception as e:
             errors.append({"row": idx, "error": str(e)})
     
-    # Log the import
-    await db.audit_logs.insert_one({
-        "audit_id": f"audit_{uuid.uuid4().hex[:12]}",
-        "action": "BULK_IMPORT",
-        "module": "employee",
-        "entity_type": "employee",
-        "entity_id": "bulk",
-        "user_id": user["user_id"],
-        "user_name": user.get("name", ""),
-        "new_value": {"imported": imported, "errors": len(errors)},
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    })
-    
     return {
-        "message": f"Import completed",
+        "message": "Import completed",
         "imported": imported,
         "errors": errors,
         "total_rows": imported + len(errors)
@@ -227,148 +386,297 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
 
 
 @router.post("/attendance")
-async def import_attendance(request: Request, file: UploadFile = File(...)):
-    """Bulk import attendance from CSV"""
+async def import_attendance(
+    request: Request, 
+    file: UploadFile = File(...),
+    month: int = Form(...),
+    year: int = Form(...)
+):
+    """Bulk import attendance from Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported")
-    
+    filename = file.filename.lower()
     content = await file.read()
-    decoded = content.decode('utf-8-sig')
-    reader = csv.DictReader(io.StringIO(decoded))
     
-    imported = 0
-    errors = []
+    if not filename.endswith('.xlsx'):
+        raise HTTPException(status_code=400, detail="Only Excel files are supported for attendance import")
     
-    for idx, row in enumerate(reader, start=2):
-        try:
-            employee_id = row.get("employee_id", "").strip()
-            date = row.get("date", "").strip()
-            
-            if not employee_id or not date:
-                errors.append({"row": idx, "error": "Missing employee_id or date"})
-                continue
-            
-            # Verify employee exists
-            employee = await db.employees.find_one({"employee_id": employee_id})
-            if not employee:
-                errors.append({"row": idx, "error": f"Employee {employee_id} not found"})
-                continue
-            
-            attendance = {
-                "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
-                "employee_id": employee_id,
-                "date": date,
-                "first_in": row.get("first_in", "").strip() or None,
-                "last_out": row.get("last_out", "").strip() or None,
-                "status": row.get("status", "present").strip().lower(),
-                "punches": [],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            
-            # Calculate total hours
-            if attendance["first_in"] and attendance["last_out"]:
-                try:
-                    from datetime import datetime as dt
-                    t1 = dt.strptime(attendance["first_in"], "%H:%M")
-                    t2 = dt.strptime(attendance["last_out"], "%H:%M")
-                    attendance["total_hours"] = round((t2 - t1).seconds / 3600, 2)
-                except:
-                    pass
-            
-            # Upsert attendance
-            await db.attendance.update_one(
-                {"employee_id": employee_id, "date": date},
-                {"$set": attendance},
-                upsert=True
-            )
-            imported += 1
-            
-        except Exception as e:
-            errors.append({"row": idx, "error": str(e)})
-    
-    return {
-        "message": f"Import completed",
-        "imported": imported,
-        "errors": errors,
-        "total_rows": imported + len(errors)
-    }
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content))
+        ws = wb.active
+        
+        # Get headers (first row)
+        headers = [cell.value for cell in ws[1]]
+        
+        # Find emp_code column index
+        emp_code_idx = None
+        name_idx = None
+        for i, h in enumerate(headers):
+            if h and "emp" in str(h).lower() and "code" in str(h).lower():
+                emp_code_idx = i
+            elif h and "name" in str(h).lower():
+                name_idx = i
+        
+        if emp_code_idx is None:
+            raise HTTPException(status_code=400, detail="Could not find 'Emp Code' column")
+        
+        days_in_month = calendar.monthrange(year, month)[1]
+        
+        imported = 0
+        errors = []
+        
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            try:
+                if not any(row):
+                    continue
+                
+                emp_code = str(row[emp_code_idx] or "").strip()
+                if not emp_code:
+                    continue
+                
+                # Find employee
+                employee = await db.employees.find_one({
+                    "$or": [
+                        {"emp_code": emp_code},
+                        {"employee_id": emp_code}
+                    ]
+                })
+                
+                if not employee:
+                    errors.append({"row": row_idx, "error": f"Employee {emp_code} not found"})
+                    continue
+                
+                employee_id = employee["employee_id"]
+                
+                # Process each day
+                for day in range(1, days_in_month + 1):
+                    col_idx = day + 2  # After SL NO, Emp Code, Name
+                    if col_idx < len(row):
+                        status_val = str(row[col_idx] or "").strip().upper()
+                        
+                        if status_val:
+                            date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
+                            
+                            # Map status codes
+                            status_map = {
+                                "P": "present",
+                                "A": "absent",
+                                "L": "leave",
+                                "H": "holiday",
+                                "WFH": "wfh",
+                                "HD": "half_day"
+                            }
+                            status = status_map.get(status_val, status_val.lower())
+                            
+                            attendance_doc = {
+                                "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
+                                "employee_id": employee_id,
+                                "date": date_str,
+                                "status": status,
+                                "is_wfh": status == "wfh",
+                                "source": "bulk_import",
+                                "created_at": datetime.now(timezone.utc).isoformat()
+                            }
+                            
+                            # Upsert
+                            await db.attendance.update_one(
+                                {"employee_id": employee_id, "date": date_str},
+                                {"$set": attendance_doc},
+                                upsert=True
+                            )
+                
+                imported += 1
+                
+            except Exception as e:
+                errors.append({"row": row_idx, "error": str(e)})
+        
+        return {
+            "message": "Attendance import completed",
+            "imported": imported,
+            "errors": errors,
+            "total_rows": imported + len(errors),
+            "month": month,
+            "year": year
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 
 @router.post("/salary")
 async def import_salary(request: Request, file: UploadFile = File(...)):
-    """Bulk import salary structures from CSV"""
+    """Bulk import salary structures from Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported")
-    
+    filename = file.filename.lower()
     content = await file.read()
-    decoded = content.decode('utf-8-sig')
-    reader = csv.DictReader(io.StringIO(decoded))
+    
+    if filename.endswith('.xlsx'):
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content))
+        ws = wb.active
+        headers = [str(cell.value or "").strip() for cell in ws[1]]
+        rows = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if any(row):
+                rows.append(dict(zip(headers, row)))
+    elif filename.endswith('.csv'):
+        decoded = content.decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(decoded))
+        rows = list(reader)
+    else:
+        raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
     
     imported = 0
     errors = []
     
-    for idx, row in enumerate(reader, start=2):
+    # Column mapping (template column name -> internal field)
+    column_map = {
+        "Emp Code": "emp_code",
+        "emp_code": "emp_code",
+        "Name of Employees": "name",
+        "BASIC": "basic",
+        "DA": "da",
+        "HRA": "hra",
+        "Conveyance": "conveyance",
+        "GRADE PAY": "grade_pay",
+        "OTHER ALLOW": "other_allowance",
+        "Med./Spl. Allow": "medical_allowance",
+        "Total Salary (FIXED)": "total_fixed",
+        "Work from office": "work_from_office_days",
+        "Sunday + Holiday Leave Days": "holiday_days",
+        "Leave Days": "leave_days",
+        "Work from Home @50%": "wfh_days",
+        "Late Deduction": "late_deduction",
+        "Basic+DA (Earned)": "basic_da_earned",
+        "HRA (Earned)": "hra_earned",
+        "Conveyance (Earned)": "conveyance_earned",
+        "GRADE PAY (Earned)": "grade_pay_earned",
+        "OTHER ALLOW (Earned)": "other_allowance_earned",
+        "Med./Spl. Allow (Earned)": "medical_allowance_earned",
+        "Total Earned Days": "total_earned_days",
+        "Total Salary Earned": "total_earned",
+        "EPF Employees": "epf",
+        "ESI Employees": "esi",
+        "SEWA": "sewa",
+        "Sewa Advance": "sewa_advance",
+        "Other Deduction": "other_deduction",
+        "Total Deduction": "total_deduction",
+        "NET PAYABLE": "net_payable"
+    }
+    
+    def get_val(row, key, default=0):
+        """Get value from row, handling different column names"""
+        for col_name, field_name in column_map.items():
+            if field_name == key and col_name in row:
+                val = row[col_name]
+                if val is None or val == "":
+                    return default
+                try:
+                    return float(val) if isinstance(default, (int, float)) else str(val)
+                except:
+                    return default
+        return row.get(key, default)
+    
+    for idx, row in enumerate(rows, start=2):
         try:
-            employee_id = row.get("employee_id", "").strip()
-            
-            if not employee_id:
-                errors.append({"row": idx, "error": "Missing employee_id"})
+            emp_code = get_val(row, "emp_code", "")
+            if not emp_code:
+                errors.append({"row": idx, "error": "Missing Emp Code"})
                 continue
             
-            # Verify employee exists
-            employee = await db.employees.find_one({"employee_id": employee_id})
+            # Find employee
+            employee = await db.employees.find_one({
+                "$or": [
+                    {"emp_code": str(emp_code)},
+                    {"employee_id": str(emp_code)}
+                ]
+            })
+            
             if not employee:
-                errors.append({"row": idx, "error": f"Employee {employee_id} not found"})
+                errors.append({"row": idx, "error": f"Employee {emp_code} not found"})
                 continue
             
-            ctc = float(row.get("ctc", 0) or 0)
-            basic = float(row.get("basic", ctc * 0.5) or ctc * 0.5)
-            hra = float(row.get("hra", basic * 0.4) or basic * 0.4)
-            special = float(row.get("special_allowance", ctc - basic - hra) or ctc - basic - hra)
+            employee_id = employee["employee_id"]
             
-            salary = {
+            # Build salary structure
+            salary_doc = {
                 "salary_id": f"sal_{uuid.uuid4().hex[:12]}",
                 "employee_id": employee_id,
+                "emp_code": str(emp_code),
+                "employee_name": get_val(row, "name", f"{employee.get('first_name', '')} {employee.get('last_name', '')}"),
+                
+                # Fixed Components
+                "fixed_components": {
+                    "basic": get_val(row, "basic", 0),
+                    "da": get_val(row, "da", 0),
+                    "hra": get_val(row, "hra", 0),
+                    "conveyance": get_val(row, "conveyance", 0),
+                    "grade_pay": get_val(row, "grade_pay", 0),
+                    "other_allowance": get_val(row, "other_allowance", 0),
+                    "medical_allowance": get_val(row, "medical_allowance", 0),
+                },
+                "total_fixed": get_val(row, "total_fixed", 0),
+                
+                # Attendance
+                "attendance": {
+                    "work_from_office_days": get_val(row, "work_from_office_days", 0),
+                    "holiday_days": get_val(row, "holiday_days", 0),
+                    "leave_days": get_val(row, "leave_days", 0),
+                    "wfh_days": get_val(row, "wfh_days", 0),
+                },
+                
+                # Earned
+                "earned_components": {
+                    "basic_da": get_val(row, "basic_da_earned", 0),
+                    "hra": get_val(row, "hra_earned", 0),
+                    "conveyance": get_val(row, "conveyance_earned", 0),
+                    "grade_pay": get_val(row, "grade_pay_earned", 0),
+                    "other_allowance": get_val(row, "other_allowance_earned", 0),
+                    "medical_allowance": get_val(row, "medical_allowance_earned", 0),
+                },
+                "late_deduction": get_val(row, "late_deduction", 0),
+                "total_earned_days": get_val(row, "total_earned_days", 0),
+                "total_earned": get_val(row, "total_earned", 0),
+                
+                # Deductions
+                "deductions": {
+                    "epf": get_val(row, "epf", 0),
+                    "esi": get_val(row, "esi", 0),
+                    "sewa": get_val(row, "sewa", 0),
+                    "sewa_advance": get_val(row, "sewa_advance", 0),
+                    "other": get_val(row, "other_deduction", 0),
+                },
+                "total_deduction": get_val(row, "total_deduction", 0),
+                
+                # Final
+                "net_payable": get_val(row, "net_payable", 0),
+                
                 "effective_from": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                "ctc": ctc,
-                "gross": ctc / 12,  # Monthly gross
-                "components": [
-                    {"name": "Basic", "code": "BASIC", "amount": basic / 12},
-                    {"name": "HRA", "code": "HRA", "amount": hra / 12},
-                    {"name": "Special Allowance", "code": "SA", "amount": special / 12}
-                ],
-                "bank_name": row.get("bank_name", "").strip() or None,
-                "bank_account": row.get("bank_account", "").strip() or None,
-                "ifsc_code": row.get("ifsc_code", "").strip() or None,
-                "pan_number": row.get("pan_number", "").strip() or None,
-                "uan_number": row.get("uan_number", "").strip() or None,
                 "is_active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }
             
-            # Deactivate existing
+            # Deactivate existing salary
             await db.employee_salaries.update_many(
                 {"employee_id": employee_id, "is_active": True},
                 {"$set": {"is_active": False}}
             )
             
-            await db.employee_salaries.insert_one(salary)
+            await db.employee_salaries.insert_one(salary_doc)
             imported += 1
             
         except Exception as e:
             errors.append({"row": idx, "error": str(e)})
     
     return {
-        "message": f"Import completed",
+        "message": "Salary import completed",
         "imported": imported,
         "errors": errors,
         "total_rows": imported + len(errors)
@@ -379,127 +687,203 @@ async def import_salary(request: Request, file: UploadFile = File(...)):
 
 @router.get("/export/employees")
 async def export_employees(request: Request):
-    """Export all employees to CSV"""
+    """Export all employees to Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     employees = await db.employees.find({"is_active": True}, {"_id": 0}).to_list(10000)
     
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    headers = [
-        "employee_id", "emp_code", "first_name", "last_name", "email", "phone",
-        "date_of_birth", "gender", "address", "city", "state", "pincode",
-        "department_id", "designation_id", "location_id",
-        "employment_type", "joining_date", "status"
-    ]
-    writer.writerow(headers)
-    
-    for emp in employees:
-        writer.writerow([emp.get(h, "") for h in headers])
-    
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename=employees_export_{datetime.now().strftime('%Y%m%d')}.csv",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Employees')
+        
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1
+        })
+        
+        headers = [
+            "employee_id", "emp_code", "first_name", "last_name", "email", "phone",
+            "date_of_birth", "gender", "address", "city", "state", "pincode",
+            "department_id", "designation_id", "location_id",
+            "employment_type", "joining_date", "status"
+        ]
+        
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_format)
+            worksheet.set_column(col, col, 15)
+        
+        for row_idx, emp in enumerate(employees, start=1):
+            for col, h in enumerate(headers):
+                worksheet.write(row_idx, col, emp.get(h, ""))
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=employees_export_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        # Fallback to CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        for emp in employees:
+            writer.writerow([emp.get(h, "") for h in headers])
+        output.seek(0)
+        
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=employees_export_{datetime.now().strftime('%Y%m%d')}.csv"}
+        )
 
 
 @router.get("/export/attendance")
-async def export_attendance(request: Request):
-    """Export attendance records to CSV"""
+async def export_attendance(request: Request, month: int = None, year: int = None):
+    """Export attendance records to Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Get last 30 days of attendance
-    from datetime import timedelta
-    thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    now = datetime.now()
+    month = month or now.month
+    year = year or now.year
     
-    attendance = await db.attendance.find(
-        {"date": {"$gte": thirty_days_ago}}, 
-        {"_id": 0}
-    ).to_list(50000)
+    # Get date range
+    start_date = f"{year}-{str(month).zfill(2)}-01"
+    days_in_month = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{str(month).zfill(2)}-{days_in_month}"
     
-    output = io.StringIO()
-    writer = csv.writer(output)
+    attendance = await db.attendance.find({
+        "date": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0}).to_list(50000)
     
-    headers = ["employee_id", "date", "first_in", "last_out", "status", "total_hours", "is_late", "remarks"]
-    writer.writerow(headers)
+    # Get employees
+    employees = await db.employees.find({"is_active": True}, {"_id": 0}).to_list(10000)
+    emp_map = {e["employee_id"]: e for e in employees}
     
-    for record in attendance:
-        writer.writerow([record.get(h, "") for h in headers])
-    
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename=attendance_export_{datetime.now().strftime('%Y%m%d')}.csv",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Attendance')
+        
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1, 'align': 'center'
+        })
+        
+        headers = ["SL NO", "Emp Code", "Name"] + [str(d) for d in range(1, days_in_month + 1)]
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_format)
+        
+        # Build attendance by employee
+        att_by_emp = {}
+        for att in attendance:
+            eid = att["employee_id"]
+            if eid not in att_by_emp:
+                att_by_emp[eid] = {}
+            day = int(att["date"].split("-")[2])
+            status = att.get("status", "").upper()
+            status_map = {"PRESENT": "P", "ABSENT": "A", "LEAVE": "L", "HOLIDAY": "H", "WFH": "WFH"}
+            att_by_emp[eid][day] = status_map.get(status, status[:1] if status else "")
+        
+        row_idx = 1
+        for emp in employees:
+            emp_id = emp["employee_id"]
+            worksheet.write(row_idx, 0, row_idx)
+            worksheet.write(row_idx, 1, emp.get("emp_code", emp_id))
+            worksheet.write(row_idx, 2, f"{emp.get('first_name', '')} {emp.get('last_name', '')}")
+            
+            emp_att = att_by_emp.get(emp_id, {})
+            for day in range(1, days_in_month + 1):
+                worksheet.write(row_idx, day + 2, emp_att.get(day, ""))
+            
+            row_idx += 1
+        
+        workbook.close()
+        output.seek(0)
+        
+        month_name = calendar.month_name[month]
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=attendance_export_{month_name}_{year}.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
 
 
 @router.get("/export/salary")
 async def export_salary(request: Request):
-    """Export salary structures to CSV"""
+    """Export salary structures to Excel"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    employees = await db.employees.find({"is_active": True}, {"_id": 0}).to_list(10000)
+    salaries = await db.employee_salaries.find({"is_active": True}, {"_id": 0}).to_list(10000)
     
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    headers = [
-        "employee_id", "emp_code", "first_name", "last_name",
-        "ctc", "basic_salary", "hra", "special_allowance",
-        "bank_name", "bank_account_number", "ifsc_code", "pan_number", "uan_number"
-    ]
-    writer.writerow(headers)
-    
-    for emp in employees:
-        salary = emp.get("salary_info", {})
-        bank = emp.get("bank_details", {})
-        writer.writerow([
-            emp.get("employee_id", ""),
-            emp.get("emp_code", ""),
-            emp.get("first_name", ""),
-            emp.get("last_name", ""),
-            salary.get("ctc", ""),
-            salary.get("basic_salary", salary.get("basic", "")),
-            salary.get("hra", ""),
-            salary.get("special_allowance", ""),
-            bank.get("bank_name", ""),
-            bank.get("account_number", bank.get("bank_account", "")),
-            bank.get("ifsc_code", ""),
-            bank.get("pan_number", emp.get("pan_number", "")),
-            bank.get("uan_number", emp.get("uan_number", ""))
-        ])
-    
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename=salary_export_{datetime.now().strftime('%Y%m%d')}.csv",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Salary')
+        
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1
+        })
+        
+        headers = [
+            "Emp Code", "Name", "BASIC", "DA", "HRA", "Conveyance", "GRADE PAY", 
+            "OTHER ALLOW", "Med./Spl. Allow", "Total Fixed",
+            "EPF", "ESI", "SEWA", "Net Payable"
+        ]
+        
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_format)
+            worksheet.set_column(col, col, 15)
+        
+        for row_idx, sal in enumerate(salaries, start=1):
+            fc = sal.get("fixed_components", {})
+            ded = sal.get("deductions", {})
+            worksheet.write(row_idx, 0, sal.get("emp_code", ""))
+            worksheet.write(row_idx, 1, sal.get("employee_name", ""))
+            worksheet.write(row_idx, 2, fc.get("basic", 0))
+            worksheet.write(row_idx, 3, fc.get("da", 0))
+            worksheet.write(row_idx, 4, fc.get("hra", 0))
+            worksheet.write(row_idx, 5, fc.get("conveyance", 0))
+            worksheet.write(row_idx, 6, fc.get("grade_pay", 0))
+            worksheet.write(row_idx, 7, fc.get("other_allowance", 0))
+            worksheet.write(row_idx, 8, fc.get("medical_allowance", 0))
+            worksheet.write(row_idx, 9, sal.get("total_fixed", 0))
+            worksheet.write(row_idx, 10, ded.get("epf", 0))
+            worksheet.write(row_idx, 11, ded.get("esi", 0))
+            worksheet.write(row_idx, 12, ded.get("sewa", 0))
+            worksheet.write(row_idx, 13, sal.get("net_payable", 0))
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=salary_export_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
