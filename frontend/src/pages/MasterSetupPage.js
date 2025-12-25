@@ -154,21 +154,28 @@ const MasterSetupPage = () => {
         payload = { ...payload, grade: form.grade, band: form.band };
       }
 
-      const response = await fetch(`${API_URL}/${endpoint}`, {
-        method: 'POST',
+      // Determine if this is an edit or create
+      const isEdit = editItem !== null;
+      const itemId = editItem?.department_id || editItem?.designation_id || editItem?.location_id;
+      
+      const url = isEdit ? `${API_URL}/${endpoint}/${itemId}` : `${API_URL}/${endpoint}`;
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload)
       });
 
       if (response.ok) {
-        toast.success(`${dialogType.charAt(0).toUpperCase() + dialogType.slice(1)} created successfully`);
+        toast.success(`${dialogType.charAt(0).toUpperCase() + dialogType.slice(1)} ${isEdit ? 'updated' : 'created'} successfully`);
         setShowDialog(false);
         resetForm();
         fetchAllData();
       } else {
         const error = await response.json();
-        toast.error(error.detail || 'Failed to create');
+        toast.error(error.detail || `Failed to ${isEdit ? 'update' : 'create'}`);
       }
     } catch (error) {
       toast.error('Failed to save');
