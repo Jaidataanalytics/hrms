@@ -157,6 +157,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_URL}/auth/me`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
