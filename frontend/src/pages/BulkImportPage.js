@@ -501,6 +501,18 @@ const BulkImportPage = () => {
                   </div>
                 </div>
 
+                {/* User Account Info for Employee Import */}
+                {uploadResult.info && uploadResult.type === 'employees' && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 font-medium">
+                      🔐 {uploadResult.info}
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Employees should change their password on first login.
+                    </p>
+                  </div>
+                )}
+
                 {/* Error Details */}
                 {uploadResult.errors?.length > 0 && (
                   <div className="space-y-2">
