@@ -487,12 +487,15 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     # Set cookie - detect if running over HTTPS
     is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     
+    # Use 'lax' for same-site requests, 'none' only needed for cross-site
+    samesite_setting = "lax"
+    
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
         secure=is_secure,
-        samesite="lax" if not is_secure else "none",
+        samesite=samesite_setting,
         path="/",
         max_age=7*24*60*60  # 7 days
     )
@@ -503,7 +506,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         value=token,
         httponly=True,
         secure=is_secure,
-        samesite="lax" if not is_secure else "none",
+        samesite=samesite_setting,
         path="/",
         max_age=7*24*60*60  # 7 days
     )
