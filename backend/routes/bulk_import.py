@@ -326,6 +326,10 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
     
     imported = 0
     errors = []
+    default_password = "Welcome@123"
+    
+    # Import bcrypt for password hashing
+    import bcrypt
     
     for idx, row in enumerate(rows, start=2):
         try:
@@ -338,17 +342,37 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
                 continue
             
             # Check for duplicate email
-            existing = await db.employees.find_one({"email": email.lower()})
-            if existing:
+            existing_email = await db.employees.find_one({"email": email.lower()})
+            if existing_email:
                 errors.append({"row": idx, "error": f"Email {email} already exists"})
                 continue
             
             emp_code = str(row.get("emp_code") or "").strip()
             if not emp_code:
-                emp_code = f"EMP{str(imported + 1).zfill(5)}"
+                # Auto-generate emp_code
+                last_emp = await db.employees.find_one(
+                    {"emp_code": {"$regex": "^EMP"}},
+                    sort=[("emp_code", -1)]
+                )
+                if last_emp and last_emp.get("emp_code"):
+                    try:
+                        last_num = int(last_emp["emp_code"].replace("EMP", ""))
+                        emp_code = f"EMP{str(last_num + 1).zfill(5)}"
+                    except:
+                        emp_code = f"EMP{str(imported + 1).zfill(5)}"
+                else:
+                    emp_code = f"EMP{str(imported + 1).zfill(5)}"
+            
+            # Check for duplicate emp_code
+            existing_code = await db.employees.find_one({"emp_code": emp_code})
+            if existing_code:
+                errors.append({"row": idx, "error": f"Employee code {emp_code} already exists"})
+                continue
+            
+            employee_id = f"EMP{uuid.uuid4().hex[:8].upper()}"
             
             employee = {
-                "employee_id": f"EMP{uuid.uuid4().hex[:8].upper()}",
+                "employee_id": employee_id,
                 "emp_code": emp_code,
                 "first_name": first_name,
                 "last_name": last_name,
@@ -372,6 +396,30 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
             }
             
             await db.employees.insert_one(employee)
+            
+            # Create user account with default password
+            hashed_password = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            user_doc = {
+                "user_id": f"user_{uuid.uuid4().hex[:12]}",
+                "email": email.lower(),
+                "password": hashed_password,
+                "name": f"{first_name} {last_name}",
+                "role": "employee",
+                "roles": ["employee"],
+                "permissions": [],
+                "employee_id": employee_id,
+                "department_id": employee.get("department_id"),
+                "is_active": True,
+                "must_change_password": True,  # Flag to prompt password change on first login
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Check if user already exists
+            existing_user = await db.users.find_one({"email": email.lower()})
+            if not existing_user:
+                await db.users.insert_one(user_doc)
+            
             imported += 1
             
         except Exception as e:
