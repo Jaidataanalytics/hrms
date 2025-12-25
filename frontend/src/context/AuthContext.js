@@ -81,6 +81,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       
       if (response.ok) {
