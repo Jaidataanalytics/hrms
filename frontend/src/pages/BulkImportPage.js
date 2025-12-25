@@ -194,7 +194,8 @@ const BulkImportPage = () => {
           success: true,
           imported: result.imported,
           errors: result.errors || [],
-          total: result.total_rows
+          total: result.total_rows,
+          info: result.info  // Info about user accounts created
         };
         
         setUploadResult(uploadData);
