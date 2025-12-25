@@ -429,7 +429,8 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
         "message": "Import completed",
         "imported": imported,
         "errors": errors,
-        "total_rows": imported + len(errors)
+        "total_rows": imported + len(errors),
+        "info": f"User accounts created with default password: {default_password}" if imported > 0 else None
     }
 
 
