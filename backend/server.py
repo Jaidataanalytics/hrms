@@ -825,6 +825,99 @@ async def create_location(loc_data: dict, request: Request):
     
     return location
 
+
+@api_router.put("/departments/{department_id}")
+async def update_department(department_id: str, dept_data: dict, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = await db.departments.find_one({"department_id": department_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Department not found")
+    
+    update_data = {
+        "name": dept_data.get("name", existing.get("name")),
+        "code": dept_data.get("code", existing.get("code")),
+        "description": dept_data.get("description", existing.get("description")),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.departments.update_one(
+        {"department_id": department_id},
+        {"$set": update_data}
+    )
+    
+    await log_audit("UPDATE", "master", "department", department_id,
+                   user["user_id"], user.get("name", ""), new_value=update_data, request=request)
+    
+    updated = await db.departments.find_one({"department_id": department_id}, {"_id": 0})
+    return updated
+
+
+@api_router.put("/designations/{designation_id}")
+async def update_designation(designation_id: str, desig_data: dict, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = await db.designations.find_one({"designation_id": designation_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Designation not found")
+    
+    update_data = {
+        "name": desig_data.get("name", existing.get("name")),
+        "code": desig_data.get("code", existing.get("code")),
+        "description": desig_data.get("description", existing.get("description")),
+        "grade": desig_data.get("grade", existing.get("grade")),
+        "band": desig_data.get("band", existing.get("band")),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.designations.update_one(
+        {"designation_id": designation_id},
+        {"$set": update_data}
+    )
+    
+    await log_audit("UPDATE", "master", "designation", designation_id,
+                   user["user_id"], user.get("name", ""), new_value=update_data, request=request)
+    
+    updated = await db.designations.find_one({"designation_id": designation_id}, {"_id": 0})
+    return updated
+
+
+@api_router.put("/locations/{location_id}")
+async def update_location(location_id: str, loc_data: dict, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = await db.locations.find_one({"location_id": location_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    update_data = {
+        "name": loc_data.get("name", existing.get("name")),
+        "code": loc_data.get("code", existing.get("code")),
+        "description": loc_data.get("description", existing.get("description")),
+        "address": loc_data.get("address", existing.get("address")),
+        "city": loc_data.get("city", existing.get("city")),
+        "state": loc_data.get("state", existing.get("state")),
+        "pincode": loc_data.get("pincode", existing.get("pincode")),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.locations.update_one(
+        {"location_id": location_id},
+        {"$set": update_data}
+    )
+    
+    await log_audit("UPDATE", "master", "location", location_id,
+                   user["user_id"], user.get("name", ""), new_value=update_data, request=request)
+    
+    updated = await db.locations.find_one({"location_id": location_id}, {"_id": 0})
+    return updated
+
 # ==================== ATTENDANCE ROUTES ====================
 
 @api_router.post("/attendance/mark")
