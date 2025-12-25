@@ -588,13 +588,13 @@ async def process_google_session(session_data: SessionData, response: Response):
         }
         await db.user_sessions.insert_one(session_doc)
         
-        # Set cookie
+        # Set cookie - use samesite=lax for better compatibility
         response.set_cookie(
             key="session_token",
             value=session_token,
             httponly=True,
             secure=True,
-            samesite="none",
+            samesite="lax",
             path="/",
             max_age=7*24*60*60
         )
