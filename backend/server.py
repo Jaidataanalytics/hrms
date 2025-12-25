@@ -337,7 +337,7 @@ async def get_current_user(request: Request) -> dict:
     access_token_cookie = request.cookies.get("access_token")
     
     if session_token:
-        # Verify session token from Google OAuth
+        # Verify session token from Google OAuth or JWT session
         session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
         if session:
             expires_at = session.get("expires_at")
@@ -349,6 +349,9 @@ async def get_current_user(request: Request) -> dict:
                 user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
                 if user:
                     return user
+            else:
+                # Session expired, clean it up
+                await db.user_sessions.delete_one({"session_token": session_token})
     
     # Check access_token cookie (JWT)
     if access_token_cookie:
@@ -364,10 +367,13 @@ async def get_current_user(request: Request) -> dict:
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
-        payload = decode_jwt_token(token)
-        user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
-        if user:
-            return user
+        try:
+            payload = decode_jwt_token(token)
+            user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
+            if user:
+                return user
+        except:
+            pass
     
     raise HTTPException(status_code=401, detail="Not authenticated")
 
