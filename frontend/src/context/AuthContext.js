@@ -3,8 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Token refresh interval (every 30 minutes)
-const TOKEN_REFRESH_INTERVAL = 30 * 60 * 1000;
+// Token refresh interval (every 25 minutes - before typical 30 min server timeout)
+const TOKEN_REFRESH_INTERVAL = 25 * 60 * 1000;
+// Activity check interval (every 5 minutes)
+const ACTIVITY_CHECK_INTERVAL = 5 * 60 * 1000;
 
 const AuthContext = createContext(null);
 
@@ -37,10 +39,37 @@ export const AuthProvider = ({ children }) => {
   const authCheckInProgress = useRef(false);
   const initialCheckDone = useRef(false);
   const refreshIntervalRef = useRef(null);
+  const lastActivityRef = useRef(Date.now());
+  const isRefreshing = useRef(false);
+
+  // Track user activity
+  const updateActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
+
+  // Add activity listeners
+  useEffect(() => {
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => window.addEventListener(event, updateActivity, { passive: true }));
+    
+    return () => {
+      events.forEach(event => window.removeEventListener(event, updateActivity));
+    };
+  }, [updateActivity]);
 
   // Refresh token to extend session
   const refreshToken = useCallback(async () => {
-    if (!user) return;
+    // Skip if no user or already refreshing
+    if (!user || isRefreshing.current) return;
+    
+    // Only refresh if there was recent activity (within last 30 mins)
+    const timeSinceActivity = Date.now() - lastActivityRef.current;
+    if (timeSinceActivity > 30 * 60 * 1000) {
+      console.log('No recent activity, skipping token refresh');
+      return;
+    }
+    
+    isRefreshing.current = true;
     
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
@@ -52,12 +81,21 @@ export const AuthProvider = ({ children }) => {
         const data = await safeParseJson(response);
         if (data?.access_token) {
           localStorage.setItem('access_token', data.access_token);
+          console.log('Token refreshed successfully');
         }
+      } else if (response.status === 401) {
+        // Session expired, redirect to login
+        console.log('Session expired during refresh');
+        setUser(null);
+        localStorage.removeItem('access_token');
+        navigate('/login');
       }
     } catch (error) {
       console.error('Token refresh failed:', error);
+    } finally {
+      isRefreshing.current = false;
     }
-  }, [user]);
+  }, [user, navigate]);
 
   // Set up automatic token refresh
   useEffect(() => {
@@ -76,22 +114,37 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, refreshToken]);
 
+  // Handle visibility change (tab focus)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        // Tab became visible, check if we need to refresh
+        const timeSinceActivity = Date.now() - lastActivityRef.current;
+        if (timeSinceActivity > 5 * 60 * 1000) { // More than 5 mins
+          refreshToken();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user, refreshToken]);
+
   // Check authentication status
   const checkAuth = useCallback(async (forceCheck = false) => {
-    // Skip if already checking or already done initial check (unless forced)
-    if (authCheckInProgress.current || (initialCheckDone.current && !forceCheck)) {
+    // Skip if already checking
+    if (authCheckInProgress.current) {
       return;
     }
-
-    const publicPaths = ['/', '/login', '/register'];
-    const isPublicPath = publicPaths.includes(location.pathname);
     
-    // Skip if on public path and we already have user state determined
-    if (isPublicPath && initialCheckDone.current) {
-      setLoading(false);
+    // Skip if already done initial check (unless forced)
+    if (initialCheckDone.current && !forceCheck) {
       return;
     }
 
+    const publicPaths = ['/', '/login', '/register', '/auth/callback'];
+    const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
+    
     authCheckInProgress.current = true;
 
     try {
@@ -103,9 +156,11 @@ export const AuthProvider = ({ children }) => {
         const userData = await safeParseJson(response);
         if (userData) {
           setUser(userData);
+          lastActivityRef.current = Date.now();
         }
       } else {
         setUser(null);
+        localStorage.removeItem('access_token');
         if (!isPublicPath) {
           navigate('/login');
         }
@@ -136,11 +191,12 @@ export const AuthProvider = ({ children }) => {
       setUser(location.state.user);
       setLoading(false);
       initialCheckDone.current = true;
+      lastActivityRef.current = Date.now();
       return;
     }
 
     checkAuth();
-  }, []);
+  }, []); // Only run on mount
 
   // Login with email/password
   const login = async (email, password) => {
@@ -159,6 +215,7 @@ export const AuthProvider = ({ children }) => {
 
     if (data?.user) {
       setUser(data.user);
+      lastActivityRef.current = Date.now();
     }
     if (data?.access_token) {
       localStorage.setItem('access_token', data.access_token);
@@ -185,6 +242,7 @@ export const AuthProvider = ({ children }) => {
 
     if (data?.user) {
       setUser(data.user);
+      lastActivityRef.current = Date.now();
     }
     if (data?.access_token) {
       localStorage.setItem('access_token', data.access_token);
@@ -211,6 +269,7 @@ export const AuthProvider = ({ children }) => {
 
     if (data) {
       setUser(data);
+      lastActivityRef.current = Date.now();
     }
     initialCheckDone.current = true;
 
@@ -235,6 +294,9 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       localStorage.removeItem('access_token');
       initialCheckDone.current = false;
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
       navigate('/login');
     }
   };
@@ -248,6 +310,7 @@ export const AuthProvider = ({ children }) => {
     loginWithGoogle,
     processGoogleSession,
     checkAuth,
+    refreshToken, // Expose this so components can manually refresh if needed
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
