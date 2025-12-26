@@ -52,6 +52,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -105,12 +106,13 @@ const PayrollPage = () => {
 
   const fetchData = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       const [runsRes, payslipsRes, rulesRes, leaveRulesRes, customRulesRes] = await Promise.all([
-        isHR ? fetch(`${API_URL}/payroll/runs`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
-        fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include' }),
-        isHR ? fetch(`${API_URL}/payroll/rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
-        isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
-        isHR ? fetch(`${API_URL}/payroll/custom-rules`, { credentials: 'include' }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/runs`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
+        fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include', headers: authHeaders }),
+        isHR ? fetch(`${API_URL}/payroll/rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/custom-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
       ]);
 
       if (runsRes.ok) setPayrollRuns(await runsRes.json());
