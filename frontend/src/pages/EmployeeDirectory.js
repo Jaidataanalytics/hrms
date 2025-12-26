@@ -43,8 +43,27 @@ import {
   Mail,
   Phone,
   RefreshCw,
-  MoreHorizontal
+  MoreHorizontal,
+  Trash2,
+  UserCheck,
+  UserX
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
