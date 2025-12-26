@@ -525,6 +525,26 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     
     return TokenResponse(access_token=token, user=user_response)
 
+@api_router.get("/auth/google")
+async def initiate_google_auth(request: Request):
+    """Redirect to Emergent's Google OAuth flow"""
+    # Get the frontend origin from the request to build redirect URL
+    origin = request.headers.get("origin") or request.headers.get("referer", "")
+    if origin:
+        # Extract base URL from origin/referer
+        from urllib.parse import urlparse
+        parsed = urlparse(origin)
+        redirect_base = f"{parsed.scheme}://{parsed.netloc}"
+    else:
+        # Fallback to environment or default
+        redirect_base = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    
+    redirect_uri = f"{redirect_base}/auth/callback"
+    
+    # Redirect to Emergent Google OAuth
+    auth_url = f"https://demobackend.emergentagent.com/auth/v1/env/oauth/google?redirect_uri={redirect_uri}"
+    return RedirectResponse(url=auth_url, status_code=302)
+
 @api_router.post("/auth/google-session")
 async def process_google_session(session_data: SessionData, response: Response):
     """Process Google OAuth session from Emergent Auth"""
