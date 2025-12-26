@@ -191,6 +191,49 @@ const EmployeeDirectory = () => {
     }
   };
 
+  const handleDeleteEmployee = async () => {
+    if (!deleteDialog.employee) return;
+    
+    try {
+      const url = `${API_URL}/employees/${deleteDialog.employee.employee_id}${deleteDialog.permanent ? '?permanent=true' : ''}`;
+      const response = await fetch(url, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        toast.success(deleteDialog.permanent ? 'Employee permanently deleted' : 'Employee deactivated');
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to delete employee');
+      }
+    } catch (error) {
+      toast.error('Failed to delete employee');
+    } finally {
+      setDeleteDialog({ open: false, employee: null, permanent: false });
+    }
+  };
+
+  const handleActivateEmployee = async (employee) => {
+    try {
+      const response = await fetch(`${API_URL}/employees/${employee.employee_id}/activate`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        toast.success('Employee activated');
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to activate employee');
+      }
+    } catch (error) {
+      toast.error('Failed to activate employee');
+    }
+  };
+
   const getInitials = (firstName, lastName) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
