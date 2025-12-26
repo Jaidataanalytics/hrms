@@ -241,6 +241,7 @@ const EmployeeDirectory = () => {
       const response = await fetch(`${API_URL}/employees/${employee.employee_id}/activate`, {
         method: 'POST',
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
