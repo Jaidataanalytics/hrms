@@ -104,7 +104,7 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({
           ...leaveForm,
