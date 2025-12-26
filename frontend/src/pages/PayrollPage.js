@@ -131,7 +131,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/all-employees-pay?month=${selectedMonth}&year=${selectedYear}`,
-        { credentials: 'include' }
+        { credentials: 'include', headers: getAuthHeaders() }
       );
       if (response.ok) {
         setAllEmployeesPay(await response.json());
@@ -145,7 +145,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/employee-salary-details/${employeeId}`,
-        { credentials: 'include' }
+        { credentials: 'include', headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -161,7 +161,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/employee-breakdown/${employeeId}?month=${selectedMonth}&year=${selectedYear}`,
-        { credentials: 'include' }
+        { credentials: 'include', headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
