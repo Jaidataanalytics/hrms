@@ -140,7 +140,8 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/${leaveId}/approve`, {
         method: 'PUT',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
