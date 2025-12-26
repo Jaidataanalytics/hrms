@@ -219,6 +219,7 @@ const EmployeeDirectory = () => {
       const response = await fetch(url, {
         method: 'DELETE',
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
