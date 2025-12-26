@@ -39,6 +39,7 @@ import {
   RefreshCw,
   FileText
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -70,10 +71,11 @@ const LeavePage = () => {
 
   const fetchData = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       const [typesRes, balanceRes, requestsRes] = await Promise.all([
-        fetch(`${API_URL}/leave-types`, { credentials: 'include' }),
-        fetch(`${API_URL}/leave/balance`, { credentials: 'include' }),
-        fetch(`${API_URL}/leave/my-requests`, { credentials: 'include' })
+        fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/leave/balance`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/leave/my-requests`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (typesRes.ok) setLeaveTypes(await typesRes.json());
@@ -82,7 +84,7 @@ const LeavePage = () => {
 
       // Fetch pending approvals for managers/HR
       if (isManager) {
-        const approvalsRes = await fetch(`${API_URL}/leave/pending-approvals`, { credentials: 'include' });
+        const approvalsRes = await fetch(`${API_URL}/leave/pending-approvals`, { credentials: 'include', headers: authHeaders });
         if (approvalsRes.ok) setPendingApprovals(await approvalsRes.json());
       }
     } catch (error) {
