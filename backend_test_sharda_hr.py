@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 class ShardaHRAPITester:
-    def __init__(self, base_url="https://bulk-import-helper.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://payroll-upgrade-1.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.session = requests.Session()

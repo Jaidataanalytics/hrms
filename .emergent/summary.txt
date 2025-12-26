@@ -9,38 +9,45 @@ The user initiated this session with multiple requests and bug reports:
 7.  **Bug:** Deleting a user only marks them as inactive but doesn't remove them from the default view.
 8.  **Feature (paused):** Integrate a BioMax biometric device for attendance.
 
+**PRODUCT REQUIREMENTS:**
+1.  Fix the bug where editing a location creates a duplicate instead of updating.
+2.  Implement a new bulk import/export system using the user-provided Excel templates for Salary and Attendance.
+3.  Resolve the frequent session expiry issue.
+4.  Debug and fix file upload failures in the Bulk Import section.
+5.  Enhance the bulk upload process to include a detailed summary of successful/failed records with an automatic error report download.
+6.  Ensure employees uploaded via bulk import are visible in the Employee Directory.
+7.  Fix the user deletion logic to properly remove users from the default view.
+
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack HRMS. In this session, the agent successfully addressed several of the user's issues. The location editing bug has been fixed. The bulk import/export system has been overhauled to use the new Excel templates for salary and attendance. The file upload functionality has been debugged and now includes a sophisticated error-reporting dialog that downloads a report of failed entries. A persistent session expiry issue was traced to an incorrect cookie policy and has been resolved. The Employee Directory has been enhanced with controls to filter by status (Active/Inactive) and to perform deactivation, reactivation, and permanent deletion of employees. The employee bulk import now also creates a user account with a default password.
+The agent has fixed a critical, systemic authentication bug in the frontend. API calls were failing with  errors because they were missing the JWT  header, relying only on cookies. The agent fixed this by updating numerous components (, , , etc.) to include the auth header.
+
+When the user reported the issue persisted on the live (deployed) version, the agent investigated and discovered the root cause: the deployed application was running old code and was connected to a different database than the preview environment. The fixes were only present in the preview. The agent has since prepared the application for redeployment by correcting CORS policies and adding the user's production URL to the allowed origins list. The preview environment is fully functional and tested.
 
 **Last working item**:
-- **Last item agent was working:** The agent was investigating a critical and recurring bug where employees successfully added via bulk import do not appear in the Employee Directory UI. The agent identified and fixed a backend Pydantic validation error caused by an invalid email address () for a pre-existing employee. This error was causing the  endpoint to fail silently.
-- **Status:** USER VERIFICATION PENDING
+- **Last item agent was working:** Preparing the application for redeployment to the production environment. The agent updated the CORS configuration in  and the  file to include all necessary URLs (preview and production) to ensure a smooth deployment.
+- **Status:** IN PROGRESS
 - **Agent Testing Done:** Y
-- **Which testing method agent to use?** Frontend testing agent. The agent has verified via  that the backend API now correctly returns all employees. However, the UI still fails to display them, which points to a problem in the frontend's data fetching, rendering, or authentication handling in a real browser context. A  test is insufficient.
+- **Which testing method agent to use?** . The next immediate step is to deploy the fixed application to the user's production environment.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Imported employees not showing in Employee Directory (P0)**
+-   **Issue 1: Deployed version has old code and a different database (P0)**
 -   **Issue 2:  endpoint returns 404 (P2)**
 -   **Issue 3: Contract Labour module verification incomplete (P2)**
 
 **Issues Detail:**
--   **Issue 1: Imported employees not showing in Employee Directory (P0)**
-    -   **Attempted fixes:**
-        1.  The agent found an invalid email in the database that was causing the employee list API to crash. The data was corrected, and the API was verified to be working using .
-        2.  Email validation was added to the bulk import process to prevent future data corruption.
-        3.  The agent confirmed via  that the API  now returns a complete list of 28 employees, including the newly imported ones.
+-   **Issue 1: Deployed version has old code and a different database (P0)**
+    -   **Attempted fixes:** The agent identified that fixes applied in the preview environment were not present in the deployed version. It correctly configured CORS policies in  and  to prepare for redeployment. The user has approved redeploying the application.
     -   **Next debug checklist:**
-        1.  The agent's previous screenshot attempts also failed to show employees, attributing it to a testing artifact (401 errors). This must be treated as the real bug. The problem lies within the browser-based application, not the API in isolation.
-        2.  Use the **frontend testing agent** to run a full end-to-end test: log in, navigate to the Employee Directory, and assert that the employee list is rendered correctly.
-        3.  Inspect the browser console logs from the testing agent's run for any errors (e.g., 401 Unauthorized, CORS, JavaScript errors). This is the most critical step.
-        4.  Re-examine  and  to ensure the session fix didn't introduce a regression in how authentication tokens/cookies are sent with API requests during navigation.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a critical bug. The bulk import feature, which the agent spent significant time on, is rendered useless if the imported data cannot be viewed or managed.
+        1.  Use the  to deploy the current, fixed version of the application.
+        2.  After deployment, thoroughly test the production URL to confirm the Employee Directory and other pages load data correctly.
+        3.  Inform the user that since the production database is separate, they will need to perform the bulk import again on the live application.
+    -   **Why fix this issue and what will be achieved with the fix?** This will synchronize the production environment with the working preview version, delivering all the recent bug fixes to the user.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on other issue:** None. This is the main blocker.
 -   **Issue 2:  endpoint returns 404 (P2)**
     -   **Attempted fixes:** None. Noted from a previous testing report.
@@ -61,8 +68,7 @@ The application is a full-stack HRMS. In this session, the agent successfully ad
 
 **In progress Task List**:
 -   **Task 1: Biometric Device Integration (P2)**
-    -   **Description:** Integrate a BioMax biometric device for attendance.
-    -   **Where to resume:** The agent has built the backend webhook and frontend UI. The task was paused by the user. The next step is to provide the user with the webhook URL and guide them on configuring their device.
+    -   **Where to resume:** The backend webhook and frontend UI are built. The task was paused by the user. The next step is to provide the user with the webhook URL and guide them on configuring their device.
     -   **What will be achieved with this?** Automates attendance tracking.
     -   **Status:** BLOCKED (Paused by user).
     -   **Should Test frontend/backend/both after fix?** Backend.
@@ -70,7 +76,7 @@ The application is a full-stack HRMS. In this session, the agent successfully ad
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **P1: Implement New Payroll Calculation Logic:** The bulk import templates for salary structures have been updated, but the core payroll calculation logic in the backend still needs to be rewritten to use this new, more complex structure (including fields like DA, SEWA, PT, etc.). This is the next major task after the Employee Directory bug is fixed.
+    - **P1: Implement New Payroll Calculation Logic:** The backend payroll calculation logic needs to be rewritten to use the new, more complex salary structure from the updated Excel templates.
     - **P1: Implement Meeting Management & Task Tracking:** A fully designed feature, ready for implementation.
 - **Future Tasks:**
     - AI-powered Shift Scheduling (User de-prioritized).
@@ -79,62 +85,99 @@ The application is a full-stack HRMS. In this session, the agent successfully ad
     - Further enhance the Custom Report Builder.
 
 **Completed work in this session**
-- **Bug Fix: Location Edit:** Fixed an issue where editing a location created a duplicate entry instead of updating it. Implemented  endpoints for master data.
-- **Feature: Excel Bulk Import/Export:** Replaced the old CSV templates with new, complex Excel templates () for Employee, Salary, and Attendance data, as per user specification.
-- **Bug Fix: File Upload Failures:** Resolved a  during file uploads caused by empty lookup tables in the database (e.g., departments, designations).
-- **Feature: Enhanced Import Error Reporting:** Implemented a new UI dialog that appears after a bulk import, showing a summary of successful/failed records and automatically downloading a detailed error report.
-- **Bug Fix: Session Expiry:** Resolved a persistent issue where users were frequently logged out by correcting the backend's cookie  policy from  to .
-- **Feature: Employee Directory Actions:** Added functionality to the Employee Directory to filter by status (Active/Inactive), deactivate, reactivate, and permanently delete employees.
-- **Feature: User Creation on Import:** The employee bulk import process now automatically creates a corresponding user account with a default password.
-- **Data Integrity:** Identified and corrected a corrupted email address in the database that was causing the employee listing API to crash. Added email validation to the import process to prevent future issues.
+- **Fixed Systemic Auth Bug:** Resolved a critical issue where frontend API calls failed with  errors by ensuring the JWT  header was sent with every request.
+- **Patched Multiple Frontend Pages:** Applied the authentication fix to , , , , , , and .
+- **Fixed Google OAuth Flow:** Added a missing  GET endpoint in  to correctly initiate the Emergent-managed Google login redirect.
+- **Corrected CORS Policy:** Reconfigured the FastAPI CORS middleware to correctly handle requests with credentials by specifying exact origins instead of using a wildcard (), resolving browser security errors.
+- **Diagnosed Deployment Mismatch:** Identified that the user's live application was running old code and was connected to a separate database, which was the root cause of persistent issues.
+- **Prepared for Redeployment:** Updated  and  with the correct CORS origins for both preview and production environments, paving the way for a successful deployment.
+
+**Earlier issues found/mentioned but not fixed**
+-   **Issue 1:  endpoint returns 404**
+    -   **Debug checklist:** Examine routing in  and .
+    -   **Why to solve this issue and what will be achieved with this?** To enable the leave management functionality.
+    -   **Should Test frontend/backend/both after fix:** Backend
+    -   **Is recurring issue?** N
+-   **Issue 2: Contract Labour module verification incomplete**
+    -   **Debug checklist:** Review code and rename files to align with the focus on salary and attendance.
+    -   **Why to solve this issue and what will be achieved with this?** To align the implemented modules with the user's specific requirements.
+    -   **Should Test frontend/backend/both after fix:** Both
+    -   **Is recurring issue?** N
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork:** Imported employees not showing in Employee Directory.
+-   **Recurrence count:** 2+
+-   **Status:** RESOLVED (The technical fix is complete in the codebase; the remaining step is to deploy it).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, MongoDB (Motor),  and  for Excel handling.
-- **Frontend:** React, TailwindCSS, Shadcn/UI.
-- **Authentication:** JWT with HTTP-only cookies. The session stability was improved by adjusting the  cookie policy.
-- **Data Handling:** Major refactor of bulk import to handle complex, multi-sheet Excel files.
+- **Authentication:** The session relies on a combination of HTTP-only cookies () and a JWT  header. Both must be present for authenticated API calls.
+- **CORS:** For requests involving credentials (), the backend  cannot be a wildcard (). It must be configured to return a specific, allowed origin.
+- **Deployment Environments:** The application has separate preview and production (deployed) environments, each with its own code version and database. Changes in preview are not automatically reflected in production and require a manual redeployment.
 
 **key DB schema**
-No new collections were finalized. The existing  and  collections were modified to support new fields and relationships created during bulk import.
+- No changes to the database schema in this session.
 
 **changes in tech stack**
-- **Backend:** Added  and  for handling  files.
+- No changes to the tech stack in this session.
 
 **All files of reference**
-- **New Files:**
-    - : Initial logic for the biometric device webhook.
-    - : UI for managing the biometric integration.
-- **Heavily Modified Files:**
-    - : Rewritten to handle Excel (), implement new salary/attendance formats, add email validation, and create user accounts on import.
-    - : Rewritten to support Excel uploads, add an attendance period selector, and display the new import result dialog with error reporting.
-    - : Overhauled to add status filtering and comprehensive actions (deactivate, reactivate, delete) with confirmation dialogs.
-    - : Added  endpoints for master data, a  endpoint for employees, and fixed the  cookie policy across login, refresh, and OAuth flows.
+- : Modified to fix CORS policy and add Google Auth endpoint.
+- : Updated with specific CORS origins.
+- : Updated to include Authorization headers.
+- : Updated to use Authorization headers.
+- : Updated to use Authorization headers.
+- : Updated to use Authorization headers.
+- : Updated to use Authorization headers.
+- : Updated to use Authorization headers.
+- : Updated to use Authorization headers.
+- : Updated to use Authorization headers.
+
+**Areas that need refactoring**
+- Many frontend pages were patched individually to add authentication headers. A future refactoring task should enforce the use of the centralized  utility for all  calls to ensure consistency and prevent similar bugs.
+
+**key api endpoints**
+- ****: (New) Initiates the server-side redirect for Emergent-managed Google OAuth.
 
 **Critical Info for New Agent**
-- **TOP PRIORITY (BUG):** The Employee Directory is not displaying employees for the user. Do not trust  results; the bug is in the browser context. Use the **frontend testing agent** to replicate the user's experience and check the browser console for authentication or rendering errors. This is the main blocker for all other work.
-- **NEXT MAJOR TASK:** After the directory bug is fixed, you must implement the new **Payroll Calculation Logic**. The user has provided new Excel templates, and the backend payroll generation needs to be completely updated to use the new salary components (DA, HRA, SEWA, etc.).
-- **PAUSED TASK:** The **Biometric Integration** is on hold per the user's request. Do not resume work on it unless instructed.
+- **DEPLOYMENT IS THE NEXT STEP:** The user's primary problem is that the live application is running old, buggy code. All necessary fixes are complete in the current workspace. Your immediate task is to **use the  to deploy the application.** The user has already approved this.
+- **PRODUCTION DATABASE IS SEPARATE:** After deployment, you must inform the user that their production environment has a separate, empty database. They will need to re-run the bulk import process on the live application to populate it with employee data.
+- **DO NOT DEBUG THE DEPLOYED VERSION:** Do not waste time debugging the live URL. The code is outdated. The only solution is to redeploy.
+
+**documents and test_reports created in this job**
+- 
+- 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
--   
--   
--   
--   
--   
--   
--   
--   
--   
+-  (In response to agent asking if it should prepare for redeployment)
+- 
+- 
+-  (Agent Message)
+- 
+- 
+- 
+- 
 
 **Project Health Check:**
--   **Broken:** The Employee Directory page is critically broken from the user's perspective, as it does not display any data.
+-   **Broken:** The **deployed** application is non-functional due to running outdated code. The employee directory filter is broken, and data is not displayed correctly. The preview environment, however, is stable and working.
 -   **Mocked:** Biometric integration.
 
 **3rd Party Integrations**
-- **Emergent-managed Google Auth:** Used for social login. (No changes in this session)
+- **Emergent-managed Google Auth:** Used for social login. The server-side component of this was fixed in this session.
+
+**Testing status**
+- **Testing agent used after significant changes:** YES. The frontend testing agent was used and reported 100% success on the preview environment after the authentication and CORS fixes.
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:**
+    - 
+    - 
+- **Known regressions:** None in the current codebase. The regressions exist only on the outdated deployed version.
+
+**Credentials to test flow:**
+- Credentials for  are available in the environment and used by the testing agents.
 
 **What agent forgot to execute**
--   The previous agent correctly identified the backend API was working but failed to resolve the discrepancy with the frontend UI, leading to the user reporting the same bug again. It should have immediately pivoted to deeper frontend debugging (e.g., via the testing agent) instead of relying on  and screenshots.</analysis>
+- The agent initially went on a long path of fixing individual frontend files instead of immediately refactoring them to use the central  utility. While the outcome was correct, a more direct refactoring approach would have been more efficient.</analysis>
