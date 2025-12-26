@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -47,7 +48,7 @@ const AttendancePage = () => {
     try {
       const response = await fetch(
         `${API_URL}/attendance/my?month=${currentMonth}&year=${currentYear}`,
-        { credentials: 'include' }
+        { credentials: 'include', headers: getAuthHeaders() }
       );
 
       if (response.ok) {
