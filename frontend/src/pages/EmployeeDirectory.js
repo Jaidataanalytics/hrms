@@ -496,11 +496,45 @@ const EmployeeDirectory = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link to={`/dashboard/employees/${emp.employee_id}`}>
-                        <Button variant="ghost" size="sm" data-testid={`view-employee-${emp.employee_id}`}>
-                          View
-                        </Button>
-                      </Link>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link to={`/dashboard/employees/${emp.employee_id}`}>
+                          <Button variant="ghost" size="sm" data-testid={`view-employee-${emp.employee_id}`}>
+                            View
+                          </Button>
+                        </Link>
+                        {isHR && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {emp.status === 'inactive' || !emp.is_active ? (
+                                <DropdownMenuItem onClick={() => handleActivateEmployee(emp)}>
+                                  <UserCheck className="w-4 h-4 mr-2 text-green-600" />
+                                  Activate
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  onClick={() => setDeleteDialog({ open: true, employee: emp, permanent: false })}
+                                  className="text-amber-600"
+                                >
+                                  <UserX className="w-4 h-4 mr-2" />
+                                  Deactivate
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem 
+                                onClick={() => setDeleteDialog({ open: true, employee: emp, permanent: true })}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Permanently
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
