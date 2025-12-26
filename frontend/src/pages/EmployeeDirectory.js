@@ -67,6 +67,12 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
+// Helper to get auth headers from localStorage
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('access_token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
 const EmployeeDirectory = () => {
   const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
