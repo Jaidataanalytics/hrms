@@ -103,7 +103,7 @@ class Employee(BaseModel):
     emp_code: Optional[str] = None
     first_name: str
     last_name: str
-    email: EmailStr
+    email: str  # Using str instead of EmailStr to handle legacy data with invalid emails
     phone: Optional[str] = None
     date_of_birth: Optional[str] = None
     gender: Optional[str] = None
