@@ -557,6 +557,40 @@ const EmployeeDirectory = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, employee: null, permanent: false })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteDialog.permanent ? 'Delete Employee Permanently?' : 'Deactivate Employee?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialog.permanent ? (
+                <>
+                  This will <strong>permanently delete</strong> {deleteDialog.employee?.first_name} {deleteDialog.employee?.last_name} and their user account. 
+                  This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  This will deactivate {deleteDialog.employee?.first_name} {deleteDialog.employee?.last_name}. 
+                  They will no longer appear in the active employee list and won't be able to login.
+                  You can reactivate them later.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteEmployee}
+              className={deleteDialog.permanent ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}
+            >
+              {deleteDialog.permanent ? 'Delete Permanently' : 'Deactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
