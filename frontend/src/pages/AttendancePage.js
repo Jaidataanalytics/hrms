@@ -104,7 +104,7 @@ const AttendancePage = () => {
 
       const response = await fetch(`${API_URL}/attendance/mark`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
