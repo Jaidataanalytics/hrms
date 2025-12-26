@@ -149,9 +149,16 @@ const EmployeeDirectory = () => {
         url += `include_inactive=true&`;
       }
 
+      const authHeaders = getAuthHeaders();
       const [empRes, deptRes] = await Promise.all([
-        fetch(url, { credentials: 'include' }),
-        fetch(`${API_URL}/departments`, { credentials: 'include' })
+        fetch(url, { 
+          credentials: 'include',
+          headers: authHeaders
+        }),
+        fetch(`${API_URL}/departments`, { 
+          credentials: 'include',
+          headers: authHeaders
+        })
       ]);
 
       if (empRes.ok) {
