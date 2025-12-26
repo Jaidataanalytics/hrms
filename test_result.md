@@ -58,3 +58,27 @@ Ready for comprehensive testing
 5. Test Delete All Type dialog
 6. Test Danger Zone - Delete Everything (DO NOT actually delete)
 7. Test Restore functionality
+
+## Latest Test Update - Employee Directory Auth Fix (Dec 26, 2025)
+
+### Bug Fixed
+- **Issue**: Employees uploaded via bulk import were not showing in Employee Directory
+- **Root Cause**: Frontend fetch() calls only used `credentials: 'include'` but did not include the Authorization header with JWT Bearer token
+- **Solution**: Added `getAuthHeaders()` helper function in `/app/frontend/src/utils/api.js` and integrated it into all major page components
+
+### Files Modified
+- `/app/frontend/src/utils/api.js` - Added getAuthHeaders() and authFetch() helpers
+- `/app/frontend/src/pages/EmployeeDirectory.js` - Added auth headers to all fetch calls
+- `/app/frontend/src/pages/Dashboard.js` - Added auth headers
+- `/app/frontend/src/pages/EmployeeProfile.js` - Added auth headers
+- `/app/frontend/src/pages/AttendancePage.js` - Added auth headers
+- `/app/frontend/src/pages/LeavePage.js` - Added auth headers
+- `/app/frontend/src/pages/PayrollPage.js` - Added auth headers
+- `/app/frontend/src/pages/MasterSetupPage.js` - Added auth headers
+
+### Test Results
+- Backend: 93.8%
+- Frontend: 100%
+- Overall: 96.9%
+
+All 28 employees now display correctly in the Employee Directory.
