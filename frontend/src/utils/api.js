@@ -12,11 +12,23 @@ export const safeJsonParse = async (response) => {
   }
 };
 
-// API fetch wrapper with automatic JSON parsing
+// Get authentication headers from localStorage
+export const getAuthHeaders = () => {
+  const token = localStorage.getItem('access_token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
+// API fetch wrapper with automatic JSON parsing and auth headers
 export const apiFetch = async (url, options = {}) => {
+  const authHeaders = getAuthHeaders();
+  
   const response = await fetch(url, {
     ...options,
     credentials: 'include',
+    headers: {
+      ...authHeaders,
+      ...options.headers,
+    },
   });
   
   const data = await safeJsonParse(response);
@@ -27,3 +39,18 @@ export const apiFetch = async (url, options = {}) => {
     data,
   };
 };
+
+// Make authenticated fetch with headers (returns raw response)
+export const authFetch = async (url, options = {}) => {
+  const authHeaders = getAuthHeaders();
+  
+  return fetch(url, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      ...authHeaders,
+      ...options.headers,
+    },
+  });
+};
+
