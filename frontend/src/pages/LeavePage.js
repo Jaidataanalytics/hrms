@@ -163,7 +163,8 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/${leaveId}/reject?rejection_reason=${encodeURIComponent(reason)}`, {
         method: 'PUT',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
