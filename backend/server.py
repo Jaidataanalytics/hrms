@@ -785,6 +785,79 @@ async def update_employee(employee_id: str, emp_data: dict, request: Request):
     updated = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
     return updated
 
+
+@api_router.delete("/employees/{employee_id}")
+async def delete_employee(employee_id: str, request: Request, permanent: bool = False):
+    """Delete or deactivate an employee"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete employees")
+    
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    if permanent:
+        # Permanent deletion
+        await db.employees.delete_one({"employee_id": employee_id})
+        # Also delete associated user account
+        await db.users.delete_one({"employee_id": employee_id})
+        
+        await log_audit("DELETE", "employee", "employee", employee_id,
+                       user["user_id"], user.get("name", ""), old_value=employee, request=request)
+        
+        return {"message": "Employee permanently deleted", "employee_id": employee_id}
+    else:
+        # Soft delete - deactivate
+        await db.employees.update_one(
+            {"employee_id": employee_id},
+            {"$set": {
+                "is_active": False,
+                "status": "inactive",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        # Also deactivate user account
+        await db.users.update_one(
+            {"employee_id": employee_id},
+            {"$set": {"is_active": False}}
+        )
+        
+        await log_audit("DEACTIVATE", "employee", "employee", employee_id,
+                       user["user_id"], user.get("name", ""), request=request)
+        
+        return {"message": "Employee deactivated", "employee_id": employee_id}
+
+
+@api_router.post("/employees/{employee_id}/activate")
+async def activate_employee(employee_id: str, request: Request):
+    """Reactivate a deactivated employee"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employee = await db.employees.find_one({"employee_id": employee_id})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    await db.employees.update_one(
+        {"employee_id": employee_id},
+        {"$set": {
+            "is_active": True,
+            "status": "active",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    # Also activate user account
+    await db.users.update_one(
+        {"employee_id": employee_id},
+        {"$set": {"is_active": True}}
+    )
+    
+    return {"message": "Employee activated", "employee_id": employee_id}
+
 # ==================== MASTER DATA ROUTES ====================
 
 # Departments
