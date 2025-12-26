@@ -19,6 +19,7 @@ import {
   Megaphone,
   RefreshCw
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -36,10 +37,11 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       const [statsRes, empDashRes, leaveTypesRes] = await Promise.all([
-        fetch(`${API_URL}/dashboard/stats`, { credentials: 'include' }),
-        fetch(`${API_URL}/dashboard/employee`, { credentials: 'include' }),
-        fetch(`${API_URL}/leave-types`, { credentials: 'include' })
+        fetch(`${API_URL}/dashboard/stats`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/dashboard/employee`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (statsRes.ok) {
@@ -68,7 +70,7 @@ const Dashboard = () => {
     try {
       const response = await fetch(`${API_URL}/attendance/mark`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({
           punch_type: punchType,
