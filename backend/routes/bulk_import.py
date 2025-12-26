@@ -330,15 +330,24 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
     
     # Import bcrypt for password hashing
     import bcrypt
+    import re
+    
+    # Email validation pattern
+    email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
     
     for idx, row in enumerate(rows, start=2):
         try:
             first_name = str(row.get("first_name") or "").strip()
             last_name = str(row.get("last_name") or "").strip()
-            email = str(row.get("email") or "").strip()
+            email = str(row.get("email") or "").strip().rstrip('.')  # Remove trailing periods
             
             if not first_name or not last_name or not email:
                 errors.append({"row": idx, "error": "Missing required fields (first_name, last_name, email)"})
+                continue
+            
+            # Validate email format
+            if not email_pattern.match(email):
+                errors.append({"row": idx, "error": f"Invalid email format: {email}"})
                 continue
             
             # Check for duplicate email
