@@ -1866,10 +1866,22 @@ api_router.include_router(biometric_router)
 # Include the router in the main app (after all sub-routers are added)
 app.include_router(api_router)
 
+# CORS Configuration - when credentials are used, origins must be explicit
+cors_origins_env = os.environ.get('CORS_ORIGINS', '')
+if cors_origins_env == '*' or cors_origins_env == '':
+    # Default origins for development and production
+    cors_origins = [
+        "http://localhost:3000",
+        "https://bulk-import-helper.preview.emergentagent.com",
+        "https://bulk-import-helper.emergent.host",
+    ]
+else:
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
