@@ -55,7 +55,7 @@ const EmployeeDirectory = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('active');  // Default to showing only active employees
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newEmployee, setNewEmployee] = useState({
     first_name: '',
