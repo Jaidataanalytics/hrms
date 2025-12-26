@@ -699,16 +699,24 @@ async def list_employees(
     status: Optional[str] = None,
     employment_type: Optional[str] = None,
     skip: int = 0,
-    limit: int = 50
+    limit: int = 100,
+    include_inactive: bool = False
 ):
     user = await get_current_user(request)
     
     query = {}
-    if department_id:
-        query["department_id"] = department_id
-    if status:
+    
+    # Filter by status - if 'active' show only active, if 'inactive' show only inactive, if 'all' show all
+    if status and status != 'all':
         query["status"] = status
-    if employment_type:
+    
+    # By default, only show active employees unless include_inactive is True or status filter is set
+    if not include_inactive and not status:
+        query["is_active"] = True
+    
+    if department_id and department_id != 'all':
+        query["department_id"] = department_id
+    if employment_type and employment_type != 'all':
         query["employment_type"] = employment_type
     
     # Apply data visibility rules
