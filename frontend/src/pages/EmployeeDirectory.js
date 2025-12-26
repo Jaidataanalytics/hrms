@@ -137,7 +137,11 @@ const EmployeeDirectory = () => {
     try {
       let url = `${API_URL}/employees?`;
       if (filterDepartment !== 'all') url += `department_id=${filterDepartment}&`;
-      if (filterStatus !== 'all') url += `status=${filterStatus}&`;
+      if (filterStatus !== 'all') {
+        url += `status=${filterStatus}&`;
+      } else {
+        url += `include_inactive=true&`;
+      }
 
       const [empRes, deptRes] = await Promise.all([
         fetch(url, { credentials: 'include' }),
