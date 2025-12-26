@@ -44,6 +44,7 @@ import {
   Briefcase,
   Tag
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -80,10 +81,11 @@ const MasterSetupPage = () => {
 
   const fetchAllData = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       const [deptRes, desigRes, locRes] = await Promise.all([
-        fetch(`${API_URL}/departments`, { credentials: 'include' }),
-        fetch(`${API_URL}/designations`, { credentials: 'include' }),
-        fetch(`${API_URL}/locations`, { credentials: 'include' })
+        fetch(`${API_URL}/departments`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/designations`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/locations`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (deptRes.ok) setDepartments(await deptRes.json());
