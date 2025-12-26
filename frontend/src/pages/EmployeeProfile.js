@@ -21,6 +21,7 @@ import {
   Edit,
   RefreshCw
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -37,10 +38,11 @@ const EmployeeProfile = () => {
 
   const fetchEmployeeData = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       const [empRes, deptRes, desigRes] = await Promise.all([
-        fetch(`${API_URL}/employees/${id}`, { credentials: 'include' }),
-        fetch(`${API_URL}/departments`, { credentials: 'include' }),
-        fetch(`${API_URL}/designations`, { credentials: 'include' })
+        fetch(`${API_URL}/employees/${id}`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/departments`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/designations`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (empRes.ok) {
