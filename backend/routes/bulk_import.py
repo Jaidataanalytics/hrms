@@ -47,24 +47,39 @@ async def download_employee_template(request: Request):
         })
         
         headers = [
-            "emp_code", "first_name", "last_name", "email", "phone", 
+            "emp_code*", "first_name*", "last_name*", "email*", "phone", 
             "date_of_birth", "gender", "address", "city", "state", "pincode",
             "department_code", "designation_code", "location_code",
             "employment_type", "joining_date", "reporting_manager_email"
         ]
         
+        # Required field format (red background)
+        required_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#C00000',
+            'font_color': 'white',
+            'border': 1
+        })
+        
         for col, header in enumerate(headers):
-            worksheet.write(0, col, header, header_format)
+            if '*' in header:
+                worksheet.write(0, col, header, required_format)
+            else:
+                worksheet.write(0, col, header, header_format)
             worksheet.set_column(col, col, 15)
         
-        # Sample row
+        # Add note row
+        note_format = workbook.add_format({'italic': True, 'font_color': 'gray'})
+        worksheet.write(1, 0, "* = Required fields. emp_code must be unique.", note_format)
+        
+        # Sample row (moved to row 3)
         sample = [
             "EMP001", "Rahul", "Sharma", "rahul.sharma@company.com", "+91 9876543210",
             "1990-05-15", "male", "123 Main Street", "Mumbai", "Maharashtra", "400001",
             "ENG", "SE", "HO-MUM", "permanent", "2024-01-15", "manager@company.com"
         ]
         for col, val in enumerate(sample):
-            worksheet.write(1, col, val)
+            worksheet.write(2, col, val)
         
         workbook.close()
         output.seek(0)
