@@ -310,11 +310,15 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
         import openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(content))
         ws = wb.active
-        headers = [cell.value for cell in ws[1]]
+        # Normalize headers - remove asterisks and strip whitespace
+        headers = [(cell.value or "").replace('*', '').strip() for cell in ws[1]]
         rows = []
         for row in ws.iter_rows(min_row=2, values_only=True):
-            if any(row):  # Skip empty rows
-                rows.append(dict(zip(headers, row)))
+            # Skip note rows and empty rows
+            first_cell = str(row[0] or "").strip() if row[0] else ""
+            if first_cell.startswith("*") or first_cell.startswith("Required") or not any(row):
+                continue
+            rows.append(dict(zip(headers, row)))
     elif filename.endswith('.csv'):
         # Parse CSV
         decoded = content.decode('utf-8-sig')
