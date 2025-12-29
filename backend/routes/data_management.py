@@ -46,6 +46,9 @@ DATA_COLLECTIONS = {
     "user_trainings": "user_trainings",
     "travel_requests": "travel_requests",
     "announcements": "announcements",
+    "contractors": "contractors",
+    "contract_workers": "contract_workers",
+    "contract_worker_attendance": "contract_worker_attendance",
 }
 
 # Friendly names for display
@@ -67,6 +70,9 @@ DATA_TYPE_NAMES = {
     "user_trainings": "Training Enrollments",
     "travel_requests": "Travel Requests",
     "announcements": "Announcements",
+    "contractors": "Contractors",
+    "contract_workers": "Contract Workers",
+    "contract_worker_attendance": "Contract Worker Attendance",
 }
 
 

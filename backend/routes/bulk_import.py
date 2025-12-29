@@ -358,19 +358,9 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
             
             emp_code = str(row.get("emp_code") or "").strip()
             if not emp_code:
-                # Auto-generate emp_code
-                last_emp = await db.employees.find_one(
-                    {"emp_code": {"$regex": "^EMP"}},
-                    sort=[("emp_code", -1)]
-                )
-                if last_emp and last_emp.get("emp_code"):
-                    try:
-                        last_num = int(last_emp["emp_code"].replace("EMP", ""))
-                        emp_code = f"EMP{str(last_num + 1).zfill(5)}"
-                    except:
-                        emp_code = f"EMP{str(imported + 1).zfill(5)}"
-                else:
-                    emp_code = f"EMP{str(imported + 1).zfill(5)}"
+                # emp_code is required - do not auto-generate
+                errors.append({"row": idx, "error": "Missing required field: emp_code (Employee Code is mandatory)"})
+                continue
             
             # Check for duplicate emp_code
             existing_code = await db.employees.find_one({"emp_code": emp_code})
