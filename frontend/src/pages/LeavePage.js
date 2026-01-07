@@ -507,6 +507,18 @@ const LeavePage = () => {
               )}
             </TabsTrigger>
           )}
+          {isHR && (
+            <TabsTrigger value="manage-balances" data-testid="tab-manage-balances">
+              <Users className="w-4 h-4 mr-1" />
+              Manage Balances
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="leave-rules" data-testid="tab-leave-rules">
+              <Settings className="w-4 h-4 mr-1" />
+              Leave Rules
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="my-requests">
