@@ -646,7 +646,438 @@ const LeavePage = () => {
             </Card>
           </TabsContent>
         )}
+
+        {/* HR: Manage Balances Tab */}
+        {isHR && (
+          <TabsContent value="manage-balances">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      Employee Leave Balances
+                    </CardTitle>
+                    <CardDescription>View and edit leave balances for all employees</CardDescription>
+                  </div>
+                  <Button onClick={handleRunAccrual} variant="outline" size="sm" className="gap-2">
+                    <RefreshCw className="w-4 h-4" />
+                    Run Monthly Accrual
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Emp Code</TableHead>
+                        <TableHead className="text-center">CL</TableHead>
+                        <TableHead className="text-center">SL</TableHead>
+                        <TableHead className="text-center">EL</TableHead>
+                        <TableHead className="text-center">CO</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allBalances.length > 0 ? (
+                        allBalances.map(emp => {
+                          const getBalance = (typeId) => emp.balances?.find(b => b.leave_type_id === typeId) || {};
+                          return (
+                            <TableRow key={emp.employee_id}>
+                              <TableCell className="font-medium">{emp.employee_name}</TableCell>
+                              <TableCell>{emp.emp_code}</TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-emerald-600 font-medium">{getBalance('lt_cl').available || 0}</span>
+                                <span className="text-slate-400 text-xs">/{getBalance('lt_cl').opening_balance || 0}</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-emerald-600 font-medium">{getBalance('lt_sl').available || 0}</span>
+                                <span className="text-slate-400 text-xs">/{getBalance('lt_sl').opening_balance || 0}</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-emerald-600 font-medium">{getBalance('lt_el').available || 0}</span>
+                                <span className="text-slate-400 text-xs">/{getBalance('lt_el').opening_balance || 0}</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-emerald-600 font-medium">{getBalance('lt_co').available || 0}</span>
+                                <span className="text-slate-400 text-xs">/{getBalance('lt_co').opening_balance || 0}</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex gap-1 justify-center">
+                                  {['lt_cl', 'lt_sl', 'lt_el', 'lt_co'].map(typeId => {
+                                    const balance = getBalance(typeId);
+                                    return (
+                                      <Button
+                                        key={typeId}
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 w-7 p-0"
+                                        onClick={() => handleEditBalance(emp, { ...balance, leave_type_id: typeId })}
+                                        title={`Edit ${typeId.replace('lt_', '').toUpperCase()}`}
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                            No employee balances found. Import leave balances from Bulk Import section.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Admin: Leave Rules Tab */}
+        {isAdmin && (
+          <TabsContent value="leave-rules">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  Leave Accrual Rules
+                </CardTitle>
+                <CardDescription>Configure how employees earn and use different types of leaves</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  {Object.entries(accrualRules).map(([code, rule]) => (
+                    <div key={code} className="border rounded-lg p-4 bg-slate-50">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-semibold text-slate-900">{rule.name || code}</h4>
+                          <p className="text-sm text-slate-500">Code: {code}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditRule(code, rule)}
+                          className="gap-1"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-slate-500">Annual Quota:</span>
+                          <span className="ml-2 font-medium">{rule.annual_quota || 0} days</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Accrual Type:</span>
+                          <span className="ml-2 font-medium capitalize">{rule.accrual_type || 'None'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Accrual Rate:</span>
+                          <span className="ml-2 font-medium">{rule.accrual_rate || 0}/period</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Carry Forward:</span>
+                          <span className={`ml-2 font-medium ${rule.carry_forward ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {rule.carry_forward ? `Yes (max ${rule.max_carry_forward})` : 'No'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Encashment:</span>
+                          <span className={`ml-2 font-medium ${rule.encashment_allowed ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {rule.encashment_allowed ? 'Allowed' : 'Not Allowed'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Probation:</span>
+                          <span className={`ml-2 font-medium ${rule.probation_eligible ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {rule.probation_eligible ? 'Eligible' : 'Not Eligible'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Max Consecutive:</span>
+                          <span className="ml-2 font-medium">{rule.max_consecutive_days || '-'} days</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Advance Notice:</span>
+                          <span className="ml-2 font-medium">{rule.advance_notice_days || 0} days</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {Object.keys(accrualRules).length === 0 && (
+                    <div className="text-center py-8 text-slate-500">
+                      No leave rules configured. Default rules will be applied.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Edit Balance Dialog */}
+      <Dialog open={showEditBalanceDialog} onOpenChange={setShowEditBalanceDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Edit Leave Balance
+            </DialogTitle>
+            <DialogDescription>
+              {editingBalance?.employee_name} ({editingBalance?.emp_code}) - {editingBalance?.leave_type_id?.replace('lt_', '').toUpperCase()}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Opening Balance</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={editingBalance?.opening_balance || 0}
+                  onChange={(e) => setEditingBalance({
+                    ...editingBalance,
+                    opening_balance: parseFloat(e.target.value) || 0
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Accrued</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={editingBalance?.accrued || 0}
+                  onChange={(e) => setEditingBalance({
+                    ...editingBalance,
+                    accrued: parseFloat(e.target.value) || 0
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Used</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={editingBalance?.used || 0}
+                  onChange={(e) => setEditingBalance({
+                    ...editingBalance,
+                    used: parseFloat(e.target.value) || 0
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Pending</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={editingBalance?.pending || 0}
+                  onChange={(e) => setEditingBalance({
+                    ...editingBalance,
+                    pending: parseFloat(e.target.value) || 0
+                  })}
+                />
+              </div>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <span className="text-sm text-slate-500">Available Balance: </span>
+              <span className="font-semibold text-emerald-600">
+                {((editingBalance?.opening_balance || 0) + (editingBalance?.accrued || 0) - (editingBalance?.used || 0) - (editingBalance?.pending || 0)).toFixed(1)} days
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditBalanceDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveBalance} className="gap-2">
+              <Save className="w-4 h-4" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Rule Dialog */}
+      <Dialog open={showEditRuleDialog} onOpenChange={setShowEditRuleDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Edit Leave Rule - {editingRule?.name || editingRule?.code}
+            </DialogTitle>
+            <DialogDescription>
+              Configure accrual and usage rules for this leave type
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Basic Settings */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-900">Basic Settings</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Leave Name</Label>
+                  <Input
+                    value={editingRule?.name || ''}
+                    onChange={(e) => setEditingRule({ ...editingRule, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Annual Quota (days)</Label>
+                  <Input
+                    type="number"
+                    value={editingRule?.annual_quota || 0}
+                    onChange={(e) => setEditingRule({ ...editingRule, annual_quota: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Accrual Settings */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-900">Accrual Settings</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Accrual Type</Label>
+                  <Select
+                    value={editingRule?.accrual_type || 'none'}
+                    onValueChange={(value) => setEditingRule({ ...editingRule, accrual_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (Manual)</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="yearly">Yearly (Credited at start)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Accrual Rate (per period)</Label>
+                  <Input
+                    type="number"
+                    step="0.25"
+                    value={editingRule?.accrual_rate || 0}
+                    onChange={(e) => setEditingRule({ ...editingRule, accrual_rate: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Carry Forward & Encashment */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-900">Carry Forward & Encashment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="carry_forward"
+                    checked={editingRule?.carry_forward || false}
+                    onChange={(e) => setEditingRule({ ...editingRule, carry_forward: e.target.checked })}
+                    className="rounded border-slate-300"
+                  />
+                  <Label htmlFor="carry_forward">Allow Carry Forward</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>Max Carry Forward (days)</Label>
+                  <Input
+                    type="number"
+                    value={editingRule?.max_carry_forward || 0}
+                    onChange={(e) => setEditingRule({ ...editingRule, max_carry_forward: parseInt(e.target.value) || 0 })}
+                    disabled={!editingRule?.carry_forward}
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="encashment_allowed"
+                    checked={editingRule?.encashment_allowed || false}
+                    onChange={(e) => setEditingRule({ ...editingRule, encashment_allowed: e.target.checked })}
+                    className="rounded border-slate-300"
+                  />
+                  <Label htmlFor="encashment_allowed">Allow Encashment</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>Encashment Rate (%)</Label>
+                  <Input
+                    type="number"
+                    value={editingRule?.encashment_rate || 0}
+                    onChange={(e) => setEditingRule({ ...editingRule, encashment_rate: parseInt(e.target.value) || 0 })}
+                    disabled={!editingRule?.encashment_allowed}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Eligibility & Restrictions */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-900">Eligibility & Restrictions</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="probation_eligible"
+                    checked={editingRule?.probation_eligible || false}
+                    onChange={(e) => setEditingRule({ ...editingRule, probation_eligible: e.target.checked })}
+                    className="rounded border-slate-300"
+                  />
+                  <Label htmlFor="probation_eligible">Probation Eligible</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>Min Service Days Required</Label>
+                  <Input
+                    type="number"
+                    value={editingRule?.min_service_days || 0}
+                    onChange={(e) => setEditingRule({ ...editingRule, min_service_days: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max Consecutive Days</Label>
+                  <Input
+                    type="number"
+                    value={editingRule?.max_consecutive_days || 0}
+                    onChange={(e) => setEditingRule({ ...editingRule, max_consecutive_days: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Advance Notice (days)</Label>
+                  <Input
+                    type="number"
+                    value={editingRule?.advance_notice_days || 0}
+                    onChange={(e) => setEditingRule({ ...editingRule, advance_notice_days: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="can_be_half_day"
+                    checked={editingRule?.can_be_half_day || false}
+                    onChange={(e) => setEditingRule({ ...editingRule, can_be_half_day: e.target.checked })}
+                    className="rounded border-slate-300"
+                  />
+                  <Label htmlFor="can_be_half_day">Allow Half Day</Label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditRuleDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveRule} className="gap-2">
+              <Save className="w-4 h-4" />
+              Save Rule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
