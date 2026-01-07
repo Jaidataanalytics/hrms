@@ -420,17 +420,48 @@ async def import_leave_balance(request: Request, file: UploadFile = File(...)):
                     return row.get(key)
         return None
     
-    # Leave type mapping to internal names
-    LEAVE_TYPES = {
-        "casual": {"name": "Casual Leave", "code": "CL"},
-        "sick": {"name": "Sick Leave", "code": "SL"},
-        "earned": {"name": "Earned Leave", "code": "EL"},
-        "complementary": {"name": "Complementary Off", "code": "CO"},
-    }
+    # Leave type definitions - will create if not exists
+    LEAVE_TYPES = [
+        {"code": "CL", "name": "Casual Leave", "search_terms": ["casual", "cl"]},
+        {"code": "SL", "name": "Sick Leave", "search_terms": ["sick", "sl"]},
+        {"code": "EL", "name": "Earned Leave", "search_terms": ["earned", "el"]},
+        {"code": "CO", "name": "Complementary Off", "search_terms": ["complementary", "comp off", "co"]},
+    ]
+    
+    # Ensure leave types exist in the system
+    current_year = datetime.now().year
+    for lt in LEAVE_TYPES:
+        existing = await db.leave_types.find_one({"code": lt["code"]})
+        if not existing:
+            await db.leave_types.insert_one({
+                "leave_type_id": f"lt_{lt['code'].lower()}",
+                "code": lt["code"],
+                "name": lt["name"],
+                "description": lt["name"],
+                "annual_quota": 12,  # Default quota
+                "is_paid": True,
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+    
+    # Get leave type IDs for mapping
+    leave_type_map = {}
+    all_leave_types = await db.leave_types.find({}, {"_id": 0}).to_list(20)
+    for lt in all_leave_types:
+        leave_type_map[lt["code"]] = lt["leave_type_id"]
     
     imported = 0
     errors = []
     updated_employees = []
+    
+    # Convert to number helper
+    def to_float(val):
+        if val is None or val == "":
+            return 0.0
+        try:
+            return float(val)
+        except:
+            return 0.0
     
     for idx, row in enumerate(rows, start=header_row + 2 if header_row else 2):
         try:
@@ -453,47 +484,50 @@ async def import_leave_balance(request: Request, file: UploadFile = File(...)):
                 continue
             
             employee_id = employee.get("employee_id")
+            employee_name = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
             
-            # Parse leave balances
-            casual_leave = find_column(row, "casual", "cl")
-            sick_leave = find_column(row, "sick", "sl")
-            earned_leave = find_column(row, "earned", "el")
-            comp_off = find_column(row, "complementary", "comp off", "co")
+            # Parse leave balances from the row
+            balances_to_import = []
+            for lt in LEAVE_TYPES:
+                value = find_column(row, *lt["search_terms"])
+                if value is not None:
+                    balances_to_import.append({
+                        "code": lt["code"],
+                        "leave_type_id": leave_type_map.get(lt["code"]),
+                        "value": to_float(value)
+                    })
             
-            # Convert to numbers, default to 0
-            def to_float(val):
-                if val is None or val == "":
-                    return 0.0
-                try:
-                    return float(val)
-                except:
-                    return 0.0
-            
-            leave_balances = {
-                "casual_leave": to_float(casual_leave),
-                "sick_leave": to_float(sick_leave),
-                "earned_leave": to_float(earned_leave),
-                "complementary_off": to_float(comp_off),
-            }
-            
-            # Update or create leave balance record
-            balance_doc = {
-                "employee_id": employee_id,
-                "emp_code": emp_id,
-                "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
-                "year": datetime.now().year,
-                "balances": leave_balances,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "updated_by": user["user_id"],
-                "import_date": datetime.now(timezone.utc).isoformat(),
-            }
-            
-            # Upsert - overwrite existing balance for this employee and year
-            await db.leave_balances.update_one(
-                {"employee_id": employee_id, "year": datetime.now().year},
-                {"$set": balance_doc},
-                upsert=True
-            )
+            # Create/update individual leave balance records for each leave type
+            for balance in balances_to_import:
+                if not balance["leave_type_id"]:
+                    continue
+                
+                balance_doc = {
+                    "employee_id": employee_id,
+                    "emp_code": emp_id,
+                    "employee_name": employee_name,
+                    "leave_type_id": balance["leave_type_id"],
+                    "year": current_year,
+                    "opening_balance": balance["value"],  # Imported value is the current/opening balance
+                    "accrued": 0,
+                    "used": 0,
+                    "pending": 0,
+                    "available": balance["value"],  # Available = opening - used
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_by": user["user_id"],
+                    "import_date": datetime.now(timezone.utc).isoformat(),
+                }
+                
+                # Upsert - overwrite existing balance for this employee, leave type, and year
+                await db.leave_balances.update_one(
+                    {
+                        "employee_id": employee_id, 
+                        "leave_type_id": balance["leave_type_id"],
+                        "year": current_year
+                    },
+                    {"$set": balance_doc},
+                    upsert=True
+                )
             
             imported += 1
             updated_employees.append(emp_id)
@@ -507,7 +541,9 @@ async def import_leave_balance(request: Request, file: UploadFile = File(...)):
         "errors": errors,
         "total_rows": len(rows),
         "updated_employees": updated_employees[:10],  # Show first 10
-        "year": datetime.now().year
+        "year": current_year,
+        "leave_types_created": [lt["code"] for lt in LEAVE_TYPES]
+    }
     }
 
 
