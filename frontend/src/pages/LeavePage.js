@@ -93,15 +93,17 @@ const LeavePage = () => {
   const fetchData = async () => {
     try {
       const authHeaders = getAuthHeaders();
-      const [typesRes, balanceRes, requestsRes] = await Promise.all([
+      const [typesRes, balanceRes, requestsRes, rulesRes] = await Promise.all([
         fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/leave/balance`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave/my-requests`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/leave/my-requests`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/leave/accrual-rules`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (typesRes.ok) setLeaveTypes(await typesRes.json());
       if (balanceRes.ok) setLeaveBalance(await balanceRes.json());
       if (requestsRes.ok) setMyRequests(await requestsRes.json());
+      if (rulesRes.ok) setAccrualRules(await rulesRes.json());
 
       // Fetch pending approvals for managers/HR
       if (isManager) {
@@ -109,14 +111,10 @@ const LeavePage = () => {
         if (approvalsRes.ok) setPendingApprovals(await approvalsRes.json());
       }
       
-      // Fetch HR management data
+      // Fetch HR management data (all balances)
       if (isHR) {
-        const [allBalancesRes, rulesRes] = await Promise.all([
-          fetch(`${API_URL}/leave/balances/all`, { credentials: 'include', headers: authHeaders }),
-          fetch(`${API_URL}/leave/accrual-rules`, { credentials: 'include', headers: authHeaders })
-        ]);
+        const allBalancesRes = await fetch(`${API_URL}/leave/balances/all`, { credentials: 'include', headers: authHeaders });
         if (allBalancesRes.ok) setAllBalances(await allBalancesRes.json());
-        if (rulesRes.ok) setAccrualRules(await rulesRes.json());
       }
     } catch (error) {
       console.error('Error fetching data:', error);
