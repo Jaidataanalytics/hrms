@@ -310,6 +310,15 @@ const BulkImportPage = () => {
       color: 'bg-purple-100 text-purple-700',
       fields: ['Emp Code', 'BASIC', 'DA', 'HRA', 'EPF', 'ESI', 'NET PAYABLE'],
       format: 'Excel (.xlsx)'
+    },
+    {
+      id: 'leave-balance',
+      title: 'Leave Balances',
+      description: 'Import current leave balances (CL, SL, EL, Comp Off)',
+      icon: CalendarDays,
+      color: 'bg-amber-100 text-amber-700',
+      fields: ['Emp ID', 'Name', 'Casual Leave', 'Sick Leave', 'Earned Leave', 'Comp Off'],
+      format: 'Excel (.xlsx)'
     }
   ];
 
