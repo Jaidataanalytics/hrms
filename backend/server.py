@@ -1586,11 +1586,9 @@ def get_default_leave_accrual_rules():
 
 @api_router.get("/leave/accrual-rules")
 async def get_leave_accrual_rules(request: Request):
-    """Get leave accrual rules configuration"""
+    """Get leave accrual rules configuration - available to all authenticated users"""
     user = await get_current_user(request)
-    
-    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # All authenticated users can view rules (needed for displaying correct quotas)
     
     config = await db.leave_config.find_one({"config_type": "accrual_rules"}, {"_id": 0})
     
