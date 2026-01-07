@@ -210,6 +210,104 @@ const LeavePage = () => {
     }
   };
 
+  // HR Management Functions
+  const handleEditBalance = (employee, balance) => {
+    setEditingBalance({
+      employee_id: employee.employee_id,
+      emp_code: employee.emp_code,
+      employee_name: employee.employee_name,
+      leave_type_id: balance.leave_type_id,
+      opening_balance: balance.opening_balance || 0,
+      accrued: balance.accrued || 0,
+      used: balance.used || 0,
+      pending: balance.pending || 0,
+      available: balance.available || 0
+    });
+    setShowEditBalanceDialog(true);
+  };
+
+  const handleSaveBalance = async () => {
+    if (!editingBalance) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/leave/balances/${editingBalance.employee_id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingBalance)
+      });
+
+      if (response.ok) {
+        toast.success('Leave balance updated');
+        setShowEditBalanceDialog(false);
+        setEditingBalance(null);
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to update balance');
+      }
+    } catch (error) {
+      toast.error('Failed to update balance');
+    }
+  };
+
+  const handleEditRule = (code, rule) => {
+    setEditingRule({ code, ...rule });
+    setShowEditRuleDialog(true);
+  };
+
+  const handleSaveRule = async () => {
+    if (!editingRule) return;
+    
+    const { code, ...ruleData } = editingRule;
+    
+    try {
+      const response = await fetch(`${API_URL}/leave/accrual-rules/${code}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(ruleData)
+      });
+
+      if (response.ok) {
+        toast.success(`Leave rule for ${code} updated`);
+        setShowEditRuleDialog(false);
+        setEditingRule(null);
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to update rule');
+      }
+    } catch (error) {
+      toast.error('Failed to update rule');
+    }
+  };
+
+  const handleRunAccrual = async () => {
+    if (!window.confirm('Run leave accrual for current month? This will add accrued leaves to all eligible employees.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_URL}/leave/run-accrual`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Accrual completed: ${result.accruals_processed} records processed`);
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to run accrual');
+      }
+    } catch (error) {
+      toast.error('Failed to run accrual');
+    }
+  };
+
   const getLeaveTypeName = (typeId) => {
     const lt = leaveTypes.find(t => t.leave_type_id === typeId);
     return lt?.name || typeId;
