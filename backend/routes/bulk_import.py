@@ -293,6 +293,224 @@ async def download_attendance_template(request: Request, month: int = None, year
         raise HTTPException(status_code=500, detail="Excel library not available")
 
 
+@router.get("/templates/leave-balance")
+async def download_leave_balance_template(request: Request):
+    """Download leave balance import template as Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Leave Balance')
+        
+        # Header formats
+        header_blue = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        required_format = workbook.add_format({
+            'bold': True, 'bg_color': '#C00000', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        leave_format = workbook.add_format({
+            'bold': True, 'bg_color': '#70AD47', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        note_format = workbook.add_format({'italic': True, 'font_color': 'gray'})
+        
+        # Title row
+        title_format = workbook.add_format({
+            'bold': True, 'font_size': 12, 'align': 'left'
+        })
+        worksheet.write(0, 0, f"Leave Balance as on {datetime.now().strftime('%d %b %Y')}", title_format)
+        
+        # Headers (Row 2 - index 1)
+        headers = [
+            ("Emp ID*", required_format),
+            ("Name", header_blue),
+            ("Casual Leave (CL)", leave_format),
+            ("Sick Leave (SL)", leave_format),
+            ("Earned Leave (EL)", leave_format),
+            ("Complementary Off", leave_format),
+        ]
+        
+        for col, (header, fmt) in enumerate(headers):
+            worksheet.write(1, col, header, fmt)
+            worksheet.set_column(col, col, 20 if col <= 1 else 18)
+        
+        # Note row
+        worksheet.write(2, 0, "* = Required. Emp ID must match employee code in system.", note_format)
+        
+        # Sample rows
+        sample_data = [
+            ("EMP001", "Rahul Sharma", 8, 6, 12, 2),
+            ("EMP002", "Priya Singh", 10, 5, 15, 0),
+        ]
+        
+        for row_idx, data in enumerate(sample_data, start=3):
+            for col, val in enumerate(data):
+                worksheet.write(row_idx, col, val)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=leave_balance_template.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
+
+
+@router.post("/leave-balance")
+async def import_leave_balance(request: Request, file: UploadFile = File(...)):
+    """Bulk import leave balances from Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    filename = file.filename.lower()
+    content = await file.read()
+    
+    if filename.endswith('.xlsx'):
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content))
+        ws = wb.active
+        
+        # Find the header row (look for "Emp ID" in first few rows)
+        header_row = None
+        headers = []
+        for row_num in range(1, min(6, ws.max_row + 1)):
+            first_cell = str(ws.cell(row=row_num, column=1).value or "").strip().lower()
+            if "emp" in first_cell and "id" in first_cell:
+                header_row = row_num
+                headers = [(ws.cell(row=row_num, column=col).value or "").strip() for col in range(1, ws.max_column + 1)]
+                break
+        
+        if not header_row:
+            raise HTTPException(status_code=400, detail="Could not find header row with 'Emp ID'")
+        
+        rows = []
+        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+            # Skip empty rows and note rows
+            first_cell = str(row[0] or "").strip() if row[0] else ""
+            if not first_cell or first_cell.startswith("*") or first_cell.lower().startswith("required"):
+                continue
+            rows.append(dict(zip(headers, row)))
+    elif filename.endswith('.csv'):
+        decoded = content.decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(decoded))
+        rows = list(reader)
+    else:
+        raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
+    
+    # Column mapping - normalize various possible column names
+    def find_column(row, *possible_names):
+        for name in possible_names:
+            for key in row.keys():
+                if key and name.lower() in key.lower():
+                    return row.get(key)
+        return None
+    
+    # Leave type mapping to internal names
+    LEAVE_TYPES = {
+        "casual": {"name": "Casual Leave", "code": "CL"},
+        "sick": {"name": "Sick Leave", "code": "SL"},
+        "earned": {"name": "Earned Leave", "code": "EL"},
+        "complementary": {"name": "Complementary Off", "code": "CO"},
+    }
+    
+    imported = 0
+    errors = []
+    updated_employees = []
+    
+    for idx, row in enumerate(rows, start=header_row + 2 if header_row else 2):
+        try:
+            # Get employee ID
+            emp_id = find_column(row, "emp id", "emp_id", "empid", "employee id", "employee_id")
+            emp_id = str(emp_id or "").strip().replace('*', '')
+            
+            if not emp_id:
+                errors.append({"row": idx, "error": "Missing Emp ID"})
+                continue
+            
+            # Find employee by emp_code
+            employee = await db.employees.find_one({"emp_code": emp_id}, {"_id": 0})
+            if not employee:
+                # Also try employee_id field
+                employee = await db.employees.find_one({"employee_id": emp_id}, {"_id": 0})
+            
+            if not employee:
+                errors.append({"row": idx, "error": f"Employee not found: {emp_id}"})
+                continue
+            
+            employee_id = employee.get("employee_id")
+            
+            # Parse leave balances
+            casual_leave = find_column(row, "casual", "cl")
+            sick_leave = find_column(row, "sick", "sl")
+            earned_leave = find_column(row, "earned", "el")
+            comp_off = find_column(row, "complementary", "comp off", "co")
+            
+            # Convert to numbers, default to 0
+            def to_float(val):
+                if val is None or val == "":
+                    return 0.0
+                try:
+                    return float(val)
+                except:
+                    return 0.0
+            
+            leave_balances = {
+                "casual_leave": to_float(casual_leave),
+                "sick_leave": to_float(sick_leave),
+                "earned_leave": to_float(earned_leave),
+                "complementary_off": to_float(comp_off),
+            }
+            
+            # Update or create leave balance record
+            balance_doc = {
+                "employee_id": employee_id,
+                "emp_code": emp_id,
+                "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+                "year": datetime.now().year,
+                "balances": leave_balances,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user["user_id"],
+                "import_date": datetime.now(timezone.utc).isoformat(),
+            }
+            
+            # Upsert - overwrite existing balance for this employee and year
+            await db.leave_balances.update_one(
+                {"employee_id": employee_id, "year": datetime.now().year},
+                {"$set": balance_doc},
+                upsert=True
+            )
+            
+            imported += 1
+            updated_employees.append(emp_id)
+            
+        except Exception as e:
+            errors.append({"row": idx, "error": str(e)})
+    
+    return {
+        "message": "Leave balance import completed",
+        "imported": imported,
+        "errors": errors,
+        "total_rows": len(rows),
+        "updated_employees": updated_employees[:10],  # Show first 10
+        "year": datetime.now().year
+    }
+
+
 # ==================== IMPORTS ====================
 
 @router.post("/employees")
