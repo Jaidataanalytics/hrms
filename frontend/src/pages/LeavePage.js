@@ -473,9 +473,15 @@ const LeavePage = () => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {leaveTypes.slice(0, 6).map(lt => {
           const balance = leaveBalance.find(b => b.leave_type_id === lt.leave_type_id) || {};
-          const available = balance.available || lt.annual_quota;
-          const total = balance.opening_balance + balance.accrued || lt.annual_quota;
-          const used = balance.used || 0;
+          // Get quota from accrual rules if available (HR-configured), otherwise fall back to leave type default
+          const ruleCode = lt.code?.toUpperCase() || lt.leave_type_id?.replace('lt_', '').toUpperCase();
+          const ruleQuota = accrualRules[ruleCode]?.annual_quota;
+          const quota = ruleQuota !== undefined ? ruleQuota : lt.annual_quota;
+          
+          const available = balance.available !== undefined ? balance.available : quota;
+          const total = (balance.opening_balance !== undefined && balance.accrued !== undefined) 
+            ? (balance.opening_balance + balance.accrued) 
+            : quota;
           
           return (
             <Card key={lt.leave_type_id} className="card-hover" data-testid={`balance-${lt.code}`}>
@@ -489,6 +495,7 @@ const LeavePage = () => {
           );
         })}
       </div>
+
 
       {/* Tabs for Requests */}
       <Tabs defaultValue="my-requests" className="space-y-4">
