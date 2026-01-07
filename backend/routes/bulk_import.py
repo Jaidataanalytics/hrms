@@ -544,7 +544,6 @@ async def import_leave_balance(request: Request, file: UploadFile = File(...)):
         "year": current_year,
         "leave_types_created": [lt["code"] for lt in LEAVE_TYPES]
     }
-    }
 
 
 # ==================== IMPORTS ====================
