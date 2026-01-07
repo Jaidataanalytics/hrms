@@ -1350,6 +1350,395 @@ async def reject_leave(leave_id: str, rejection_reason: str, request: Request):
     
     return {"message": "Leave rejected"}
 
+
+# ==================== LEAVE BALANCE MANAGEMENT ====================
+
+@api_router.get("/leave/balances/all")
+async def get_all_leave_balances(
+    request: Request, 
+    year: Optional[int] = None,
+    employee_id: Optional[str] = None,
+    department_id: Optional[str] = None
+):
+    """Get all leave balances (HR/Admin only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    current_year = year or datetime.now(timezone.utc).year
+    query = {"year": current_year}
+    
+    if employee_id:
+        query["employee_id"] = employee_id
+    
+    balances = await db.leave_balances.find(query, {"_id": 0}).to_list(1000)
+    
+    # Group by employee
+    employee_balances = {}
+    for b in balances:
+        emp_id = b.get("employee_id")
+        if emp_id not in employee_balances:
+            employee_balances[emp_id] = {
+                "employee_id": emp_id,
+                "emp_code": b.get("emp_code"),
+                "employee_name": b.get("employee_name"),
+                "balances": []
+            }
+        employee_balances[emp_id]["balances"].append({
+            "leave_type_id": b.get("leave_type_id"),
+            "opening_balance": b.get("opening_balance", 0),
+            "accrued": b.get("accrued", 0),
+            "used": b.get("used", 0),
+            "pending": b.get("pending", 0),
+            "available": b.get("available", 0)
+        })
+    
+    return list(employee_balances.values())
+
+
+@api_router.put("/leave/balances/{employee_id}")
+async def update_leave_balance(employee_id: str, data: dict, request: Request):
+    """Update leave balance for an employee (HR/Admin only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    leave_type_id = data.get("leave_type_id")
+    year = data.get("year", datetime.now(timezone.utc).year)
+    
+    if not leave_type_id:
+        raise HTTPException(status_code=400, detail="leave_type_id required")
+    
+    # Verify employee exists
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Calculate available based on updated values
+    opening = float(data.get("opening_balance", 0))
+    accrued = float(data.get("accrued", 0))
+    used = float(data.get("used", 0))
+    pending = float(data.get("pending", 0))
+    available = opening + accrued - used - pending
+    
+    update_doc = {
+        "employee_id": employee_id,
+        "emp_code": employee.get("emp_code"),
+        "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+        "leave_type_id": leave_type_id,
+        "year": year,
+        "opening_balance": opening,
+        "accrued": accrued,
+        "used": used,
+        "pending": pending,
+        "available": available,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user["user_id"]
+    }
+    
+    await db.leave_balances.update_one(
+        {"employee_id": employee_id, "leave_type_id": leave_type_id, "year": year},
+        {"$set": update_doc},
+        upsert=True
+    )
+    
+    await log_audit("UPDATE", "leave", "leave_balance", f"{employee_id}_{leave_type_id}",
+                   user["user_id"], user.get("name", ""), new_value=update_doc, request=request)
+    
+    return {"message": "Leave balance updated", "balance": update_doc}
+
+
+@api_router.post("/leave/balances/bulk-update")
+async def bulk_update_leave_balances(data: List[dict], request: Request):
+    """Bulk update leave balances (HR/Admin only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    updated = 0
+    errors = []
+    year = datetime.now(timezone.utc).year
+    
+    for item in data:
+        try:
+            employee_id = item.get("employee_id")
+            leave_type_id = item.get("leave_type_id")
+            
+            if not employee_id or not leave_type_id:
+                errors.append({"item": item, "error": "Missing employee_id or leave_type_id"})
+                continue
+            
+            employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+            if not employee:
+                errors.append({"item": item, "error": f"Employee not found: {employee_id}"})
+                continue
+            
+            opening = float(item.get("opening_balance", 0))
+            accrued = float(item.get("accrued", 0))
+            used = float(item.get("used", 0))
+            pending = float(item.get("pending", 0))
+            available = opening + accrued - used - pending
+            
+            update_doc = {
+                "employee_id": employee_id,
+                "emp_code": employee.get("emp_code"),
+                "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+                "leave_type_id": leave_type_id,
+                "year": year,
+                "opening_balance": opening,
+                "accrued": accrued,
+                "used": used,
+                "pending": pending,
+                "available": available,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user["user_id"]
+            }
+            
+            await db.leave_balances.update_one(
+                {"employee_id": employee_id, "leave_type_id": leave_type_id, "year": year},
+                {"$set": update_doc},
+                upsert=True
+            )
+            updated += 1
+            
+        except Exception as e:
+            errors.append({"item": item, "error": str(e)})
+    
+    return {"message": "Bulk update completed", "updated": updated, "errors": errors}
+
+
+# ==================== LEAVE ACCRUAL RULES ====================
+
+def get_default_leave_accrual_rules():
+    """Return default leave accrual rules configuration"""
+    return {
+        "CL": {
+            "name": "Casual Leave",
+            "annual_quota": 12,
+            "accrual_type": "monthly",  # monthly, quarterly, yearly, none
+            "accrual_rate": 1.0,  # Leaves accrued per period
+            "carry_forward": False,
+            "max_carry_forward": 0,
+            "encashment_allowed": False,
+            "encashment_rate": 0,  # Percentage of basic per day
+            "min_service_days": 0,  # Days of service required to be eligible
+            "probation_eligible": True,
+            "max_consecutive_days": 3,
+            "advance_notice_days": 1,
+            "can_be_half_day": True,
+            "gender_specific": None,  # null, male, female
+        },
+        "SL": {
+            "name": "Sick Leave",
+            "annual_quota": 12,
+            "accrual_type": "yearly",
+            "accrual_rate": 12.0,
+            "carry_forward": False,
+            "max_carry_forward": 0,
+            "encashment_allowed": False,
+            "encashment_rate": 0,
+            "min_service_days": 0,
+            "probation_eligible": True,
+            "max_consecutive_days": 7,
+            "advance_notice_days": 0,  # Can be applied same day
+            "can_be_half_day": True,
+            "gender_specific": None,
+            "medical_certificate_required_after": 2,  # Days after which certificate needed
+        },
+        "EL": {
+            "name": "Earned Leave",
+            "annual_quota": 15,
+            "accrual_type": "monthly",
+            "accrual_rate": 1.25,
+            "carry_forward": True,
+            "max_carry_forward": 30,
+            "encashment_allowed": True,
+            "encashment_rate": 100,
+            "min_service_days": 240,  # Eligible after completing probation
+            "probation_eligible": False,
+            "max_consecutive_days": 15,
+            "advance_notice_days": 7,
+            "can_be_half_day": False,
+            "gender_specific": None,
+        },
+        "CO": {
+            "name": "Compensatory Off",
+            "annual_quota": 0,  # No fixed quota - earned by working extra
+            "accrual_type": "none",  # Manually credited
+            "accrual_rate": 0,
+            "carry_forward": False,
+            "max_carry_forward": 0,
+            "encashment_allowed": False,
+            "encashment_rate": 0,
+            "min_service_days": 0,
+            "probation_eligible": True,
+            "max_consecutive_days": 2,
+            "advance_notice_days": 1,
+            "can_be_half_day": True,
+            "gender_specific": None,
+            "validity_days": 30,  # Must be used within 30 days of earning
+        },
+    }
+
+
+@api_router.get("/leave/accrual-rules")
+async def get_leave_accrual_rules(request: Request):
+    """Get leave accrual rules configuration"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    config = await db.leave_config.find_one({"config_type": "accrual_rules"}, {"_id": 0})
+    
+    if not config:
+        return get_default_leave_accrual_rules()
+    
+    return config.get("rules", get_default_leave_accrual_rules())
+
+
+@api_router.put("/leave/accrual-rules")
+async def update_leave_accrual_rules(rules: dict, request: Request):
+    """Update leave accrual rules configuration"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    config_doc = {
+        "config_type": "accrual_rules",
+        "rules": rules,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user["user_id"]
+    }
+    
+    await db.leave_config.update_one(
+        {"config_type": "accrual_rules"},
+        {"$set": config_doc},
+        upsert=True
+    )
+    
+    await log_audit("UPDATE", "leave", "accrual_rules", "leave_config",
+                   user["user_id"], user.get("name", ""), new_value=rules, request=request)
+    
+    return {"message": "Leave accrual rules updated", "rules": rules}
+
+
+@api_router.put("/leave/accrual-rules/{leave_code}")
+async def update_single_leave_rule(leave_code: str, rule_data: dict, request: Request):
+    """Update a single leave type's accrual rules"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get existing config
+    config = await db.leave_config.find_one({"config_type": "accrual_rules"}, {"_id": 0})
+    rules = config.get("rules", get_default_leave_accrual_rules()) if config else get_default_leave_accrual_rules()
+    
+    # Update the specific leave type
+    rules[leave_code.upper()] = rule_data
+    
+    config_doc = {
+        "config_type": "accrual_rules",
+        "rules": rules,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user["user_id"]
+    }
+    
+    await db.leave_config.update_one(
+        {"config_type": "accrual_rules"},
+        {"$set": config_doc},
+        upsert=True
+    )
+    
+    return {"message": f"Leave rule for {leave_code} updated", "rule": rule_data}
+
+
+@api_router.post("/leave/run-accrual")
+async def run_leave_accrual(request: Request, month: Optional[int] = None, year: Optional[int] = None):
+    """Manually run leave accrual for all eligible employees"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    now = datetime.now(timezone.utc)
+    target_month = month or now.month
+    target_year = year or now.year
+    
+    # Get accrual rules
+    config = await db.leave_config.find_one({"config_type": "accrual_rules"}, {"_id": 0})
+    rules = config.get("rules", get_default_leave_accrual_rules()) if config else get_default_leave_accrual_rules()
+    
+    # Get all active employees
+    employees = await db.employees.find({"is_active": True}, {"_id": 0}).to_list(1000)
+    
+    accrued_count = 0
+    
+    for emp in employees:
+        employee_id = emp.get("employee_id")
+        emp_code = emp.get("emp_code")
+        emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+        
+        for leave_code, rule in rules.items():
+            if rule.get("accrual_type") == "monthly":
+                accrual_amount = rule.get("accrual_rate", 0)
+                
+                if accrual_amount > 0:
+                    # Check if accrual already done for this month
+                    existing = await db.leave_accrual_log.find_one({
+                        "employee_id": employee_id,
+                        "leave_code": leave_code,
+                        "month": target_month,
+                        "year": target_year
+                    })
+                    
+                    if not existing:
+                        # Update balance
+                        leave_type_id = f"lt_{leave_code.lower()}"
+                        
+                        await db.leave_balances.update_one(
+                            {"employee_id": employee_id, "leave_type_id": leave_type_id, "year": target_year},
+                            {
+                                "$inc": {"accrued": accrual_amount, "available": accrual_amount},
+                                "$setOnInsert": {
+                                    "employee_id": employee_id,
+                                    "emp_code": emp_code,
+                                    "employee_name": emp_name,
+                                    "leave_type_id": leave_type_id,
+                                    "year": target_year,
+                                    "opening_balance": 0,
+                                    "used": 0,
+                                    "pending": 0
+                                }
+                            },
+                            upsert=True
+                        )
+                        
+                        # Log the accrual
+                        await db.leave_accrual_log.insert_one({
+                            "employee_id": employee_id,
+                            "leave_code": leave_code,
+                            "leave_type_id": leave_type_id,
+                            "month": target_month,
+                            "year": target_year,
+                            "amount": accrual_amount,
+                            "accrued_at": now.isoformat()
+                        })
+                        
+                        accrued_count += 1
+    
+    return {
+        "message": f"Leave accrual completed for {target_month}/{target_year}",
+        "accruals_processed": accrued_count,
+        "employees_count": len(employees)
+    }
+
+
 # ==================== ANNOUNCEMENTS ROUTES ====================
 
 @api_router.get("/announcements")
