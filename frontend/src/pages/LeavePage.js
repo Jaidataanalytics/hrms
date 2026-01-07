@@ -64,6 +64,14 @@ const LeavePage = () => {
   const [loading, setLoading] = useState(true);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // HR Management states
+  const [allBalances, setAllBalances] = useState([]);
+  const [accrualRules, setAccrualRules] = useState({});
+  const [editingBalance, setEditingBalance] = useState(null);
+  const [editingRule, setEditingRule] = useState(null);
+  const [showEditBalanceDialog, setShowEditBalanceDialog] = useState(false);
+  const [showEditRuleDialog, setShowEditRuleDialog] = useState(false);
 
   const [leaveForm, setLeaveForm] = useState({
     leave_type_id: '',
@@ -75,6 +83,7 @@ const LeavePage = () => {
   });
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin';
   const isManager = user?.role === 'manager' || user?.role === 'team_lead' || isHR;
 
   useEffect(() => {
@@ -98,6 +107,16 @@ const LeavePage = () => {
       if (isManager) {
         const approvalsRes = await fetch(`${API_URL}/leave/pending-approvals`, { credentials: 'include', headers: authHeaders });
         if (approvalsRes.ok) setPendingApprovals(await approvalsRes.json());
+      }
+      
+      // Fetch HR management data
+      if (isHR) {
+        const [allBalancesRes, rulesRes] = await Promise.all([
+          fetch(`${API_URL}/leave/balances/all`, { credentials: 'include', headers: authHeaders }),
+          fetch(`${API_URL}/leave/accrual-rules`, { credentials: 'include', headers: authHeaders })
+        ]);
+        if (allBalancesRes.ok) setAllBalances(await allBalancesRes.json());
+        if (rulesRes.ok) setAccrualRules(await rulesRes.json());
       }
     } catch (error) {
       console.error('Error fetching data:', error);
