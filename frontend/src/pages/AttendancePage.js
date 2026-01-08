@@ -375,19 +375,77 @@ const AttendancePage = () => {
           </CardContent>
         </Card>
       </div>
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-amber-600" />
-              </div>
+
+      {/* Organization Attendance Table - Show when in organization view */}
+      {viewMode === 'organization' && orgAttendance?.today_attendance && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-slate-900">{lateDays}</p>
-                <p className="text-xs text-slate-500">Late</p>
+                <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  Today's Attendance
+                </CardTitle>
+                <CardDescription>
+                  {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </CardDescription>
               </div>
+              <Badge variant="outline">{orgAttendance.today_attendance.length} records</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Emp Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orgAttendance.today_attendance.length > 0 ? (
+                    orgAttendance.today_attendance.map((att, idx) => {
+                      const statusConfig = {
+                        present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
+                        wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
+                        absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
+                        leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
+                        holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
+                        weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
+                      };
+                      const config = statusConfig[att.status] || statusConfig.present;
+                      return (
+                        <TableRow key={att.attendance_id || idx}>
+                          <TableCell className="font-medium">{att.emp_code}</TableCell>
+                          <TableCell>{att.employee_name}</TableCell>
+                          <TableCell>{att.department || '-'}</TableCell>
+                          <TableCell>
+                            <Badge className={config.className}>{config.label}</Badge>
+                          </TableCell>
+                          <TableCell className="text-slate-500 text-sm">
+                            {att.first_in || att.created_at?.split('T')[1]?.substring(0, 5) || '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                        No attendance records for today
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
-      </div>
+      )}
 
-      {/* Calendar & Details */}
+      {/* Calendar & Details - Show when in my attendance view */}
+      {viewMode === 'my' && (
       <div className="grid lg:grid-cols-12 gap-6">
         {/* Calendar */}
         <Card className="lg:col-span-5" data-testid="calendar-card">
