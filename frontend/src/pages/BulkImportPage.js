@@ -90,8 +90,10 @@ const BulkImportPage = () => {
         url += `?month=${attendanceMonth}&year=${attendanceYear}`;
       }
       
+      const authHeaders = getAuthHeaders();
       const response = await fetch(url, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: authHeaders
       });
 
       if (response.ok) {
