@@ -1146,6 +1146,89 @@ async def get_daily_attendance(request: Request, date: Optional[str] = None, dep
     attendance = await db.attendance.find(query, {"_id": 0}).to_list(500)
     return attendance
 
+
+@api_router.get("/attendance/organization")
+async def get_organization_attendance(
+    request: Request, 
+    month: Optional[int] = None, 
+    year: Optional[int] = None,
+    date: Optional[str] = None
+):
+    """Get organization-wide attendance data with summary"""
+    user = await get_current_user(request)
+    
+    # All authenticated users can view org attendance
+    now = datetime.now(timezone.utc)
+    target_month = month or now.month
+    target_year = year or now.year
+    target_date = date or now.strftime("%Y-%m-%d")
+    
+    # Get all active employees
+    employees = await db.employees.find(
+        {"is_active": True}, 
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
+    ).to_list(1000)
+    
+    total_employees = len(employees)
+    employee_map = {e["employee_id"]: e for e in employees}
+    
+    # Get today's attendance
+    today_attendance = await db.attendance.find(
+        {"date": target_date}, 
+        {"_id": 0}
+    ).to_list(1000)
+    
+    # Calculate today's summary
+    today_present = sum(1 for a in today_attendance if a.get("status") == "present")
+    today_wfh = sum(1 for a in today_attendance if a.get("status") == "wfh")
+    today_absent = sum(1 for a in today_attendance if a.get("status") == "absent")
+    today_leave = sum(1 for a in today_attendance if a.get("status") == "leave")
+    today_late = sum(1 for a in today_attendance if a.get("is_late"))
+    today_holiday = sum(1 for a in today_attendance if a.get("status") in ["holiday", "weekly_off"])
+    
+    # Unmarked employees (no attendance record today)
+    marked_emp_ids = {a["employee_id"] for a in today_attendance}
+    unmarked = total_employees - len(marked_emp_ids)
+    
+    # Get month's attendance for the table
+    month_start = f"{target_year}-{str(target_month).zfill(2)}-01"
+    month_end = f"{target_year}-{str(target_month).zfill(2)}-31"
+    
+    month_attendance = await db.attendance.find(
+        {"date": {"$gte": month_start, "$lte": month_end}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Enrich attendance with employee details
+    enriched_attendance = []
+    for att in today_attendance:
+        emp = employee_map.get(att["employee_id"], {})
+        enriched_attendance.append({
+            **att,
+            "emp_code": emp.get("emp_code", ""),
+            "employee_name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
+            "department": emp.get("department", "")
+        })
+    
+    return {
+        "date": target_date,
+        "month": target_month,
+        "year": target_year,
+        "summary": {
+            "total_employees": total_employees,
+            "present": today_present,
+            "wfh": today_wfh,
+            "absent": today_absent,
+            "leave": today_leave,
+            "late": today_late,
+            "holiday": today_holiday,
+            "unmarked": unmarked
+        },
+        "today_attendance": enriched_attendance,
+        "employee_list": employees
+    }
+
+
 # ==================== LEAVE ROUTES ====================
 
 @api_router.get("/leave-types", response_model=List[LeaveType])
