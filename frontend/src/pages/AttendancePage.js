@@ -557,6 +557,7 @@ const AttendancePage = () => {
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 };
