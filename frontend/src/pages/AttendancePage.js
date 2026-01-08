@@ -11,6 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import {
   Clock,
@@ -23,7 +32,9 @@ import {
   Plane,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Users,
+  User
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
@@ -32,27 +43,47 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 const AttendancePage = () => {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
+  const [orgAttendance, setOrgAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [markingAttendance, setMarkingAttendance] = useState(false);
   const [attendanceSource, setAttendanceSource] = useState('manual');
+  const [viewMode, setViewMode] = useState('organization'); // 'organization' or 'my'
 
   const currentMonth = selectedDate.getMonth() + 1;
   const currentYear = selectedDate.getFullYear();
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
   useEffect(() => {
     fetchAttendance();
-  }, [currentMonth, currentYear]);
+  }, [currentMonth, currentYear, viewMode]);
 
   const fetchAttendance = async () => {
+    setLoading(true);
     try {
-      const response = await fetch(
+      const authHeaders = getAuthHeaders();
+      
+      // Always fetch organization data for the summary cards
+      const orgResponse = await fetch(
+        `${API_URL}/attendance/organization?month=${currentMonth}&year=${currentYear}&date=${todayStr}`,
+        { credentials: 'include', headers: authHeaders }
+      );
+      
+      if (orgResponse.ok) {
+        const orgData = await orgResponse.json();
+        setOrgAttendance(orgData);
+      }
+      
+      // Also fetch personal attendance
+      const myResponse = await fetch(
         `${API_URL}/attendance/my?month=${currentMonth}&year=${currentYear}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { credentials: 'include', headers: authHeaders }
       );
 
-      if (response.ok) {
-        const data = await response.json();
+      if (myResponse.ok) {
+        const data = await myResponse.json();
         setAttendance(data);
       }
     } catch (error) {
