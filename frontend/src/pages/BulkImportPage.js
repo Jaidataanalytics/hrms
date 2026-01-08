@@ -180,9 +180,13 @@ const BulkImportPage = () => {
     }
 
     try {
+      const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/import/${type}`, {
         method: 'POST',
         credentials: 'include',
+        headers: {
+          'Authorization': authHeaders.Authorization
+        },
         body: formData
       });
 
