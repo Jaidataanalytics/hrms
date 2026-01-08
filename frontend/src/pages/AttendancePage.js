@@ -302,7 +302,23 @@ const AttendancePage = () => {
       </Card>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        {viewMode === 'organization' && (
+          <Card data-testid="stat-total" className="border-slate-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{totalEmployees}</p>
+                  <p className="text-xs text-slate-500">Total Staff</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <Card data-testid="stat-present">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -311,7 +327,7 @@ const AttendancePage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{presentDays}</p>
-                <p className="text-xs text-slate-500">Present</p>
+                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'Present Today' : 'Present'}</p>
               </div>
             </div>
           </CardContent>
@@ -325,7 +341,7 @@ const AttendancePage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{wfhDays}</p>
-                <p className="text-xs text-slate-500">WFH</p>
+                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'WFH Today' : 'WFH'}</p>
               </div>
             </div>
           </CardContent>
@@ -339,7 +355,7 @@ const AttendancePage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{absentDays}</p>
-                <p className="text-xs text-slate-500">Absent</p>
+                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'Absent Today' : 'Absent'}</p>
               </div>
             </div>
           </CardContent>
@@ -348,6 +364,17 @@ const AttendancePage = () => {
         <Card data-testid="stat-late">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{viewMode === 'organization' ? unmarkedCount : lateDays}</p>
+                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'Unmarked' : 'Late'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                 <AlertCircle className="w-5 h-5 text-amber-600" />
               </div>
