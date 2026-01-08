@@ -787,6 +787,7 @@ async def import_attendance(
                                 "L": "leave",
                                 "H": "holiday",
                                 "WFH": "wfh",
+                                "W/O": "weekly_off",
                                 "HD": "half_day"
                             }
                             status = status_map.get(status_val, status_val.lower())
@@ -794,6 +795,8 @@ async def import_attendance(
                             attendance_doc = {
                                 "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
                                 "employee_id": employee_id,
+                                "emp_code": emp_code,
+                                "employee_name": employee.get("first_name", "") + " " + employee.get("last_name", ""),
                                 "date": date_str,
                                 "status": status,
                                 "is_wfh": status == "wfh",
