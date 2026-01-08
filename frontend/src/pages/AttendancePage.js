@@ -189,11 +189,14 @@ const AttendancePage = () => {
     setSelectedDate(newDate);
   };
 
-  // Summary stats
-  const presentDays = attendance.filter(a => a.status === 'present').length;
-  const wfhDays = attendance.filter(a => a.status === 'wfh').length;
-  const absentDays = attendance.filter(a => a.status === 'absent').length;
-  const lateDays = attendance.filter(a => a.is_late).length;
+  // Summary stats - use org data for organization view
+  const summary = orgAttendance?.summary || {};
+  const presentDays = viewMode === 'organization' ? summary.present || 0 : attendance.filter(a => a.status === 'present').length;
+  const wfhDays = viewMode === 'organization' ? summary.wfh || 0 : attendance.filter(a => a.status === 'wfh').length;
+  const absentDays = viewMode === 'organization' ? summary.absent || 0 : attendance.filter(a => a.status === 'absent').length;
+  const lateDays = viewMode === 'organization' ? summary.late || 0 : attendance.filter(a => a.is_late).length;
+  const totalEmployees = summary.total_employees || 0;
+  const unmarkedCount = summary.unmarked || 0;
 
   if (loading) {
     return (
