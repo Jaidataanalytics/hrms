@@ -214,7 +214,29 @@ const AttendancePage = () => {
           <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Attendance
           </h1>
-          <p className="text-slate-600 mt-1">Track and manage your attendance</p>
+          <p className="text-slate-600 mt-1">
+            {viewMode === 'organization' ? 'Organization-wide attendance overview' : 'Track and manage your attendance'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'organization' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('organization')}
+            className="gap-2"
+          >
+            <Users className="w-4 h-4" />
+            Organization
+          </Button>
+          <Button
+            variant={viewMode === 'my' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('my')}
+            className="gap-2"
+          >
+            <User className="w-4 h-4" />
+            My Attendance
+          </Button>
         </div>
       </div>
 
