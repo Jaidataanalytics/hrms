@@ -44,6 +44,7 @@ import {
   FileSpreadsheet,
   CalendarDays
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
