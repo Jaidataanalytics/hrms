@@ -102,6 +102,7 @@ const DashboardLayout = () => {
     { name: 'Contract Labour', path: '/dashboard/labour', icon: HardHat },
     { name: 'Training', path: '/dashboard/training', icon: GraduationCap },
     { name: 'Travel', path: '/dashboard/travel', icon: Plane },
+    { name: 'Insurance', path: '/dashboard/insurance', icon: Shield },
     { name: 'Reports', path: '/dashboard/reports', icon: BarChart3 },
     { name: 'Report Builder', path: '/dashboard/report-builder', icon: PieChart },
     { name: 'Bulk Import', path: '/dashboard/import', icon: FileText },
