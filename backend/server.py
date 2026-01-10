@@ -2501,3 +2501,8 @@ async def delete_insurance(insurance_id: str, request: Request):
     
     return {"message": "Insurance record deleted"}
 
+
+
+# Include the router in the main app (after all routes are defined)
+app.include_router(api_router)
+
