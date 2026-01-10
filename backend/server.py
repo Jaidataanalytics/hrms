@@ -2368,11 +2368,13 @@ class InsuranceRecord(BaseModel):
     employee_id: str
     emp_code: str
     employee_name: str
-    insurance_date: str  # Date of insurance
-    amount: float
-    insurance_company: str
+    esic: bool = False  # ESIC covered - if True, insurance details may be optional
+    insurance_date: Optional[str] = None  # Date of insurance
+    amount: Optional[float] = None
+    insurance_company: Optional[str] = None
     policy_number: Optional[str] = None
     coverage_type: Optional[str] = None  # health, life, accident, etc.
+    accidental_insurance: bool = False
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     status: str = "active"  # active, expired, cancelled
@@ -2428,16 +2430,19 @@ async def create_insurance(data: dict, request: Request):
     if not employee:
         raise HTTPException(status_code=404, detail=f"Employee with code {emp_code} not found")
     
+    esic = data.get("esic", False)
+    
     insurance_doc = {
         "insurance_id": f"ins_{uuid.uuid4().hex[:12]}",
         "employee_id": employee["employee_id"],
         "emp_code": emp_code,
         "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
-        "insurance_date": data.get("insurance_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
-        "amount": float(data.get("amount", 0)),
-        "insurance_company": data.get("insurance_company", ""),
-        "policy_number": data.get("policy_number"),
-        "coverage_type": data.get("coverage_type", "health"),
+        "esic": esic,
+        "insurance_date": data.get("insurance_date") if not esic else None,
+        "amount": float(data.get("amount", 0)) if data.get("amount") and not esic else None,
+        "insurance_company": data.get("insurance_company", "") if not esic else None,
+        "policy_number": data.get("policy_number") if not esic else None,
+        "coverage_type": data.get("coverage_type", "health") if not esic else None,
         "accidental_insurance": data.get("accidental_insurance", False),
         "start_date": data.get("start_date"),
         "end_date": data.get("end_date"),
@@ -2466,12 +2471,15 @@ async def update_insurance(insurance_id: str, data: dict, request: Request):
     if not existing:
         raise HTTPException(status_code=404, detail="Insurance record not found")
     
+    esic = data.get("esic", existing.get("esic", False))
+    
     update_data = {
-        "insurance_date": data.get("insurance_date", existing.get("insurance_date")),
-        "amount": float(data.get("amount", existing.get("amount", 0))),
-        "insurance_company": data.get("insurance_company", existing.get("insurance_company")),
-        "policy_number": data.get("policy_number", existing.get("policy_number")),
-        "coverage_type": data.get("coverage_type", existing.get("coverage_type")),
+        "esic": esic,
+        "insurance_date": data.get("insurance_date", existing.get("insurance_date")) if not esic else None,
+        "amount": float(data.get("amount", existing.get("amount", 0))) if data.get("amount") is not None or existing.get("amount") else None,
+        "insurance_company": data.get("insurance_company", existing.get("insurance_company")) if not esic else None,
+        "policy_number": data.get("policy_number", existing.get("policy_number")) if not esic else None,
+        "coverage_type": data.get("coverage_type", existing.get("coverage_type")) if not esic else None,
         "accidental_insurance": data.get("accidental_insurance", existing.get("accidental_insurance", False)),
         "start_date": data.get("start_date", existing.get("start_date")),
         "end_date": data.get("end_date", existing.get("end_date")),
@@ -2502,6 +2510,119 @@ async def delete_insurance(insurance_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Insurance record not found")
     
     return {"message": "Insurance record deleted"}
+
+
+# ==================== BUSINESS INSURANCE ROUTES ====================
+
+class BusinessInsuranceRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    business_insurance_id: str = Field(default_factory=lambda: f"biz_ins_{uuid.uuid4().hex[:12]}")
+    name_of_insurance: str
+    vehicle_no: Optional[str] = None
+    insurance_company: str
+    date_of_issuance: Optional[str] = None
+    due_date: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_by: Optional[str] = None
+
+
+@api_router.get("/business-insurance")
+async def get_all_business_insurance(request: Request):
+    """Get all business insurance records"""
+    user = await get_current_user(request)
+    
+    records = await db.business_insurance.find({}, {"_id": 0}).to_list(1000)
+    return records
+
+
+@api_router.get("/business-insurance/{business_insurance_id}")
+async def get_business_insurance_by_id(business_insurance_id: str, request: Request):
+    """Get single business insurance record"""
+    user = await get_current_user(request)
+    
+    record = await db.business_insurance.find_one({"business_insurance_id": business_insurance_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Business insurance record not found")
+    return record
+
+
+@api_router.post("/business-insurance")
+async def create_business_insurance(data: dict, request: Request):
+    """Create new business insurance record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    name_of_insurance = data.get("name_of_insurance")
+    insurance_company = data.get("insurance_company")
+    
+    if not name_of_insurance or not insurance_company:
+        raise HTTPException(status_code=400, detail="Name of Insurance and Insurance Company are required")
+    
+    business_insurance_doc = {
+        "business_insurance_id": f"biz_ins_{uuid.uuid4().hex[:12]}",
+        "name_of_insurance": name_of_insurance,
+        "vehicle_no": data.get("vehicle_no"),
+        "insurance_company": insurance_company,
+        "date_of_issuance": data.get("date_of_issuance"),
+        "due_date": data.get("due_date"),
+        "notes": data.get("notes"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["user_id"]
+    }
+    
+    await db.business_insurance.insert_one(business_insurance_doc)
+    
+    business_insurance_doc.pop('_id', None)
+    return {"message": "Business insurance record created", "business_insurance": business_insurance_doc}
+
+
+@api_router.put("/business-insurance/{business_insurance_id}")
+async def update_business_insurance(business_insurance_id: str, data: dict, request: Request):
+    """Update business insurance record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = await db.business_insurance.find_one({"business_insurance_id": business_insurance_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Business insurance record not found")
+    
+    update_data = {
+        "name_of_insurance": data.get("name_of_insurance", existing.get("name_of_insurance")),
+        "vehicle_no": data.get("vehicle_no", existing.get("vehicle_no")),
+        "insurance_company": data.get("insurance_company", existing.get("insurance_company")),
+        "date_of_issuance": data.get("date_of_issuance", existing.get("date_of_issuance")),
+        "due_date": data.get("due_date", existing.get("due_date")),
+        "notes": data.get("notes", existing.get("notes")),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user["user_id"]
+    }
+    
+    await db.business_insurance.update_one(
+        {"business_insurance_id": business_insurance_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Business insurance record updated"}
+
+
+@api_router.delete("/business-insurance/{business_insurance_id}")
+async def delete_business_insurance(business_insurance_id: str, request: Request):
+    """Delete business insurance record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    result = await db.business_insurance.delete_one({"business_insurance_id": business_insurance_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Business insurance record not found")
+    
+    return {"message": "Business insurance record deleted"}
 
 
 
