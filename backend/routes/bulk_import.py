@@ -1377,6 +1377,13 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                 else:
                     insurance_date = str(insurance_date)
                 
+                # Parse accidental insurance field
+                accidental_val = get_field(row, "accidental")
+                accidental_insurance = False
+                if accidental_val:
+                    accidental_str = str(accidental_val).strip().lower()
+                    accidental_insurance = accidental_str in ['yes', 'y', 'true', '1']
+                
                 insurance_doc = {
                     "insurance_id": f"ins_{uuid.uuid4().hex[:12]}",
                     "employee_id": employee["employee_id"],
@@ -1387,6 +1394,7 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                     "insurance_company": str(company or ""),
                     "policy_number": str(get_field(row, "policy") or ""),
                     "coverage_type": str(get_field(row, "coverage", "type") or "health"),
+                    "accidental_insurance": accidental_insurance,
                     "start_date": str(get_field(row, "start") or ""),
                     "end_date": str(get_field(row, "end") or ""),
                     "notes": str(get_field(row, "notes", "note") or ""),
