@@ -2441,6 +2441,7 @@ async def create_insurance(data: dict, request: Request):
         "insurance_company": data.get("insurance_company", ""),
         "policy_number": data.get("policy_number"),
         "coverage_type": data.get("coverage_type", "health"),
+        "accidental_insurance": data.get("accidental_insurance", False),
         "start_date": data.get("start_date"),
         "end_date": data.get("end_date"),
         "status": data.get("status", "active"),
