@@ -2361,3 +2361,144 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+# ==================== EMPLOYEE INSURANCE ROUTES ====================
+
+class InsuranceRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    insurance_id: str = Field(default_factory=lambda: f"ins_{uuid.uuid4().hex[:12]}")
+    employee_id: str
+    emp_code: str
+    employee_name: str
+    insurance_date: str  # Date of insurance
+    amount: float
+    insurance_company: str
+    policy_number: Optional[str] = None
+    coverage_type: Optional[str] = None  # health, life, accident, etc.
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    status: str = "active"  # active, expired, cancelled
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_by: Optional[str] = None
+
+
+@api_router.get("/insurance")
+async def get_all_insurance(
+    request: Request,
+    employee_id: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Get all insurance records"""
+    user = await get_current_user(request)
+    
+    query = {}
+    if employee_id:
+        query["employee_id"] = employee_id
+    if status:
+        query["status"] = status
+    
+    records = await db.insurance.find(query, {"_id": 0}).to_list(1000)
+    return records
+
+
+@api_router.get("/insurance/{insurance_id}")
+async def get_insurance_by_id(insurance_id: str, request: Request):
+    """Get single insurance record"""
+    user = await get_current_user(request)
+    
+    record = await db.insurance.find_one({"insurance_id": insurance_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Insurance record not found")
+    return record
+
+
+@api_router.post("/insurance")
+async def create_insurance(data: dict, request: Request):
+    """Create new insurance record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    emp_code = data.get("emp_code")
+    if not emp_code:
+        raise HTTPException(status_code=400, detail="Employee code is required")
+    
+    # Find employee
+    employee = await db.employees.find_one({"emp_code": emp_code}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail=f"Employee with code {emp_code} not found")
+    
+    insurance_doc = {
+        "insurance_id": f"ins_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee["employee_id"],
+        "emp_code": emp_code,
+        "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+        "insurance_date": data.get("insurance_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+        "amount": float(data.get("amount", 0)),
+        "insurance_company": data.get("insurance_company", ""),
+        "policy_number": data.get("policy_number"),
+        "coverage_type": data.get("coverage_type", "health"),
+        "start_date": data.get("start_date"),
+        "end_date": data.get("end_date"),
+        "status": data.get("status", "active"),
+        "notes": data.get("notes"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["user_id"]
+    }
+    
+    await db.insurance.insert_one(insurance_doc)
+    
+    return {"message": "Insurance record created", "insurance": insurance_doc}
+
+
+@api_router.put("/insurance/{insurance_id}")
+async def update_insurance(insurance_id: str, data: dict, request: Request):
+    """Update insurance record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = await db.insurance.find_one({"insurance_id": insurance_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Insurance record not found")
+    
+    update_data = {
+        "insurance_date": data.get("insurance_date", existing.get("insurance_date")),
+        "amount": float(data.get("amount", existing.get("amount", 0))),
+        "insurance_company": data.get("insurance_company", existing.get("insurance_company")),
+        "policy_number": data.get("policy_number", existing.get("policy_number")),
+        "coverage_type": data.get("coverage_type", existing.get("coverage_type")),
+        "start_date": data.get("start_date", existing.get("start_date")),
+        "end_date": data.get("end_date", existing.get("end_date")),
+        "status": data.get("status", existing.get("status")),
+        "notes": data.get("notes", existing.get("notes")),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user["user_id"]
+    }
+    
+    await db.insurance.update_one(
+        {"insurance_id": insurance_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Insurance record updated"}
+
+
+@api_router.delete("/insurance/{insurance_id}")
+async def delete_insurance(insurance_id: str, request: Request):
+    """Delete insurance record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    result = await db.insurance.delete_one({"insurance_id": insurance_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Insurance record not found")
+    
+    return {"message": "Insurance record deleted"}
+
