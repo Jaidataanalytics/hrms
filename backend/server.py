@@ -2449,6 +2449,8 @@ async def create_insurance(data: dict, request: Request):
     
     await db.insurance.insert_one(insurance_doc)
     
+    # Remove _id from response to avoid serialization issue
+    insurance_doc.pop('_id', None)
     return {"message": "Insurance record created", "insurance": insurance_doc}
 
 
