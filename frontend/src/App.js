@@ -31,6 +31,7 @@ import TrainingPage from "./pages/TrainingPage";
 import TravelPage from "./pages/TravelPage";
 import DataManagementPage from "./pages/DataManagementPage";
 import BiometricPage from "./pages/BiometricPage";
+import InsurancePage from "./pages/InsurancePage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
