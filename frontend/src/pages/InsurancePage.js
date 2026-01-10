@@ -573,6 +573,18 @@ const InsurancePage = () => {
                 </Select>
               </div>
             </div>
+            <div className="flex items-center space-x-3 py-2">
+              <input
+                type="checkbox"
+                id="accidental_insurance"
+                checked={formData.accidental_insurance}
+                onChange={(e) => setFormData({ ...formData, accidental_insurance: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="accidental_insurance" className="cursor-pointer">
+                Accidental Insurance Coverage
+              </Label>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date</Label>
