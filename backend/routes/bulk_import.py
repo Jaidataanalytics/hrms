@@ -1210,3 +1210,203 @@ async def export_salary(request: Request):
         )
     except ImportError:
         raise HTTPException(status_code=500, detail="Excel library not available")
+
+
+# ==================== INSURANCE IMPORT ====================
+
+@router.get("/templates/insurance")
+async def download_insurance_template(request: Request):
+    """Download insurance import template as Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Insurance Data')
+        
+        # Header formats
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        required_format = workbook.add_format({
+            'bold': True, 'bg_color': '#C00000', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        note_format = workbook.add_format({'italic': True, 'font_color': 'gray'})
+        
+        # Title
+        title_format = workbook.add_format({'bold': True, 'font_size': 12})
+        worksheet.write(0, 0, "INSURANCE DATA", title_format)
+        
+        # Headers (Row 2)
+        headers = [
+            ("SL NO.", header_format),
+            ("Employee Code*", required_format),
+            ("Employee Name", header_format),
+            ("Date*", required_format),
+            ("Amount*", required_format),
+            ("Insurance Company*", required_format),
+            ("Policy Number", header_format),
+            ("Coverage Type", header_format),
+            ("Start Date", header_format),
+            ("End Date", header_format),
+            ("Notes", header_format),
+        ]
+        
+        for col, (header, fmt) in enumerate(headers):
+            worksheet.write(1, col, header, fmt)
+            worksheet.set_column(col, col, 18)
+        
+        # Note row
+        worksheet.write(2, 0, "* = Required fields. Employee Code must exist in system.", note_format)
+        
+        # Sample rows
+        sample_data = [
+            (1, "S0003", "Abritee Das Roy", "2026-01-15", 50000, "LIC", "POL123456", "Health", "2026-01-01", "2027-01-01", "Annual premium"),
+            (2, "S0007", "Anup Kr Mishra", "2026-01-15", 75000, "HDFC Ergo", "POL789012", "Life", "2026-01-01", "2027-01-01", ""),
+        ]
+        
+        for row_idx, data in enumerate(sample_data, start=3):
+            for col, val in enumerate(data):
+                worksheet.write(row_idx, col, val)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=insurance_template.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
+
+
+@router.post("/insurance")
+async def import_insurance(request: Request, file: UploadFile = File(...)):
+    """Bulk import insurance records from Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    filename = file.filename.lower()
+    content = await file.read()
+    
+    try:
+        if filename.endswith('.xlsx'):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content))
+            ws = wb.active
+            
+            # Find header row
+            header_row = None
+            headers = []
+            for row_num in range(1, min(6, ws.max_row + 1)):
+                first_cell = str(ws.cell(row=row_num, column=2).value or "").strip().lower()
+                if "employee" in first_cell and "code" in first_cell:
+                    header_row = row_num
+                    headers = [(ws.cell(row=row_num, column=col).value or "").strip().replace('*', '') for col in range(1, ws.max_column + 1)]
+                    break
+            
+            if not header_row:
+                raise HTTPException(status_code=400, detail="Could not find header row with 'Employee Code'")
+            
+            rows = []
+            for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+                first_cell = str(row[1] or "").strip() if len(row) > 1 and row[1] else ""
+                if not first_cell or first_cell.startswith("*") or first_cell.lower().startswith("required"):
+                    continue
+                rows.append(dict(zip(headers, row)))
+        elif filename.endswith('.csv'):
+            decoded = content.decode('utf-8-sig')
+            reader = csv.DictReader(io.StringIO(decoded))
+            rows = list(reader)
+        else:
+            raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
+        
+        imported = 0
+        errors = []
+        
+        for idx, row in enumerate(rows, start=header_row + 2 if header_row else 2):
+            try:
+                # Get employee code
+                emp_code = None
+                for key in row.keys():
+                    if key and "employee" in key.lower() and "code" in key.lower():
+                        emp_code = str(row[key] or "").strip()
+                        break
+                
+                if not emp_code:
+                    errors.append({"row": idx, "error": "Missing Employee Code"})
+                    continue
+                
+                # Find employee
+                employee = await db.employees.find_one({"emp_code": emp_code}, {"_id": 0})
+                if not employee:
+                    errors.append({"row": idx, "error": f"Employee {emp_code} not found"})
+                    continue
+                
+                # Parse fields
+                def get_field(row, *names):
+                    for name in names:
+                        for key in row.keys():
+                            if key and name.lower() in key.lower():
+                                return row.get(key)
+                    return None
+                
+                insurance_date = get_field(row, "date")
+                amount = get_field(row, "amount")
+                company = get_field(row, "company", "insurance company")
+                
+                if not insurance_date or not amount or not company:
+                    errors.append({"row": idx, "error": "Missing required fields (Date, Amount, or Insurance Company)"})
+                    continue
+                
+                # Convert date if needed
+                if isinstance(insurance_date, datetime):
+                    insurance_date = insurance_date.strftime("%Y-%m-%d")
+                else:
+                    insurance_date = str(insurance_date)
+                
+                insurance_doc = {
+                    "insurance_id": f"ins_{uuid.uuid4().hex[:12]}",
+                    "employee_id": employee["employee_id"],
+                    "emp_code": emp_code,
+                    "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+                    "insurance_date": insurance_date,
+                    "amount": float(amount) if amount else 0,
+                    "insurance_company": str(company or ""),
+                    "policy_number": str(get_field(row, "policy") or ""),
+                    "coverage_type": str(get_field(row, "coverage", "type") or "health"),
+                    "start_date": str(get_field(row, "start") or ""),
+                    "end_date": str(get_field(row, "end") or ""),
+                    "notes": str(get_field(row, "notes", "note") or ""),
+                    "status": "active",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_by": user["user_id"]
+                }
+                
+                await db.insurance.insert_one(insurance_doc)
+                imported += 1
+                
+            except Exception as e:
+                errors.append({"row": idx, "error": str(e)})
+        
+        return {
+            "message": "Insurance import completed",
+            "imported": imported,
+            "errors": errors,
+            "total_rows": len(rows)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
