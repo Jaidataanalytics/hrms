@@ -42,7 +42,8 @@ import {
   GraduationCap,
   Plane,
   Database,
-  Fingerprint
+  Fingerprint,
+  Shield
 } from 'lucide-react';
 
 const DashboardLayout = () => {
