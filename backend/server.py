@@ -2473,6 +2473,7 @@ async def update_insurance(insurance_id: str, data: dict, request: Request):
         "insurance_company": data.get("insurance_company", existing.get("insurance_company")),
         "policy_number": data.get("policy_number", existing.get("policy_number")),
         "coverage_type": data.get("coverage_type", existing.get("coverage_type")),
+        "accidental_insurance": data.get("accidental_insurance", existing.get("accidental_insurance", False)),
         "start_date": data.get("start_date", existing.get("start_date")),
         "end_date": data.get("end_date", existing.get("end_date")),
         "status": data.get("status", existing.get("status")),
