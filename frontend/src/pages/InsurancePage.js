@@ -485,7 +485,7 @@ const InsurancePage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={isHR ? 8 : 7} className="text-center py-8 text-slate-500">
+                    <TableCell colSpan={isHR ? 9 : 8} className="text-center py-8 text-slate-500">
                       No insurance records found
                     </TableCell>
                   </TableRow>
