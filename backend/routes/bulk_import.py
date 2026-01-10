@@ -1253,6 +1253,7 @@ async def download_insurance_template(request: Request):
             ("Insurance Company*", required_format),
             ("Policy Number", header_format),
             ("Coverage Type", header_format),
+            ("Accidental Insurance", header_format),
             ("Start Date", header_format),
             ("End Date", header_format),
             ("Notes", header_format),
@@ -1263,12 +1264,12 @@ async def download_insurance_template(request: Request):
             worksheet.set_column(col, col, 18)
         
         # Note row
-        worksheet.write(2, 0, "* = Required fields. Employee Code must exist in system.", note_format)
+        worksheet.write(2, 0, "* = Required fields. Employee Code must exist in system. Accidental Insurance: Yes/No", note_format)
         
         # Sample rows
         sample_data = [
-            (1, "S0003", "Abritee Das Roy", "2026-01-15", 50000, "LIC", "POL123456", "Health", "2026-01-01", "2027-01-01", "Annual premium"),
-            (2, "S0007", "Anup Kr Mishra", "2026-01-15", 75000, "HDFC Ergo", "POL789012", "Life", "2026-01-01", "2027-01-01", ""),
+            (1, "S0003", "Abritee Das Roy", "2026-01-15", 50000, "LIC", "POL123456", "Health", "Yes", "2026-01-01", "2027-01-01", "Annual premium"),
+            (2, "S0007", "Anup Kr Mishra", "2026-01-15", 75000, "HDFC Ergo", "POL789012", "Life", "No", "2026-01-01", "2027-01-01", ""),
         ]
         
         for row_idx, data in enumerate(sample_data, start=3):
