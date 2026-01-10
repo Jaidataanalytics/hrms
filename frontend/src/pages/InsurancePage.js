@@ -424,6 +424,7 @@ const InsurancePage = () => {
                   <TableHead>Amount</TableHead>
                   <TableHead>Insurance Company</TableHead>
                   <TableHead>Policy No.</TableHead>
+                  <TableHead className="text-center">Accidental</TableHead>
                   <TableHead>Status</TableHead>
                   {isHR && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
@@ -438,6 +439,13 @@ const InsurancePage = () => {
                       <TableCell>₹{record.amount?.toLocaleString('en-IN')}</TableCell>
                       <TableCell>{record.insurance_company}</TableCell>
                       <TableCell>{record.policy_number || '-'}</TableCell>
+                      <TableCell className="text-center">
+                        {record.accidental_insurance ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
+                        ) : (
+                          <X className="w-5 h-5 text-slate-300 mx-auto" />
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge 
                           className={
