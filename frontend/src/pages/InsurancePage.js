@@ -706,6 +706,18 @@ const InsurancePage = () => {
                   </Select>
                 </div>
               </div>
+              <div className="flex items-center space-x-3 py-2">
+                <input
+                  type="checkbox"
+                  id="edit_accidental_insurance"
+                  checked={editingRecord.accidental_insurance || false}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, accidental_insurance: e.target.checked })}
+                  className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="edit_accidental_insurance" className="cursor-pointer">
+                  Accidental Insurance Coverage
+                </Label>
+              </div>
               <div className="space-y-2">
                 <Label>Notes</Label>
                 <Input
