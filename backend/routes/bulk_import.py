@@ -1365,19 +1365,28 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                                 return row.get(key)
                     return None
                 
+                # Parse ESIC field
+                esic_val = get_field(row, "esic")
+                esic = False
+                if esic_val:
+                    esic_str = str(esic_val).strip().lower()
+                    esic = esic_str in ['yes', 'y', 'true', '1']
+                
                 insurance_date = get_field(row, "date")
                 amount = get_field(row, "amount")
                 company = get_field(row, "company", "insurance company")
                 
-                if not insurance_date or not amount or not company:
-                    errors.append({"row": idx, "error": "Missing required fields (Date, Amount, or Insurance Company)"})
+                # If ESIC is No, then date, amount, and company are required
+                if not esic and (not insurance_date or not amount or not company):
+                    errors.append({"row": idx, "error": "Missing required fields (Date, Amount, or Insurance Company) - required when ESIC is No"})
                     continue
                 
                 # Convert date if needed
-                if isinstance(insurance_date, datetime):
-                    insurance_date = insurance_date.strftime("%Y-%m-%d")
-                else:
-                    insurance_date = str(insurance_date)
+                if insurance_date:
+                    if isinstance(insurance_date, datetime):
+                        insurance_date = insurance_date.strftime("%Y-%m-%d")
+                    else:
+                        insurance_date = str(insurance_date)
                 
                 # Parse accidental insurance field
                 accidental_val = get_field(row, "accidental")
@@ -1391,14 +1400,15 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                     "employee_id": employee["employee_id"],
                     "emp_code": emp_code,
                     "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
-                    "insurance_date": insurance_date,
-                    "amount": float(amount) if amount else 0,
-                    "insurance_company": str(company or ""),
-                    "policy_number": str(get_field(row, "policy") or ""),
-                    "coverage_type": str(get_field(row, "coverage", "type") or "health"),
+                    "esic": esic,
+                    "insurance_date": insurance_date if not esic else None,
+                    "amount": float(amount) if amount and not esic else None,
+                    "insurance_company": str(company or "") if not esic else None,
+                    "policy_number": str(get_field(row, "policy") or "") if not esic else None,
+                    "coverage_type": str(get_field(row, "coverage", "type") or "health") if not esic else None,
                     "accidental_insurance": accidental_insurance,
-                    "start_date": str(get_field(row, "start") or ""),
-                    "end_date": str(get_field(row, "end") or ""),
+                    "start_date": str(get_field(row, "start") or "") if get_field(row, "start") else None,
+                    "end_date": str(get_field(row, "end") or "") if get_field(row, "end") else None,
                     "notes": str(get_field(row, "notes", "note") or ""),
                     "status": "active",
                     "created_at": datetime.now(timezone.utc).isoformat(),
