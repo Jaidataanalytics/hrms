@@ -130,6 +130,7 @@ function AppRouter() {
         <Route path="travel" element={<TravelPage />} />
         <Route path="data-management" element={<DataManagementPage />} />
         <Route path="biometric" element={<BiometricPage />} />
+        <Route path="insurance" element={<InsurancePage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
