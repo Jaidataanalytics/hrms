@@ -1,183 +1,209 @@
 <analysis>**original_problem_statement:**
-The user initiated this session with multiple requests and bug reports:
-1.  **Bug:** Editing a location in Master Setup duplicates the entry instead of updating it.
-2.  **Feature:** Update the bulk import/export system to use new, user-provided Excel templates for Salary and Attendance, which involves significant changes to the data structure.
-3.  **Bug:** The session expires too frequently, logging the user out.
-4.  **Bug:** File uploads in the Bulk Import section are failing.
-5.  **Feature:** Enhance the bulk upload process to provide a detailed summary of successful and failed records, and automatically download a CSV report of the errors.
-6.  **Bug:** Employees uploaded via bulk import are not appearing in the Employee Directory.
-7.  **Bug:** Deleting a user only marks them as inactive but doesn't remove them from the default view.
-8.  **Feature (paused):** Integrate a BioMax biometric device for attendance.
+The user initiated this session with a request to fix a  on the  endpoint. This initial request quickly expanded to include a wide range of bug fixes and new feature implementations.
 
-**PRODUCT REQUIREMENTS:**
-1.  Fix the bug where editing a location creates a duplicate instead of updating.
-2.  Implement a new bulk import/export system using the user-provided Excel templates for Salary and Attendance.
-3.  Resolve the frequent session expiry issue.
-4.  Debug and fix file upload failures in the Bulk Import section.
-5.  Enhance the bulk upload process to include a detailed summary of successful/failed records with an automatic error report download.
-6.  Ensure employees uploaded via bulk import are visible in the Employee Directory.
-7.  Fix the user deletion logic to properly remove users from the default view.
+1.  **Bug:** Fix  caused by an invalid email format () in the database.
+2.  **Bug:** The employee bulk import process auto-generates an employee code, but it should be a mandatory, user-provided field from the Excel file.
+3.  **Bug:** The Data Management page is missing options to delete data related to Contract Labour.
+4.  **Bug:** After a successful bulk upload of attendance records, the data does not appear in the attendance log. This was later identified as a multi-part issue involving a missing auth header and database record mismatch.
+5.  **Bug:** When the annual quota for a leave type is updated in the Leave Rules, the change is not reflected in the leave balance summary cards on the same page.
+6.  **Feature:** Implement a new bulk import for employee Leave Balances using a user-provided Excel template.
+7.  **Feature:** Create a comprehensive and editable Leave Rules system, similar to the existing payroll rules, allowing HR/Admins to configure quotas, accrual, carry-forward, and other policies.
+8.  **Feature:** Allow HR/Admins to manually edit employee leave balances.
+9.  **Feature:** Change the  to show an organization-wide attendance summary by default for HR users, instead of just the logged-in user's data.
+10. **Feature:** Create a new Employee Insurance page for manually adding, viewing, and deleting employee insurance records.
+11. **Feature:** Add bulk upload functionality to the new Employee Insurance page, with a downloadable template.
+12. **Feature:** Add a new Accidental Insurance checkbox (boolean field) to the insurance feature.
+13. **Data Sync:** Sync employee records from the user's production environment (as provided in an attendance sheet) into the preview environment to enable proper testing.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The agent has fixed a critical, systemic authentication bug in the frontend. API calls were failing with  errors because they were missing the JWT  header, relying only on cookies. The agent fixed this by updating numerous components (, , , etc.) to include the auth header.
-
-When the user reported the issue persisted on the live (deployed) version, the agent investigated and discovered the root cause: the deployed application was running old code and was connected to a different database than the preview environment. The fixes were only present in the preview. The agent has since prepared the application for redeployment by correcting CORS policies and adding the user's production URL to the allowed origins list. The preview environment is fully functional and tested.
+The application is a comprehensive HR management system. During this session, the agent implemented a significant number of features and fixes. Key existing functionalities now include:
+- A robust bulk import system for Employees, Attendance, Salary, Leave Balances, and Insurance.
+- A sophisticated, editable leave management system where HR can define granular leave policies (accrual, carry-over, etc.) and edit employee balances directly.
+- An attendance page that provides an organization-wide view for HR, showing daily stats (Present, Absent, WFH, Unmarked) and a detailed employee list.
+- A new, fully functional module for managing Employee Insurance records, complete with both manual and bulk import capabilities.
+- Numerous bugs have been fixed, including a critical missing authentication header on bulk import fetch calls and data validation errors. All fixes and new features are currently live in the preview environment.
 
 **Last working item**:
-- **Last item agent was working:** Preparing the application for redeployment to the production environment. The agent updated the CORS configuration in  and the  file to include all necessary URLs (preview and production) to ensure a smooth deployment.
-- **Status:** IN PROGRESS
+- **Last item agent was working:** Adding a new boolean field, Accidental Insurance Coverage, to the Employee Insurance module. This involved updating the backend data model, CRUD endpoints, bulk import logic, and the frontend UI (adding a checkbox to forms and a status indicator to the data table).
+- **Status:** USER VERIFICATION PENDING
 - **Agent Testing Done:** Y
-- **Which testing method agent to use?** . The next immediate step is to deploy the fixed application to the user's production environment.
+- **Which testing method agent to use?** The agent should use the  to visually confirm that the Accidental Insurance checkbox appears correctly in the Add and Edit dialogs on the Insurance page, and that the main table displays a checkmark or cross for the corresponding records.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Deployed version has old code and a different database (P0)**
+-   **Issue 1: Deployed version is outdated (P0)**
 -   **Issue 2:  endpoint returns 404 (P2)**
 -   **Issue 3: Contract Labour module verification incomplete (P2)**
 
 **Issues Detail:**
--   **Issue 1: Deployed version has old code and a different database (P0)**
-    -   **Attempted fixes:** The agent identified that fixes applied in the preview environment were not present in the deployed version. It correctly configured CORS policies in  and  to prepare for redeployment. The user has approved redeploying the application.
+-   **Issue 1: Deployed version is outdated (P0)**
+    -   **Attempted fixes:** All work in this session has been to fix bugs and add features to the preview environment. The core issue of the production environment running old code remains.
     -   **Next debug checklist:**
-        1.  Use the  to deploy the current, fixed version of the application.
-        2.  After deployment, thoroughly test the production URL to confirm the Employee Directory and other pages load data correctly.
-        3.  Inform the user that since the production database is separate, they will need to perform the bulk import again on the live application.
-    -   **Why fix this issue and what will be achieved with the fix?** This will synchronize the production environment with the working preview version, delivering all the recent bug fixes to the user.
-    -   **Status:** IN PROGRESS
+        1.  Confirm with the user that all new features and fixes in the preview environment are working as expected.
+        2.  Use the  to deploy the current, stable version of the application to the user's production environment.
+        3.  After deployment, thoroughly test the production URL to confirm all new features (Insurance, Leave Rules, Org-wide Attendance) and bug fixes are live.
+    -   **Why fix this issue and what will be achieved with the fix?** This is the highest priority task. It will deliver all the value from the extensive development work done in this session to the user.
+    -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on other issue:** None. This is the main blocker.
+
 -   **Issue 2:  endpoint returns 404 (P2)**
-    -   **Attempted fixes:** None. Noted from a previous testing report.
-    -   **Next debug checklist:** Check  and  for routing errors.
-    -   **Why fix this issue and what will be achieved with the fix?** Ensures the leave module is functional.
+    -   **Attempted fixes:** None. This was carried over from the previous handoff and was not addressed as the agent focused on building new leave functionality.
+    -   **Next debug checklist:**
+        1.  Check  and any leave-related route files for an endpoint matching .
+        2.  If it exists, verify its router registration. If not, determine if it's legacy code that can be removed or if it's required by a part of the frontend that was missed.
+    -   **Why fix this issue and what will be achieved with the fix?** Ensures no part of the application is pointing to a dead API endpoint.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Backend
     -   **Blocked on other issue:** Blocked by Issue 1.
+
 -   **Issue 3: Contract Labour module verification incomplete (P2)**
-    -   **Attempted fixes:** None.
-    -   **Next debug checklist:** Rename files and review code to limit scope to salary and attendance.
-    -   **Why fix this issue and what will be achieved with the fix?** Aligns module with user requirements.
-    -   **Status:** NOT STARTED
+    -   **Attempted fixes:** The agent added the contract labour collections to the  route, allowing for data deletion.
+    -   **Next debug checklist:**
+        1.  Review the full scope of the Contract Labour module with the user.
+        2.  Verify if any other functionality beyond data deletion is required.
+    -   **Why fix this issue and what will be achieved with the fix?** To ensure the module fully meets user requirements.
+    -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on other issue:** Blocked by Issue 1.
 
 **In progress Task List**:
 -   **Task 1: Biometric Device Integration (P2)**
-    -   **Where to resume:** The backend webhook and frontend UI are built. The task was paused by the user. The next step is to provide the user with the webhook URL and guide them on configuring their device.
-    -   **What will be achieved with this?** Automates attendance tracking.
-    -   **Status:** BLOCKED (Paused by user).
-    -   **Should Test frontend/backend/both after fix?** Backend.
-    -   **Blocked on something:** User confirmation to proceed.
+    -   **Where to resume:** The agent has provided the user with the webhook URL and detailed data format specifications. The next step is for the user to configure their BioMax device to send data to the webhook.
+    -   **What will be achieved with this?** Automates employee attendance tracking.
+    -   **Status:** BLOCKED (User action required)
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on something:** Waiting for the user to configure their hardware and initiate a test.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **P1: Implement New Payroll Calculation Logic:** The backend payroll calculation logic needs to be rewritten to use the new, more complex salary structure from the updated Excel templates.
+    - **P0: Deploy Application to Production:** Deploy all the completed features and fixes to the user's live environment.
+    - **P1: Implement New Payroll Calculation Logic:** Rewrite backend payroll logic to use the new complex salary structure.
     - **P1: Implement Meeting Management & Task Tracking:** A fully designed feature, ready for implementation.
 - **Future Tasks:**
-    - AI-powered Shift Scheduling (User de-prioritized).
-    - AI-powered Performance Recommendations (User de-prioritized).
+    - AI-powered Shift Scheduling.
+    - AI-powered Performance Recommendations.
     - Develop a limited-scope mobile application.
     - Further enhance the Custom Report Builder.
 
 **Completed work in this session**
-- **Fixed Systemic Auth Bug:** Resolved a critical issue where frontend API calls failed with  errors by ensuring the JWT  header was sent with every request.
-- **Patched Multiple Frontend Pages:** Applied the authentication fix to , , , , , , and .
-- **Fixed Google OAuth Flow:** Added a missing  GET endpoint in  to correctly initiate the Emergent-managed Google login redirect.
-- **Corrected CORS Policy:** Reconfigured the FastAPI CORS middleware to correctly handle requests with credentials by specifying exact origins instead of using a wildcard (), resolving browser security errors.
-- **Diagnosed Deployment Mismatch:** Identified that the user's live application was running old code and was connected to a separate database, which was the root cause of persistent issues.
-- **Prepared for Redeployment:** Updated  and  with the correct CORS origins for both preview and production environments, paving the way for a successful deployment.
+- **Fixed Backend Validation Error:** Resolved a  for invalid emails in the employee list by changing the Pydantic model from  to .
+- **Fixed Employee Code Generation:** Modified the employee bulk import to enforce a mandatory, user-provided , preventing auto-generation.
+- **Enhanced Data Management:** Added Contractors, Contract Workers, and their attendance data to the Data Management page, enabling deletion.
+- **Implemented Leave Balance Import:** Created a full-stack feature for bulk importing leave balances via an Excel file, including backend endpoint, template download, and frontend UI.
+- **Refactored Leave Balance Storage:** Corrected the data structure used for imported leave balances to align with the application's existing model (one record per employee per leave type).
+- **Built Editable Leave Rules System:** Implemented a new Leave Rules tab for HR, allowing them to define and edit policies for quotas, accrual, carry-forward, and more for each leave type.
+- **Enabled Leave Balance Editing:** Implemented a Manage Balances tab for HR, allowing direct editing of any employee's leave balance.
+- **Fixed Leave Quota Display Bug:** Corrected the frontend logic to ensure leave summary cards display the correct annual quota from the new editable Leave Rules.
+- **Fixed Critical Attendance Import Bug:** Diagnosed and fixed an issue where attendance uploads failed silently due to a missing  header in the frontend API call.
+- **Synced Employee Data for Testing:** Populated the preview database with 25 employee records from the user's production data to facilitate accurate attendance import testing.
+- **Revamped Attendance Page:** Re-engineered the Attendance page to show an organization-wide summary and detailed list by default for HR users, with a toggle to switch back to a personal view.
+- **Created Employee Insurance Module:** Built a new end-to-end feature for managing employee insurance, including:
+    - Backend CRUD API and database model.
+    - A new Employee Insurance page for manual data entry and management.
+    - Bulk import functionality with a downloadable Excel template.
+    - Added an Accidental Insurance checkbox to the module.
+- **Fixed Backend Routing Issues:** Resolved a critical bug where new API routes were not being registered by moving  to the end of .
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1:  endpoint returns 404**
     -   **Debug checklist:** Examine routing in  and .
-    -   **Why to solve this issue and what will be achieved with this?** To enable the leave management functionality.
+    -   **Why to solve this issue and what will be achieved with this?** To ensure all parts of the frontend have a functional API to call.
     -   **Should Test frontend/backend/both after fix:** Backend
-    -   **Is recurring issue?** N
--   **Issue 2: Contract Labour module verification incomplete**
-    -   **Debug checklist:** Review code and rename files to align with the focus on salary and attendance.
-    -   **Why to solve this issue and what will be achieved with this?** To align the implemented modules with the user's specific requirements.
-    -   **Should Test frontend/backend/both after fix:** Both
     -   **Is recurring issue?** N
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork:** Imported employees not showing in Employee Directory.
+-   **Issue recurrence in previous fork:** Imported items not showing up. This pattern appeared again. In the last fork, it was employees not showing in the directory. In this fork, it was attendance records not appearing in the log. The root cause was a missing  header in a frontend  call, the same class of bug fixed previously. This suggests a need for a more robust, centralized API utility on the frontend.
 -   **Recurrence count:** 2+
--   **Status:** RESOLVED (The technical fix is complete in the codebase; the remaining step is to deploy it).
+-   **Status:** RESOLVED (for the specific  instance).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Authentication:** The session relies on a combination of HTTP-only cookies () and a JWT  header. Both must be present for authenticated API calls.
-- **CORS:** For requests involving credentials (), the backend  cannot be a wildcard (). It must be configured to return a specific, allowed origin.
-- **Deployment Environments:** The application has separate preview and production (deployed) environments, each with its own code version and database. Changes in preview are not automatically reflected in production and require a manual redeployment.
+-   **Monolithic Components:**  and  have grown very large, handling complex state, multiple user roles, and UI rendering in single files.
+-   **Monolithic API File:**  has become excessively long, containing logic for many distinct features.
+-   **API Authentication:** A recurring bug pattern is missing  headers on new frontend  calls. A centralized  utility is in place but is not being used consistently.
+-   **Data Model Consistency:** The agent had to perform a significant refactor of the leave balance import because the initial implementation's data structure did not match the frontend's expectations.
+-   **FastAPI Routing Order:** New routes must be defined on the  instance *before*  is called to ensure they are registered correctly.
 
 **key DB schema**
-- No changes to the database schema in this session.
+-   **insurance**: 
+-   **leave_accrual_rules**: 
+-   **leave_balances**: (Structure changed to) 
+-   **attendance**: (Structure updated to include) , 
 
 **changes in tech stack**
-- No changes to the tech stack in this session.
+-   No changes to the tech stack.
 
 **All files of reference**
-- : Modified to fix CORS policy and add Google Auth endpoint.
-- : Updated with specific CORS origins.
-- : Updated to include Authorization headers.
-- : Updated to use Authorization headers.
-- : Updated to use Authorization headers.
-- : Updated to use Authorization headers.
-- : Updated to use Authorization headers.
-- : Updated to use Authorization headers.
-- : Updated to use Authorization headers.
-- : Updated to use Authorization headers.
+-   : Major changes for new features (Insurance, Leave Rules) and bug fixes.
+-   : Major changes for new import types and logic fixes.
+-   : Minor change to add collections.
+-   : Overhauled to add admin/HR management tabs.
+-   : Reworked for an organization-wide view.
+-   : Fixed critical auth bug and added new UI cards.
+-   : New file for the insurance module.
+-   : Added new route.
+-   : Added new sidebar link.
 
-**Areas that need refactoring**
-- Many frontend pages were patched individually to add authentication headers. A future refactoring task should enforce the use of the centralized  utility for all  calls to ensure consistency and prevent similar bugs.
+**Areas that need refactoring**:
+-   **:** This file is now over 2,500 lines long and urgently needs to be broken up. The Insurance, Leave Rules, and Leave Balance management endpoints should be moved to new files in the  directory.
+-   ** and :** These frontend components have become monolithic. Their logic should be refactored into smaller, reusable sub-components and custom hooks (, , etc.) to improve readability and maintainability.
+-   **Frontend API Calls:** Enforce a strict policy to use the centralized  for all API calls to prevent recurring authentication header bugs.
 
 **key api endpoints**
-- ****: (New) Initiates the server-side redirect for Emergent-managed Google OAuth.
+-   **Insurance:** , , , 
+-   **Insurance Bulk Import:** , 
+-   **Leave Rules:** , 
+-   **Leave Balances:** , 
+-   **Leave Balance Bulk Import:** , 
+-   **Organization Attendance:** 
 
 **Critical Info for New Agent**
-- **DEPLOYMENT IS THE NEXT STEP:** The user's primary problem is that the live application is running old, buggy code. All necessary fixes are complete in the current workspace. Your immediate task is to **use the  to deploy the application.** The user has already approved this.
-- **PRODUCTION DATABASE IS SEPARATE:** After deployment, you must inform the user that their production environment has a separate, empty database. They will need to re-run the bulk import process on the live application to populate it with employee data.
-- **DO NOT DEBUG THE DEPLOYED VERSION:** Do not waste time debugging the live URL. The code is outdated. The only solution is to redeploy.
+-   **DEPLOYMENT IS THE #1 PRIORITY.** All the features and fixes from this session are only in the preview environment. The user's main goal is to get these changes live. Your first action should be to confirm the new features with the user and then proceed to deploy.
+-   **The codebase is now significantly different from the deployed version.** Do not waste time debugging the live URL; the only path forward is to deploy the current workspace.
+-   **Refactor Before Adding:** Before implementing any new major features, you should prioritize refactoring  and the large frontend components (, ). The current state of these files will make future development difficult and error-prone.
+-   **Database Mismatch Awareness:** The preview and production databases are separate. Be mindful that data (like employees, attendance) may not exist in preview unless explicitly added or imported.
 
-**documents and test_reports created in this job**
-- 
-- 
-- 
+**documents and test reports created in this job**
+- None.
 
 **Last 10 User Messages and any pending HUMAN messages**
--  (In response to agent asking if it should prepare for redeployment)
-- 
-- 
--  (Agent Message)
-- 
-- 
-- 
-- 
+1.  **User:** add a column it for accidental insurance and well and make it a check box to choose yes or no - **Status: COMPLETED**. The agent implemented this feature.
+2.  **User:** make a page for employee insurance... - **Status: COMPLETED**. The agent built the entire insurance module.
+3.  **User:** i was checking on deployed version itself . do this match the employee records in the preview environment to the deployed version . make it so that hr and users are able to vie all employee attendence record... - **Status: COMPLETED**. The agent synced the data and rebuilt the attendance page for an org-wide view.
+4.  **User:** i uploaded this file for attendence recorsds via bulk upload .it showed uplaod 25 of 25 succesful but dosent show in the attendence log - **Status: COMPLETED**. The agent found and fixed the missing auth header bug causing this.
+5.  **User:** when we make change to annual quota of a leave it gets changed in data but shows different in card - **Status: COMPLETED**. The agent fixed the frontend logic to display the correct quota.
+6.  **User:** let the leave balances be editsable by hr or admin . Also add a scetion to edit rules for leaves... - **Status: COMPLETED**. The agent implemented both editable balances and editable leave rules.
+7.  **User:** youve ensured to connect it to all the places it would create an impact on right ? - **Status: COMPLETED**. This question prompted the agent to discover a data structure mismatch in the leave balance import, which was then fixed.
+8.  **User:** i want to be able to upload existing lead data as well... (Uploaded leave record file) - **Status: COMPLETED**. The agent built the leave balance import feature after clarifying requirements.
+9.  **User:** okay so answer me these questions what sort of data and in what format do you need it from the biometric machine... - **Status: IN PROGRESS (BLOCKED)**. The agent provided detailed specs and is waiting for the user to test from their device.
+10. **User:** whats the default password and username being set for employees ? - **Status: COMPLETED**. The agent provided the default credentials.
 
 **Project Health Check:**
--   **Broken:** The **deployed** application is non-functional due to running outdated code. The employee directory filter is broken, and data is not displayed correctly. The preview environment, however, is stable and working.
--   **Mocked:** Biometric integration.
+-   **Broken:** The **deployed** application is severely outdated and lacks numerous critical features and bug fixes that are present in the preview environment.
+-   **Mocked:** The Biometric device integration is designed but not yet connected to a real device.
 
 **3rd Party Integrations**
-- **Emergent-managed Google Auth:** Used for social login. The server-side component of this was fixed in this session.
+-   **Emergent-managed Google Auth:** Used for social login. No changes in this session.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. The frontend testing agent was used and reported 100% success on the preview environment after the authentication and CORS fixes.
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:**
-    - 
-    - 
-- **Known regressions:** None in the current codebase. The regressions exist only on the outdated deployed version.
+-   **Testing agent used after significant changes:** NO. The agent relied on manual  commands and  for all testing.
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** Many temporary Excel files were created in  for testing bulk uploads (e.g., , ). These are not permanent test assets.
+-   **Known regressions:** None in the preview codebase. The regressions exist only on the outdated deployed version.
 
 **Credentials to test flow:**
-- Credentials for  are available in the environment and used by the testing agents.
+-   Default credentials for bulk-imported users are **Username:** (employee's email) and **Password:** .
+-   The main admin user  is available for testing.
 
 **What agent forgot to execute**
-- The agent initially went on a long path of fixing individual frontend files instead of immediately refactoring them to use the central  utility. While the outcome was correct, a more direct refactoring approach would have been more efficient.</analysis>
+-   **Deployment:** The original high-priority task to deploy the application was superseded by a long chain of user requests for fixes and new features. This remains the most critical pending action.
+-   **Addressing old bugs:** The  404 error from the previous handoff was never investigated.
+-   **Refactoring:** The agent did not proactively refactor the increasingly large  and frontend component files, leading to a higher technical debt.</analysis>
