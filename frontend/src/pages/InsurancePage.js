@@ -72,6 +72,7 @@ const InsurancePage = () => {
     insurance_company: '',
     policy_number: '',
     coverage_type: 'health',
+    accidental_insurance: false,
     start_date: '',
     end_date: '',
     notes: ''
