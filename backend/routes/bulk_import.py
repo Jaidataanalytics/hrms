@@ -1419,3 +1419,196 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
+
+# ==================== BUSINESS INSURANCE IMPORT ====================
+
+@router.get("/templates/business-insurance")
+async def download_business_insurance_template(request: Request):
+    """Download business insurance import template as Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Business Insurance')
+        
+        # Header formats
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        required_format = workbook.add_format({
+            'bold': True, 'bg_color': '#C00000', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        note_format = workbook.add_format({'italic': True, 'font_color': 'gray'})
+        
+        # Headers matching user's template format
+        headers = [
+            ("Sl.No.", header_format),
+            ("Name of insurance*", required_format),
+            ("Vehicle no. if required", header_format),
+            ("Name of insurance company*", required_format),
+            ("Date of issuance", header_format),
+            ("Due Date", header_format),
+        ]
+        
+        for col, (header, fmt) in enumerate(headers):
+            worksheet.write(0, col, header, fmt)
+            worksheet.set_column(col, col, 25)
+        
+        # Note row
+        worksheet.write(1, 0, "* = Required fields. Vehicle No. is optional. Dates in YYYY-MM-DD or DD/MM/YYYY format.", note_format)
+        
+        # Sample rows
+        sample_data = [
+            (1, "Fire Insurance", "", "New India Assurance", "2024-01-15", "2025-01-15"),
+            (2, "Vehicle Insurance", "MH01AB1234", "ICICI Lombard", "2024-02-01", "2025-02-01"),
+            (3, "Machinery Insurance", "", "HDFC Ergo", "2024-03-01", "2025-03-01"),
+        ]
+        
+        for row_idx, data in enumerate(sample_data, start=2):
+            for col, val in enumerate(data):
+                worksheet.write(row_idx, col, val)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=business_insurance_template.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
+
+
+@router.post("/business-insurance")
+async def import_business_insurance(request: Request, file: UploadFile = File(...)):
+    """Bulk import business insurance records from Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    filename = file.filename.lower()
+    content = await file.read()
+    
+    try:
+        if filename.endswith('.xlsx'):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content))
+            ws = wb.active
+            
+            # Find header row - look for "Name of insurance" in first few rows
+            header_row = None
+            headers = []
+            for row_num in range(1, min(6, ws.max_row + 1)):
+                for col in range(1, ws.max_column + 1):
+                    cell_val = str(ws.cell(row=row_num, column=col).value or "").strip().lower()
+                    if "name of insurance" in cell_val or "name_of_insurance" in cell_val:
+                        header_row = row_num
+                        headers = [(ws.cell(row=row_num, column=c).value or "").strip().replace('*', '') for c in range(1, ws.max_column + 1)]
+                        break
+                if header_row:
+                    break
+            
+            if not header_row:
+                # Try first row as default header
+                header_row = 1
+                headers = [(ws.cell(row=1, column=col).value or "").strip().replace('*', '') for col in range(1, ws.max_column + 1)]
+            
+            rows = []
+            for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+                # Skip note rows and empty rows
+                first_val = str(row[0] or "").strip() if row[0] else ""
+                second_val = str(row[1] or "").strip() if len(row) > 1 and row[1] else ""
+                if (first_val.startswith("*") or first_val.lower().startswith("required") or 
+                    second_val.startswith("*") or second_val.lower().startswith("required")):
+                    continue
+                if not any(row):
+                    continue
+                rows.append(dict(zip(headers, row)))
+        elif filename.endswith('.csv'):
+            decoded = content.decode('utf-8-sig')
+            reader = csv.DictReader(io.StringIO(decoded))
+            rows = list(reader)
+        else:
+            raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
+        
+        imported = 0
+        errors = []
+        
+        for idx, row in enumerate(rows, start=header_row + 2 if header_row else 2):
+            try:
+                # Parse fields flexibly
+                def get_field(row, *names):
+                    for name in names:
+                        for key in row.keys():
+                            if key and name.lower() in key.lower():
+                                return row.get(key)
+                    return None
+                
+                name_of_insurance = get_field(row, "name of insurance", "name_of_insurance", "insurance name")
+                vehicle_no = get_field(row, "vehicle no", "vehicle_no", "vehicle number")
+                insurance_company = get_field(row, "name of insurance company", "insurance company", "company")
+                date_of_issuance = get_field(row, "date of issuance", "issuance date", "issue date", "start date")
+                due_date = get_field(row, "due date", "due_date", "expiry date", "end date")
+                
+                # Clean up values
+                name_of_insurance = str(name_of_insurance or "").strip() if name_of_insurance else None
+                insurance_company = str(insurance_company or "").strip() if insurance_company else None
+                vehicle_no = str(vehicle_no or "").strip() if vehicle_no else None
+                
+                if not name_of_insurance or not insurance_company:
+                    errors.append({"row": idx, "error": "Missing required fields (Name of Insurance or Insurance Company)"})
+                    continue
+                
+                # Convert dates if needed
+                if date_of_issuance:
+                    if isinstance(date_of_issuance, datetime):
+                        date_of_issuance = date_of_issuance.strftime("%Y-%m-%d")
+                    else:
+                        date_of_issuance = str(date_of_issuance)
+                
+                if due_date:
+                    if isinstance(due_date, datetime):
+                        due_date = due_date.strftime("%Y-%m-%d")
+                    else:
+                        due_date = str(due_date)
+                
+                business_insurance_doc = {
+                    "business_insurance_id": f"biz_ins_{uuid.uuid4().hex[:12]}",
+                    "name_of_insurance": name_of_insurance,
+                    "vehicle_no": vehicle_no if vehicle_no else None,
+                    "insurance_company": insurance_company,
+                    "date_of_issuance": date_of_issuance if date_of_issuance else None,
+                    "due_date": due_date if due_date else None,
+                    "notes": str(get_field(row, "notes", "note") or ""),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_by": user["user_id"]
+                }
+                
+                await db.business_insurance.insert_one(business_insurance_doc)
+                imported += 1
+                
+            except Exception as e:
+                errors.append({"row": idx, "error": str(e)})
+        
+        return {
+            "message": "Business insurance import completed",
+            "imported": imported,
+            "errors": errors,
+            "total_rows": len(rows)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
