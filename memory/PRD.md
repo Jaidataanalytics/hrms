@@ -32,11 +32,11 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 **Two-tab structure:**
 
 #### Employee Insurance Tab
-- ESIC coverage tracking (checkbox)
-- When ESIC=Yes: Only employee code required
-- When ESIC=No: Full insurance details required (date, amount, company, policy)
-- Accidental insurance checkbox
-- Bulk import with ESIC support
+- **ESIC** coverage tracking (checkbox)
+- **PMJJBY** (Pradhan Mantri Jeevan Jyoti Bima Yojana) coverage tracking (checkbox)
+- **Accidental Insurance** coverage tracking (checkbox)
+- All fields optional except Employee Code
+- Bulk import with ESIC, PMJJBY, Accidental columns support
 - Template download
 
 #### Business Insurance Tab
