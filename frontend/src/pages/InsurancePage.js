@@ -666,11 +666,12 @@ const InsurancePage = () => {
                       <TableHead>Emp Code</TableHead>
                       <TableHead>Employee Name</TableHead>
                       <TableHead className="text-center">ESIC</TableHead>
+                      <TableHead className="text-center">PMJJBY</TableHead>
+                      <TableHead className="text-center">Accidental</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Insurance Company</TableHead>
                       <TableHead>Policy No.</TableHead>
-                      <TableHead className="text-center">Accidental</TableHead>
                       <TableHead>Status</TableHead>
                       {isHR && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
@@ -688,10 +689,13 @@ const InsurancePage = () => {
                               <Badge className="bg-slate-100 text-slate-500">NO</Badge>
                             )}
                           </TableCell>
-                          <TableCell>{record.esic ? '-' : record.insurance_date}</TableCell>
-                          <TableCell>{record.esic ? '-' : (record.amount ? `₹${record.amount?.toLocaleString('en-IN')}` : '-')}</TableCell>
-                          <TableCell>{record.esic ? '-' : (record.insurance_company || '-')}</TableCell>
-                          <TableCell>{record.esic ? '-' : (record.policy_number || '-')}</TableCell>
+                          <TableCell className="text-center">
+                            {record.pmjjby ? (
+                              <Badge className="bg-blue-100 text-blue-700">YES</Badge>
+                            ) : (
+                              <Badge className="bg-slate-100 text-slate-500">NO</Badge>
+                            )}
+                          </TableCell>
                           <TableCell className="text-center">
                             {record.accidental_insurance ? (
                               <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
@@ -699,6 +703,10 @@ const InsurancePage = () => {
                               <X className="w-5 h-5 text-slate-300 mx-auto" />
                             )}
                           </TableCell>
+                          <TableCell>{record.insurance_date || '-'}</TableCell>
+                          <TableCell>{record.amount ? `₹${record.amount?.toLocaleString('en-IN')}` : '-'}</TableCell>
+                          <TableCell>{record.insurance_company || '-'}</TableCell>
+                          <TableCell>{record.policy_number || '-'}</TableCell>
                           <TableCell>
                             <Badge 
                               className={
@@ -740,7 +748,7 @@ const InsurancePage = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={isHR ? 10 : 9} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={isHR ? 11 : 10} className="text-center py-8 text-slate-500">
                           No insurance records found
                         </TableCell>
                       </TableRow>
