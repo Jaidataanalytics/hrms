@@ -954,27 +954,29 @@ const InsurancePage = () => {
 
       {/* Add Employee Insurance Record Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle style={{ fontFamily: 'Manrope, sans-serif' }}>
               Add Employee Insurance Record
             </DialogTitle>
             <DialogDescription>
-              Enter insurance details for an employee
+              Enter insurance details for an employee (only Employee Code is required)
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Employee Code *</Label>
-                <Input
-                  placeholder="e.g., S0003"
-                  value={formData.emp_code}
-                  onChange={(e) => setFormData({ ...formData, emp_code: e.target.value })}
-                  data-testid="add-emp-code-input"
-                />
-              </div>
-              <div className="flex items-center space-x-3 pt-6">
+            <div className="space-y-2">
+              <Label>Employee Code *</Label>
+              <Input
+                placeholder="e.g., S0003"
+                value={formData.emp_code}
+                onChange={(e) => setFormData({ ...formData, emp_code: e.target.value })}
+                data-testid="add-emp-code-input"
+              />
+            </div>
+            
+            {/* Government Schemes Checkboxes */}
+            <div className="grid grid-cols-3 gap-4 p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   id="esic"
@@ -983,118 +985,128 @@ const InsurancePage = () => {
                   className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                   data-testid="add-esic-checkbox"
                 />
-                <Label htmlFor="esic" className="cursor-pointer font-medium">
-                  ESIC Covered
+                <Label htmlFor="esic" className="cursor-pointer text-sm font-medium">
+                  ESIC
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="pmjjby"
+                  checked={formData.pmjjby}
+                  onChange={(e) => setFormData({ ...formData, pmjjby: e.target.checked })}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  data-testid="add-pmjjby-checkbox"
+                />
+                <Label htmlFor="pmjjby" className="cursor-pointer text-sm font-medium">
+                  PMJJBY
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="accidental_insurance"
+                  checked={formData.accidental_insurance}
+                  onChange={(e) => setFormData({ ...formData, accidental_insurance: e.target.checked })}
+                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  data-testid="add-accidental-insurance-checkbox"
+                />
+                <Label htmlFor="accidental_insurance" className="cursor-pointer text-sm font-medium">
+                  Accidental
                 </Label>
               </div>
             </div>
-            
-            {!formData.esic && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Insurance Date *</Label>
-                    <Input
-                      type="date"
-                      value={formData.insurance_date}
-                      onChange={(e) => setFormData({ ...formData, insurance_date: e.target.value })}
-                      data-testid="add-insurance-date-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Amount (₹) *</Label>
-                    <Input
-                      type="number"
-                      placeholder="50000"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      data-testid="add-amount-input"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Insurance Company *</Label>
-                    <Input
-                      placeholder="e.g., LIC, HDFC Ergo"
-                      value={formData.insurance_company}
-                      onChange={(e) => setFormData({ ...formData, insurance_company: e.target.value })}
-                      data-testid="add-insurance-company-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Policy Number</Label>
-                    <Input
-                      placeholder="Policy number"
-                      value={formData.policy_number}
-                      onChange={(e) => setFormData({ ...formData, policy_number: e.target.value })}
-                      data-testid="add-policy-number-input"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Coverage Type</Label>
-                    <Select
-                      value={formData.coverage_type}
-                      onValueChange={(value) => setFormData({ ...formData, coverage_type: value })}
-                    >
-                      <SelectTrigger data-testid="add-coverage-type-select">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="health">Health</SelectItem>
-                        <SelectItem value="life">Life</SelectItem>
-                        <SelectItem value="accident">Accident</SelectItem>
-                        <SelectItem value="vehicle">Vehicle</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center space-x-3 pt-6">
-                    <input
-                      type="checkbox"
-                      id="accidental_insurance"
-                      checked={formData.accidental_insurance}
-                      onChange={(e) => setFormData({ ...formData, accidental_insurance: e.target.checked })}
-                      className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
-                      data-testid="add-accidental-insurance-checkbox"
-                    />
-                    <Label htmlFor="accidental_insurance" className="cursor-pointer">
-                      Accidental Insurance
-                    </Label>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Start Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      data-testid="add-start-date-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>End Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      data-testid="add-end-date-input"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input
-                placeholder="Additional notes..."
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                data-testid="add-notes-input"
-              />
+
+            {/* Optional Insurance Details */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Insurance Date</Label>
+                <Input
+                  type="date"
+                  value={formData.insurance_date}
+                  onChange={(e) => setFormData({ ...formData, insurance_date: e.target.value })}
+                  data-testid="add-insurance-date-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Amount (₹)</Label>
+                <Input
+                  type="number"
+                  placeholder="50000"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  data-testid="add-amount-input"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Insurance Company</Label>
+                <Input
+                  placeholder="e.g., LIC, HDFC Ergo"
+                  value={formData.insurance_company}
+                  onChange={(e) => setFormData({ ...formData, insurance_company: e.target.value })}
+                  data-testid="add-insurance-company-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Policy Number</Label>
+                <Input
+                  placeholder="Policy number"
+                  value={formData.policy_number}
+                  onChange={(e) => setFormData({ ...formData, policy_number: e.target.value })}
+                  data-testid="add-policy-number-input"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Coverage Type</Label>
+                <Select
+                  value={formData.coverage_type}
+                  onValueChange={(value) => setFormData({ ...formData, coverage_type: value })}
+                >
+                  <SelectTrigger data-testid="add-coverage-type-select">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="health">Health</SelectItem>
+                    <SelectItem value="life">Life</SelectItem>
+                    <SelectItem value="accident">Accident</SelectItem>
+                    <SelectItem value="vehicle">Vehicle</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  data-testid="add-start-date-input"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  data-testid="add-end-date-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Input
+                  placeholder="Additional notes..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  data-testid="add-notes-input"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
