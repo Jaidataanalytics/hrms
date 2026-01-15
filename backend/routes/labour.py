@@ -300,3 +300,102 @@ async def get_labour_summary(request: Request):
         "present_today": present_today,
         "by_department": by_department
     }
+
+
+# ==================== MONTHLY LABOUR RECORDS ====================
+
+@router.get("/monthly-records")
+async def list_monthly_records(
+    request: Request,
+    contractor_id: Optional[str] = None
+):
+    """List monthly labour records for a contractor"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = {}
+    if contractor_id:
+        query["contractor_id"] = contractor_id
+    
+    records = await db.contractor_monthly_records.find(query, {"_id": 0}).sort("month", -1).to_list(100)
+    return records
+
+
+@router.post("/monthly-records")
+async def create_monthly_record(data: dict, request: Request):
+    """Create monthly labour record"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    contractor_id = data.get("contractor_id")
+    month = data.get("month")  # Format: YYYY-MM
+    labour_count = data.get("labour_count")
+    payment_amount = data.get("payment_amount")
+    
+    if not contractor_id or not month or not labour_count or not payment_amount:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+    
+    # Check if record already exists for this month
+    existing = await db.contractor_monthly_records.find_one({
+        "contractor_id": contractor_id,
+        "month": month
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Record for {month} already exists. Please edit the existing record.")
+    
+    record = {
+        "record_id": f"CMR-{uuid.uuid4().hex[:8].upper()}",
+        "contractor_id": contractor_id,
+        "month": month,
+        "labour_count": int(labour_count),
+        "payment_amount": float(payment_amount),
+        "created_by": user["user_id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.contractor_monthly_records.insert_one(record)
+    record.pop('_id', None)
+    return record
+
+
+@router.put("/monthly-records/{record_id}")
+async def update_monthly_record(record_id: str, data: dict, request: Request):
+    """Update monthly labour record"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = await db.contractor_monthly_records.find_one({"record_id": record_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    update_data = {
+        "labour_count": int(data.get("labour_count", existing.get("labour_count", 0))),
+        "payment_amount": float(data.get("payment_amount", existing.get("payment_amount", 0))),
+        "updated_by": user["user_id"],
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.contractor_monthly_records.update_one(
+        {"record_id": record_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Record updated"}
+
+
+@router.delete("/monthly-records/{record_id}")
+async def delete_monthly_record(record_id: str, request: Request):
+    """Delete monthly labour record"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    result = await db.contractor_monthly_records.delete_one({"record_id": record_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    return {"message": "Record deleted"}
