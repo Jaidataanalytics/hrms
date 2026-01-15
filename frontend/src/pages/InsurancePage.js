@@ -1122,7 +1122,7 @@ const InsurancePage = () => {
 
       {/* Edit Employee Insurance Record Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle style={{ fontFamily: 'Manrope, sans-serif' }}>
               Edit Employee Insurance Record
@@ -1133,62 +1133,88 @@ const InsurancePage = () => {
           </DialogHeader>
           {editingRecord && (
             <div className="space-y-4">
-              <div className="flex items-center space-x-3 py-2">
-                <input
-                  type="checkbox"
-                  id="edit_esic"
-                  checked={editingRecord.esic || false}
-                  onChange={(e) => setEditingRecord({ ...editingRecord, esic: e.target.checked })}
-                  className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
-                  data-testid="edit-esic-checkbox"
-                />
-                <Label htmlFor="edit_esic" className="cursor-pointer font-medium">
-                  ESIC Covered
-                </Label>
+              {/* Government Schemes Checkboxes */}
+              <div className="grid grid-cols-3 gap-4 p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit_esic"
+                    checked={editingRecord.esic || false}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, esic: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    data-testid="edit-esic-checkbox"
+                  />
+                  <Label htmlFor="edit_esic" className="cursor-pointer text-sm font-medium">
+                    ESIC
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit_pmjjby"
+                    checked={editingRecord.pmjjby || false}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, pmjjby: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    data-testid="edit-pmjjby-checkbox"
+                  />
+                  <Label htmlFor="edit_pmjjby" className="cursor-pointer text-sm font-medium">
+                    PMJJBY
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit_accidental_insurance"
+                    checked={editingRecord.accidental_insurance || false}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, accidental_insurance: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    data-testid="edit-accidental-insurance-checkbox"
+                  />
+                  <Label htmlFor="edit_accidental_insurance" className="cursor-pointer text-sm font-medium">
+                    Accidental
+                  </Label>
+                </div>
               </div>
               
-              {!editingRecord.esic && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Insurance Date</Label>
-                      <Input
-                        type="date"
-                        value={editingRecord.insurance_date || ''}
-                        onChange={(e) => setEditingRecord({ ...editingRecord, insurance_date: e.target.value })}
-                        data-testid="edit-insurance-date-input"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Amount (₹)</Label>
-                      <Input
-                        type="number"
-                        value={editingRecord.amount || ''}
-                        onChange={(e) => setEditingRecord({ ...editingRecord, amount: parseFloat(e.target.value) })}
-                        data-testid="edit-amount-input"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Insurance Company</Label>
-                      <Input
-                        value={editingRecord.insurance_company || ''}
-                        onChange={(e) => setEditingRecord({ ...editingRecord, insurance_company: e.target.value })}
-                        data-testid="edit-insurance-company-input"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Policy Number</Label>
-                      <Input
-                        value={editingRecord.policy_number || ''}
-                        onChange={(e) => setEditingRecord({ ...editingRecord, policy_number: e.target.value })}
-                        data-testid="edit-policy-number-input"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+              {/* Optional Insurance Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Insurance Date</Label>
+                  <Input
+                    type="date"
+                    value={editingRecord.insurance_date || ''}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, insurance_date: e.target.value })}
+                    data-testid="edit-insurance-date-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    value={editingRecord.amount || ''}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, amount: parseFloat(e.target.value) || null })}
+                    data-testid="edit-amount-input"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Insurance Company</Label>
+                  <Input
+                    value={editingRecord.insurance_company || ''}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, insurance_company: e.target.value })}
+                    data-testid="edit-insurance-company-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Policy Number</Label>
+                  <Input
+                    value={editingRecord.policy_number || ''}
+                    onChange={(e) => setEditingRecord({ ...editingRecord, policy_number: e.target.value })}
+                    data-testid="edit-policy-number-input"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Status</Label>
@@ -1206,39 +1232,24 @@ const InsurancePage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {!editingRecord.esic && (
-                  <div className="space-y-2">
-                    <Label>Coverage Type</Label>
-                    <Select
-                      value={editingRecord.coverage_type || 'health'}
-                      onValueChange={(value) => setEditingRecord({ ...editingRecord, coverage_type: value })}
-                    >
-                      <SelectTrigger data-testid="edit-coverage-type-select">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="health">Health</SelectItem>
-                        <SelectItem value="life">Life</SelectItem>
-                        <SelectItem value="accident">Accident</SelectItem>
-                        <SelectItem value="vehicle">Vehicle</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center space-x-3 py-2">
-                <input
-                  type="checkbox"
-                  id="edit_accidental_insurance"
-                  checked={editingRecord.accidental_insurance || false}
-                  onChange={(e) => setEditingRecord({ ...editingRecord, accidental_insurance: e.target.checked })}
-                  className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
-                  data-testid="edit-accidental-insurance-checkbox"
-                />
-                <Label htmlFor="edit_accidental_insurance" className="cursor-pointer">
-                  Accidental Insurance Coverage
-                </Label>
+                <div className="space-y-2">
+                  <Label>Coverage Type</Label>
+                  <Select
+                    value={editingRecord.coverage_type || ''}
+                    onValueChange={(value) => setEditingRecord({ ...editingRecord, coverage_type: value })}
+                  >
+                    <SelectTrigger data-testid="edit-coverage-type-select">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="health">Health</SelectItem>
+                      <SelectItem value="life">Life</SelectItem>
+                      <SelectItem value="accident">Accident</SelectItem>
+                      <SelectItem value="vehicle">Vehicle</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Notes</Label>
