@@ -176,15 +176,9 @@ const InsurancePage = () => {
 
   // Employee Insurance Handlers
   const handleAddRecord = async () => {
-    // If ESIC is Yes, only emp_code is required
+    // Only emp_code is required - all other fields are optional
     if (!formData.emp_code) {
       toast.error('Please enter Employee Code');
-      return;
-    }
-    
-    // If ESIC is No, then date, amount, and company are required
-    if (!formData.esic && (!formData.amount || !formData.insurance_company)) {
-      toast.error('Please fill all required fields (Amount and Insurance Company are required when ESIC is No)');
       return;
     }
 
