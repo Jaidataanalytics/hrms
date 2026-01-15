@@ -1366,21 +1366,26 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                                 return row.get(key)
                     return None
                 
-                # Parse ESIC field
-                esic_val = get_field(row, "esic")
-                esic = False
-                if esic_val:
-                    esic_str = str(esic_val).strip().lower()
-                    esic = esic_str in ['yes', 'y', 'true', '1']
+                # Parse boolean fields
+                def parse_bool(val):
+                    if val is None:
+                        return False
+                    val_str = str(val).strip().lower()
+                    return val_str in ['yes', 'y', 'true', '1']
                 
+                # Parse ESIC field
+                esic = parse_bool(get_field(row, "esic"))
+                
+                # Parse PMJJBY field
+                pmjjby = parse_bool(get_field(row, "pmjjby", "pmjby", "pm jjby"))
+                
+                # Parse accidental insurance field
+                accidental_insurance = parse_bool(get_field(row, "accidental"))
+                
+                # All other fields are optional
                 insurance_date = get_field(row, "date")
                 amount = get_field(row, "amount")
                 company = get_field(row, "company", "insurance company")
-                
-                # If ESIC is No, then date, amount, and company are required
-                if not esic and (not insurance_date or not amount or not company):
-                    errors.append({"row": idx, "error": "Missing required fields (Date, Amount, or Insurance Company) - required when ESIC is No"})
-                    continue
                 
                 # Convert date if needed
                 if insurance_date:
@@ -1389,28 +1394,22 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                     else:
                         insurance_date = str(insurance_date)
                 
-                # Parse accidental insurance field
-                accidental_val = get_field(row, "accidental")
-                accidental_insurance = False
-                if accidental_val:
-                    accidental_str = str(accidental_val).strip().lower()
-                    accidental_insurance = accidental_str in ['yes', 'y', 'true', '1']
-                
                 insurance_doc = {
                     "insurance_id": f"ins_{uuid.uuid4().hex[:12]}",
                     "employee_id": employee["employee_id"],
                     "emp_code": emp_code,
                     "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
                     "esic": esic,
-                    "insurance_date": insurance_date if not esic else None,
-                    "amount": float(amount) if amount and not esic else None,
-                    "insurance_company": str(company or "") if not esic else None,
-                    "policy_number": str(get_field(row, "policy") or "") if not esic else None,
-                    "coverage_type": str(get_field(row, "coverage", "type") or "health") if not esic else None,
+                    "pmjjby": pmjjby,
                     "accidental_insurance": accidental_insurance,
+                    "insurance_date": insurance_date if insurance_date else None,
+                    "amount": float(amount) if amount else None,
+                    "insurance_company": str(company) if company else None,
+                    "policy_number": str(get_field(row, "policy") or "") if get_field(row, "policy") else None,
+                    "coverage_type": str(get_field(row, "coverage", "type") or "") if get_field(row, "coverage", "type") else None,
                     "start_date": str(get_field(row, "start") or "") if get_field(row, "start") else None,
                     "end_date": str(get_field(row, "end") or "") if get_field(row, "end") else None,
-                    "notes": str(get_field(row, "notes", "note") or ""),
+                    "notes": str(get_field(row, "notes", "note") or "") if get_field(row, "notes", "note") else None,
                     "status": "active",
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "created_by": user["user_id"]
