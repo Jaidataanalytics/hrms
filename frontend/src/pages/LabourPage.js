@@ -5,7 +5,6 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -21,7 +20,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '../components/ui/dialog';
 import {
   Select,
@@ -32,122 +30,253 @@ import {
 } from '../components/ui/select';
 import { toast } from 'sonner';
 import {
-  Users,
   Building,
   Plus,
   RefreshCw,
-  Search,
-  HardHat,
+  Users,
+  IndianRupee,
   Calendar,
-  AlertTriangle
+  AlertTriangle,
+  Trash2,
+  Edit,
+  TrendingUp
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+
+// Generate month options for the last 24 months
+const generateMonthOptions = () => {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 24; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthYear = date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    months.push({ label: monthYear, value });
+  }
+  return months;
+};
 
 const LabourPage = () => {
   const { user } = useAuth();
   const [contractors, setContractors] = useState([]);
-  const [workers, setWorkers] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const [labourRecords, setLabourRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedContractor, setSelectedContractor] = useState('');
+  
+  // Dialog states
   const [showAddContractor, setShowAddContractor] = useState(false);
-  const [showAddWorker, setShowAddWorker] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-
+  const [showAddRecord, setShowAddRecord] = useState(false);
+  const [showEditRecord, setShowEditRecord] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  
+  // Form states
   const [contractorForm, setContractorForm] = useState({
-    name: '', company_name: '', contact_person: '', email: '', phone: '',
-    gst_number: '', department_id: '', contract_start: '', contract_end: ''
+    name: '',
+    company_name: '',
+    contact_person: '',
+    phone: ''
+  });
+  
+  const [recordForm, setRecordForm] = useState({
+    month: '',
+    labour_count: '',
+    payment_amount: ''
   });
 
-  const [workerForm, setWorkerForm] = useState({
-    contractor_id: '', first_name: '', last_name: '', phone: '',
-    aadhaar_number: '', department_id: '', skill_category: '', daily_rate: '', start_date: ''
-  });
-
+  const monthOptions = generateMonthOptions();
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
   useEffect(() => {
-    fetchData();
+    fetchContractors();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const [contRes, workRes, deptRes, sumRes] = await Promise.all([
-        fetch(`${API_URL}/labour/contractors`, { credentials: 'include' }),
-        fetch(`${API_URL}/labour/workers`, { credentials: 'include' }),
-        fetch(`${API_URL}/departments`, { credentials: 'include' }),
-        fetch(`${API_URL}/labour/summary`, { credentials: 'include' })
-      ]);
+  useEffect(() => {
+    if (selectedContractor) {
+      fetchLabourRecords(selectedContractor);
+    } else {
+      setLabourRecords([]);
+    }
+  }, [selectedContractor]);
 
-      if (contRes.ok) setContractors(await contRes.json());
-      if (workRes.ok) setWorkers(await workRes.json());
-      if (deptRes.ok) setDepartments(await deptRes.json());
-      if (sumRes.ok) setSummary(await sumRes.json());
+  const fetchContractors = async () => {
+    try {
+      const authHeaders = getAuthHeaders();
+      const response = await fetch(`${API_URL}/labour/contractors`, {
+        credentials: 'include',
+        headers: authHeaders
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setContractors(data);
+        // Auto-select first contractor if available
+        if (data.length > 0 && !selectedContractor) {
+          setSelectedContractor(data[0].contractor_id);
+        }
+      }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching contractors:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchLabourRecords = async (contractorId) => {
+    try {
+      const authHeaders = getAuthHeaders();
+      const response = await fetch(`${API_URL}/labour/monthly-records?contractor_id=${contractorId}`, {
+        credentials: 'include',
+        headers: authHeaders
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLabourRecords(data);
+      }
+    } catch (error) {
+      console.error('Error fetching labour records:', error);
+      setLabourRecords([]);
+    }
+  };
+
   const handleCreateContractor = async () => {
     if (!contractorForm.name || !contractorForm.company_name) {
-      toast.error('Please fill required fields');
+      toast.error('Please fill contractor name and company name');
       return;
     }
 
     try {
+      const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/labour/contractors`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify(contractorForm)
       });
 
       if (response.ok) {
-        toast.success('Contractor added');
+        const newContractor = await response.json();
+        toast.success('Contractor added successfully');
         setShowAddContractor(false);
-        setContractorForm({ name: '', company_name: '', contact_person: '', email: '', phone: '', gst_number: '', department_id: '', contract_start: '', contract_end: '' });
-        fetchData();
+        setContractorForm({ name: '', company_name: '', contact_person: '', phone: '' });
+        await fetchContractors();
+        setSelectedContractor(newContractor.contractor_id);
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to add contractor');
       }
     } catch (error) {
       toast.error('Failed to add contractor');
     }
   };
 
-  const handleCreateWorker = async () => {
-    if (!workerForm.first_name || !workerForm.contractor_id) {
-      toast.error('Please fill required fields');
+  const handleCreateRecord = async () => {
+    if (!selectedContractor || !recordForm.month || !recordForm.labour_count || !recordForm.payment_amount) {
+      toast.error('Please fill all fields');
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/labour/workers`, {
+      const authHeaders = getAuthHeaders();
+      const response = await fetch(`${API_URL}/labour/monthly-records`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(workerForm)
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractor_id: selectedContractor,
+          month: recordForm.month,
+          labour_count: parseInt(recordForm.labour_count),
+          payment_amount: parseFloat(recordForm.payment_amount)
+        })
       });
 
       if (response.ok) {
-        toast.success('Worker added');
-        setShowAddWorker(false);
-        setWorkerForm({ contractor_id: '', first_name: '', last_name: '', phone: '', aadhaar_number: '', department_id: '', skill_category: '', daily_rate: '', start_date: '' });
-        fetchData();
+        toast.success('Record added successfully');
+        setShowAddRecord(false);
+        setRecordForm({ month: '', labour_count: '', payment_amount: '' });
+        fetchLabourRecords(selectedContractor);
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to add record');
       }
     } catch (error) {
-      toast.error('Failed to add worker');
+      toast.error('Failed to add record');
     }
   };
 
-  const getDeptName = (id) => departments.find(d => d.department_id === id)?.name || id || '-';
-  const getContractorName = (id) => contractors.find(c => c.contractor_id === id)?.company_name || id || '-';
+  const handleUpdateRecord = async () => {
+    if (!editingRecord) return;
 
-  const filteredWorkers = workers.filter(w => 
-    `${w.first_name} ${w.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    w.worker_id?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    try {
+      const authHeaders = getAuthHeaders();
+      const response = await fetch(`${API_URL}/labour/monthly-records/${editingRecord.record_id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          labour_count: parseInt(editingRecord.labour_count),
+          payment_amount: parseFloat(editingRecord.payment_amount)
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Record updated');
+        setShowEditRecord(false);
+        setEditingRecord(null);
+        fetchLabourRecords(selectedContractor);
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to update record');
+      }
+    } catch (error) {
+      toast.error('Failed to update record');
+    }
+  };
+
+  const handleDeleteRecord = async (recordId) => {
+    if (!window.confirm('Are you sure you want to delete this record?')) return;
+
+    try {
+      const authHeaders = getAuthHeaders();
+      const response = await fetch(`${API_URL}/labour/monthly-records/${recordId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: authHeaders
+      });
+
+      if (response.ok) {
+        toast.success('Record deleted');
+        fetchLabourRecords(selectedContractor);
+      } else {
+        toast.error('Failed to delete record');
+      }
+    } catch (error) {
+      toast.error('Failed to delete record');
+    }
+  };
+
+  const formatMonth = (monthStr) => {
+    if (!monthStr) return '-';
+    const [year, month] = monthStr.split('-');
+    const date = new Date(year, parseInt(month) - 1, 1);
+    return date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount) return '-';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Calculate summary
+  const totalLabour = labourRecords.reduce((sum, r) => sum + (r.labour_count || 0), 0);
+  const totalPayment = labourRecords.reduce((sum, r) => sum + (r.payment_amount || 0), 0);
+  const avgLabour = labourRecords.length > 0 ? Math.round(totalLabour / labourRecords.length) : 0;
+
+  const selectedContractorData = contractors.find(c => c.contractor_id === selectedContractor);
 
   if (!isHR) {
     return (
@@ -172,325 +301,338 @@ const LabourPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Labour Management
+            Contract Labour
           </h1>
-          <p className="text-slate-600 mt-1">Manage contractors and contract workers</p>
+          <p className="text-slate-600 mt-1">Track contractor labour and payments</p>
         </div>
-        <div className="flex gap-2">
-          <Dialog open={showAddContractor} onOpenChange={setShowAddContractor}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Building className="w-4 h-4" />
-                Add Contractor
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Add Contractor</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Name *</Label>
-                    <Input value={contractorForm.name} onChange={(e) => setContractorForm({...contractorForm, name: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Company Name *</Label>
-                    <Input value={contractorForm.company_name} onChange={(e) => setContractorForm({...contractorForm, company_name: e.target.value})} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Contact Person</Label>
-                    <Input value={contractorForm.contact_person} onChange={(e) => setContractorForm({...contractorForm, contact_person: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Phone</Label>
-                    <Input value={contractorForm.phone} onChange={(e) => setContractorForm({...contractorForm, phone: e.target.value})} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" value={contractorForm.email} onChange={(e) => setContractorForm({...contractorForm, email: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>GST Number</Label>
-                    <Input value={contractorForm.gst_number} onChange={(e) => setContractorForm({...contractorForm, gst_number: e.target.value})} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Contract Start</Label>
-                    <Input type="date" value={contractorForm.contract_start} onChange={(e) => setContractorForm({...contractorForm, contract_start: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Contract End</Label>
-                    <Input type="date" value={contractorForm.contract_end} onChange={(e) => setContractorForm({...contractorForm, contract_end: e.target.value})} />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowAddContractor(false)}>Cancel</Button>
-                <Button onClick={handleCreateContractor}>Add Contractor</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        <Button variant="outline" onClick={() => setShowAddContractor(true)} className="gap-2" data-testid="add-contractor-btn">
+          <Building className="w-4 h-4" />
+          Add Contractor
+        </Button>
+      </div>
 
-          <Dialog open={showAddWorker} onOpenChange={setShowAddWorker}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
+      {/* Contractor Selection */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex-1 space-y-2">
+              <Label className="text-sm font-medium">Select Contractor</Label>
+              <Select value={selectedContractor} onValueChange={setSelectedContractor}>
+                <SelectTrigger className="w-full" data-testid="contractor-select">
+                  <SelectValue placeholder="Select a contractor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contractors.map(c => (
+                    <SelectItem key={c.contractor_id} value={c.contractor_id}>
+                      {c.company_name} {c.name ? `(${c.name})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedContractor && (
+              <Button onClick={() => setShowAddRecord(true)} className="gap-2" data-testid="add-record-btn">
                 <Plus className="w-4 h-4" />
-                Add Worker
+                Add Record
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Add Contract Worker</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label>Contractor *</Label>
-                  <Select value={workerForm.contractor_id} onValueChange={(v) => setWorkerForm({...workerForm, contractor_id: v})}>
-                    <SelectTrigger><SelectValue placeholder="Select contractor" /></SelectTrigger>
-                    <SelectContent>
-                      {contractors.map(c => (
-                        <SelectItem key={c.contractor_id} value={c.contractor_id}>{c.company_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>First Name *</Label>
-                    <Input value={workerForm.first_name} onChange={(e) => setWorkerForm({...workerForm, first_name: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Last Name</Label>
-                    <Input value={workerForm.last_name} onChange={(e) => setWorkerForm({...workerForm, last_name: e.target.value})} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Phone</Label>
-                    <Input value={workerForm.phone} onChange={(e) => setWorkerForm({...workerForm, phone: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Aadhaar</Label>
-                    <Input value={workerForm.aadhaar_number} onChange={(e) => setWorkerForm({...workerForm, aadhaar_number: e.target.value})} maxLength={12} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Department</Label>
-                    <Select value={workerForm.department_id} onValueChange={(v) => setWorkerForm({...workerForm, department_id: v})}>
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent>
-                        {departments.map(d => (
-                          <SelectItem key={d.department_id} value={d.department_id}>{d.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Daily Rate (₹)</Label>
-                    <Input type="number" value={workerForm.daily_rate} onChange={(e) => setWorkerForm({...workerForm, daily_rate: e.target.value})} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Skill Category</Label>
-                    <Select value={workerForm.skill_category} onValueChange={(v) => setWorkerForm({...workerForm, skill_category: v})}>
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="skilled">Skilled</SelectItem>
-                        <SelectItem value="semi_skilled">Semi-Skilled</SelectItem>
-                        <SelectItem value="unskilled">Unskilled</SelectItem>
-                        <SelectItem value="supervisor">Supervisor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Start Date</Label>
-                    <Input type="date" value={workerForm.start_date} onChange={(e) => setWorkerForm({...workerForm, start_date: e.target.value})} />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowAddWorker(false)}>Cancel</Button>
-                <Button onClick={handleCreateWorker}>Add Worker</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Building className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{summary?.total_contractors || contractors.length}</p>
-                <p className="text-xs text-slate-500">Contractors</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <HardHat className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{summary?.total_workers || workers.length}</p>
-                <p className="text-xs text-slate-500">Workers</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{summary?.present_today || 0}</p>
-                <p className="text-xs text-slate-500">Present Today</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{workers.filter(w => w.status === 'active').length}</p>
-                <p className="text-xs text-slate-500">Active</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="workers" className="space-y-4">
-        <TabsList className="bg-white border">
-          <TabsTrigger value="workers" className="gap-2">
-            <HardHat className="w-4 h-4" />
-            Workers ({workers.length})
-          </TabsTrigger>
-          <TabsTrigger value="contractors" className="gap-2">
-            <Building className="w-4 h-4" />
-            Contractors ({contractors.length})
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Workers Tab */}
-        <TabsContent value="workers">
+      {/* Summary Cards */}
+      {selectedContractor && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card>
-            <CardHeader className="pb-3">
-              <div className="relative w-full max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Building className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-slate-900 truncate" title={selectedContractorData?.company_name}>
+                    {selectedContractorData?.company_name?.substring(0, 12)}...
+                  </p>
+                  <p className="text-xs text-slate-500">Contractor</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{labourRecords.length}</p>
+                  <p className="text-xs text-slate-500">Months Recorded</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{avgLabour}</p>
+                  <p className="text-xs text-slate-500">Avg Labour/Month</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                  <IndianRupee className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">₹{(totalPayment/100000).toFixed(1)}L</p>
+                  <p className="text-xs text-slate-500">Total Paid</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Labour Records Table */}
+      {selectedContractor && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Monthly Labour Records
+            </CardTitle>
+            <CardDescription>
+              {selectedContractorData?.company_name} - {labourRecords.length} records
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead>Month</TableHead>
+                    <TableHead className="text-center">Number of Labour</TableHead>
+                    <TableHead className="text-right">Payment Made</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {labourRecords.length > 0 ? (
+                    labourRecords.map((record) => (
+                      <TableRow key={record.record_id} data-testid={`labour-record-${record.record_id}`}>
+                        <TableCell className="font-medium">{formatMonth(record.month)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-blue-100 text-blue-700 font-semibold">
+                            {record.labour_count}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-600">
+                          {formatCurrency(record.payment_amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingRecord(record);
+                                setShowEditRecord(true);
+                              }}
+                              data-testid={`edit-record-${record.record_id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteRecord(record.record_id)}
+                              data-testid={`delete-record-${record.record_id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                        No records found. Click "Add Record" to add monthly labour data.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No Contractor Selected */}
+      {!selectedContractor && contractors.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Building className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-slate-700 mb-2">No Contractors Yet</h3>
+            <p className="text-slate-500 mb-4">Add a contractor to start tracking labour and payments</p>
+            <Button onClick={() => setShowAddContractor(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add First Contractor
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Contractor Dialog */}
+      <Dialog open={showAddContractor} onOpenChange={setShowAddContractor}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Manrope, sans-serif' }}>Add Contractor</DialogTitle>
+            <DialogDescription>Add a new contractor to track their labour and payments</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Contractor Name *</Label>
+              <Input
+                placeholder="e.g., Raj Kumar"
+                value={contractorForm.name}
+                onChange={(e) => setContractorForm({ ...contractorForm, name: e.target.value })}
+                data-testid="contractor-name-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Company Name *</Label>
+              <Input
+                placeholder="e.g., RK Enterprises"
+                value={contractorForm.company_name}
+                onChange={(e) => setContractorForm({ ...contractorForm, company_name: e.target.value })}
+                data-testid="contractor-company-input"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Contact Person</Label>
                 <Input
-                  placeholder="Search workers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  placeholder="Name"
+                  value={contractorForm.contact_person}
+                  onChange={(e) => setContractorForm({ ...contractorForm, contact_person: e.target.value })}
                 />
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead>Worker ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Contractor</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Daily Rate</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredWorkers.length > 0 ? filteredWorkers.map((worker) => (
-                    <TableRow key={worker.worker_id}>
-                      <TableCell className="font-mono text-sm">{worker.worker_id}</TableCell>
-                      <TableCell className="font-medium">{worker.first_name} {worker.last_name}</TableCell>
-                      <TableCell>{getContractorName(worker.contractor_id)}</TableCell>
-                      <TableCell>{getDeptName(worker.department_id)}</TableCell>
-                      <TableCell>₹{worker.daily_rate || '-'}</TableCell>
-                      <TableCell>
-                        <Badge className={worker.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                          {worker.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  )) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                        No workers found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input
+                  placeholder="Mobile number"
+                  value={contractorForm.phone}
+                  onChange={(e) => setContractorForm({ ...contractorForm, phone: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddContractor(false)}>Cancel</Button>
+            <Button onClick={handleCreateContractor} data-testid="save-contractor-btn">Add Contractor</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* Contractors Tab */}
-        <TabsContent value="contractors">
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead>ID</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Contract Period</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contractors.length > 0 ? contractors.map((cont) => (
-                    <TableRow key={cont.contractor_id}>
-                      <TableCell className="font-mono text-sm">{cont.contractor_id}</TableCell>
-                      <TableCell className="font-medium">{cont.company_name}</TableCell>
-                      <TableCell>{cont.contact_person || cont.name}</TableCell>
-                      <TableCell>{cont.phone || '-'}</TableCell>
-                      <TableCell className="text-sm">
-                        {cont.contract_start && cont.contract_end ? 
-                          `${new Date(cont.contract_start).toLocaleDateString('en-IN')} - ${new Date(cont.contract_end).toLocaleDateString('en-IN')}` : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cont.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                          {cont.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  )) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                        No contractors found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Add Record Dialog */}
+      <Dialog open={showAddRecord} onOpenChange={setShowAddRecord}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Manrope, sans-serif' }}>Add Monthly Record</DialogTitle>
+            <DialogDescription>
+              {selectedContractorData?.company_name} - Add labour and payment data
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Month *</Label>
+              <Select value={recordForm.month} onValueChange={(v) => setRecordForm({ ...recordForm, month: v })}>
+                <SelectTrigger data-testid="month-select">
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map(m => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Number of Labour *</Label>
+              <Input
+                type="number"
+                placeholder="e.g., 120"
+                value={recordForm.labour_count}
+                onChange={(e) => setRecordForm({ ...recordForm, labour_count: e.target.value })}
+                data-testid="labour-count-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Payment Made (₹) *</Label>
+              <Input
+                type="number"
+                placeholder="e.g., 800000"
+                value={recordForm.payment_amount}
+                onChange={(e) => setRecordForm({ ...recordForm, payment_amount: e.target.value })}
+                data-testid="payment-amount-input"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddRecord(false)}>Cancel</Button>
+            <Button onClick={handleCreateRecord} data-testid="save-record-btn">Add Record</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Record Dialog */}
+      <Dialog open={showEditRecord} onOpenChange={setShowEditRecord}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Manrope, sans-serif' }}>Edit Record</DialogTitle>
+            <DialogDescription>
+              {editingRecord ? formatMonth(editingRecord.month) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {editingRecord && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Number of Labour</Label>
+                <Input
+                  type="number"
+                  value={editingRecord.labour_count || ''}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, labour_count: e.target.value })}
+                  data-testid="edit-labour-count-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Payment Made (₹)</Label>
+                <Input
+                  type="number"
+                  value={editingRecord.payment_amount || ''}
+                  onChange={(e) => setEditingRecord({ ...editingRecord, payment_amount: e.target.value })}
+                  data-testid="edit-payment-amount-input"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowEditRecord(false); setEditingRecord(null); }}>Cancel</Button>
+            <Button onClick={handleUpdateRecord} data-testid="update-record-btn">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
