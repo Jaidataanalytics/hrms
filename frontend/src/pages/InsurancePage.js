@@ -510,6 +510,7 @@ const InsurancePage = () => {
   const totalAmount = insuranceRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
   const activeCount = insuranceRecords.filter(r => r.status === 'active').length;
   const esicCount = insuranceRecords.filter(r => r.esic === true).length;
+  const pmjjbyCount = insuranceRecords.filter(r => r.pmjjby === true).length;
   const companies = [...new Set(insuranceRecords.map(r => r.insurance_company).filter(Boolean))];
 
   if (loading && activeTab === 'employee') {
