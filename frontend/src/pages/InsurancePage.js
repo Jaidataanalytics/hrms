@@ -464,13 +464,14 @@ const InsurancePage = () => {
   const resetForm = () => {
     setFormData({
       emp_code: '',
-      insurance_date: new Date().toISOString().split('T')[0],
+      insurance_date: '',
       amount: '',
       insurance_company: '',
       policy_number: '',
-      coverage_type: 'health',
+      coverage_type: '',
       accidental_insurance: false,
       esic: false,
+      pmjjby: false,
       start_date: '',
       end_date: '',
       notes: ''
