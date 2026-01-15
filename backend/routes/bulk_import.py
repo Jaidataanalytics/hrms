@@ -1243,18 +1243,19 @@ async def download_insurance_template(request: Request):
         title_format = workbook.add_format({'bold': True, 'font_size': 12})
         worksheet.write(0, 0, "EMPLOYEE INSURANCE DATA", title_format)
         
-        # Headers (Row 2)
+        # Headers (Row 2) - All columns optional except Employee Code
         headers = [
             ("SL NO.", header_format),
             ("Employee Code*", required_format),
             ("Employee Name", header_format),
             ("ESIC (Yes/No)", header_format),
+            ("PMJJBY (Yes/No)", header_format),
+            ("Accidental Insurance (Yes/No)", header_format),
             ("Date", header_format),
             ("Amount", header_format),
             ("Insurance Company", header_format),
             ("Policy Number", header_format),
             ("Coverage Type", header_format),
-            ("Accidental Insurance (Yes/No)", header_format),
             ("Start Date", header_format),
             ("End Date", header_format),
             ("Notes", header_format),
@@ -1265,13 +1266,13 @@ async def download_insurance_template(request: Request):
             worksheet.set_column(col, col, 18)
         
         # Note row
-        worksheet.write(2, 0, "* = Required fields. Employee Code must exist in system. If ESIC=Yes, Date/Amount/Company/Policy are optional. Accidental Insurance: Yes/No", note_format)
+        worksheet.write(2, 0, "* = Only Employee Code is required. All other fields are optional. ESIC/PMJJBY/Accidental: Yes/No", note_format)
         
         # Sample rows
         sample_data = [
-            (1, "S0003", "Abritee Das Roy", "No", "2026-01-15", 50000, "LIC", "POL123456", "Health", "Yes", "2026-01-01", "2027-01-01", "Annual premium"),
-            (2, "S0007", "Anup Kr Mishra", "Yes", "", "", "", "", "", "No", "", "", "ESIC covered employee"),
-            (3, "S0010", "Ravi Kumar", "No", "2026-01-15", 75000, "HDFC Ergo", "POL789012", "Life", "No", "2026-01-01", "2027-01-01", ""),
+            (1, "S0003", "Abritee Das Roy", "No", "No", "Yes", "2026-01-15", 50000, "LIC", "POL123456", "Health", "2026-01-01", "2027-01-01", "Annual premium"),
+            (2, "S0007", "Anup Kr Mishra", "Yes", "No", "No", "", "", "", "", "", "", "", "ESIC covered employee"),
+            (3, "S0010", "Ravi Kumar", "No", "Yes", "No", "", "", "", "", "", "", "", "PMJJBY covered"),
         ]
         
         for row_idx, data in enumerate(sample_data, start=3):
