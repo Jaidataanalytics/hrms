@@ -2368,13 +2368,14 @@ class InsuranceRecord(BaseModel):
     employee_id: str
     emp_code: str
     employee_name: str
-    esic: bool = False  # ESIC covered - if True, insurance details may be optional
+    esic: bool = False  # ESIC covered
+    pmjjby: bool = False  # Pradhan Mantri Jeevan Jyoti Bima Yojana
+    accidental_insurance: bool = False  # Accidental insurance coverage
     insurance_date: Optional[str] = None  # Date of insurance
     amount: Optional[float] = None
     insurance_company: Optional[str] = None
     policy_number: Optional[str] = None
     coverage_type: Optional[str] = None  # health, life, accident, etc.
-    accidental_insurance: bool = False
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     status: str = "active"  # active, expired, cancelled
@@ -2430,24 +2431,24 @@ async def create_insurance(data: dict, request: Request):
     if not employee:
         raise HTTPException(status_code=404, detail=f"Employee with code {emp_code} not found")
     
-    esic = data.get("esic", False)
-    
+    # All fields are now optional except emp_code
     insurance_doc = {
         "insurance_id": f"ins_{uuid.uuid4().hex[:12]}",
         "employee_id": employee["employee_id"],
         "emp_code": emp_code,
         "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
-        "esic": esic,
-        "insurance_date": data.get("insurance_date") if not esic else None,
-        "amount": float(data.get("amount", 0)) if data.get("amount") and not esic else None,
-        "insurance_company": data.get("insurance_company", "") if not esic else None,
-        "policy_number": data.get("policy_number") if not esic else None,
-        "coverage_type": data.get("coverage_type", "health") if not esic else None,
+        "esic": data.get("esic", False),
+        "pmjjby": data.get("pmjjby", False),
         "accidental_insurance": data.get("accidental_insurance", False),
-        "start_date": data.get("start_date"),
-        "end_date": data.get("end_date"),
+        "insurance_date": data.get("insurance_date") or None,
+        "amount": float(data.get("amount")) if data.get("amount") else None,
+        "insurance_company": data.get("insurance_company") or None,
+        "policy_number": data.get("policy_number") or None,
+        "coverage_type": data.get("coverage_type") or None,
+        "start_date": data.get("start_date") or None,
+        "end_date": data.get("end_date") or None,
         "status": data.get("status", "active"),
-        "notes": data.get("notes"),
+        "notes": data.get("notes") or None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user["user_id"]
     }
@@ -2471,20 +2472,20 @@ async def update_insurance(insurance_id: str, data: dict, request: Request):
     if not existing:
         raise HTTPException(status_code=404, detail="Insurance record not found")
     
-    esic = data.get("esic", existing.get("esic", False))
-    
+    # All fields are optional - update only what's provided or keep existing
     update_data = {
-        "esic": esic,
-        "insurance_date": data.get("insurance_date", existing.get("insurance_date")) if not esic else None,
-        "amount": float(data.get("amount", existing.get("amount", 0))) if data.get("amount") is not None or existing.get("amount") else None,
-        "insurance_company": data.get("insurance_company", existing.get("insurance_company")) if not esic else None,
-        "policy_number": data.get("policy_number", existing.get("policy_number")) if not esic else None,
-        "coverage_type": data.get("coverage_type", existing.get("coverage_type")) if not esic else None,
+        "esic": data.get("esic", existing.get("esic", False)),
+        "pmjjby": data.get("pmjjby", existing.get("pmjjby", False)),
         "accidental_insurance": data.get("accidental_insurance", existing.get("accidental_insurance", False)),
-        "start_date": data.get("start_date", existing.get("start_date")),
-        "end_date": data.get("end_date", existing.get("end_date")),
+        "insurance_date": data.get("insurance_date") if "insurance_date" in data else existing.get("insurance_date"),
+        "amount": float(data.get("amount")) if data.get("amount") else existing.get("amount"),
+        "insurance_company": data.get("insurance_company") if "insurance_company" in data else existing.get("insurance_company"),
+        "policy_number": data.get("policy_number") if "policy_number" in data else existing.get("policy_number"),
+        "coverage_type": data.get("coverage_type") if "coverage_type" in data else existing.get("coverage_type"),
+        "start_date": data.get("start_date") if "start_date" in data else existing.get("start_date"),
+        "end_date": data.get("end_date") if "end_date" in data else existing.get("end_date"),
         "status": data.get("status", existing.get("status")),
-        "notes": data.get("notes", existing.get("notes")),
+        "notes": data.get("notes") if "notes" in data else existing.get("notes"),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "updated_by": user["user_id"]
     }
