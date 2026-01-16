@@ -1301,6 +1301,38 @@ async def get_leave_balance(request: Request):
     
     return balances
 
+
+@api_router.get("/leave/balances")
+async def get_leave_balances_for_employee(request: Request, employee_id: Optional[str] = None):
+    """Get leave balances for a specific employee (HR only) or current user"""
+    user = await get_current_user(request)
+    current_year = datetime.now(timezone.utc).year
+    
+    if employee_id:
+        # HR/Admin can view any employee's balances
+        if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        target_employee_id = employee_id
+    else:
+        # View own balances
+        target_employee_id = user.get("employee_id")
+        if not target_employee_id:
+            return []
+    
+    balances = await db.leave_balances.find(
+        {"employee_id": target_employee_id, "year": current_year}, {"_id": 0}
+    ).to_list(50)
+    
+    # Enrich with leave type names
+    leave_types = await db.leave_types.find({}, {"_id": 0}).to_list(50)
+    leave_type_map = {lt.get("leave_type_id"): lt.get("name") for lt in leave_types}
+    
+    for balance in balances:
+        balance["leave_type_name"] = leave_type_map.get(balance.get("leave_type_id"), "Unknown")
+    
+    return balances
+
+
 @api_router.post("/leave/apply", response_model=LeaveRequest)
 async def apply_leave(leave_data: LeaveApplyRequest, request: Request):
     user = await get_current_user(request)
