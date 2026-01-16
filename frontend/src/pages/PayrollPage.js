@@ -683,6 +683,119 @@ const PayrollPage = () => {
           </TabsContent>
         )}
 
+        {/* Salary Structures Tab (HR only) */}
+        {isHR && (
+          <TabsContent value="salary-structures">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <IndianRupee className="w-5 h-5 text-primary" />
+                      All Salary Structures
+                    </CardTitle>
+                    <CardDescription>View salary details for all employees</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Search by name, code, email..."
+                      value={salaryStructuresSearch}
+                      onChange={(e) => setSalaryStructuresSearch(e.target.value)}
+                      className="w-64"
+                      data-testid="salary-search-input"
+                    />
+                    <Button 
+                      onClick={() => fetchSalaryStructures(salaryStructuresSearch)}
+                      data-testid="salary-search-btn"
+                    >
+                      Search
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => { setSalaryStructuresSearch(''); fetchSalaryStructures(''); }}
+                      data-testid="salary-clear-btn"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {salaryStructuresLoading ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
+                    <p className="text-slate-500">Loading salary structures...</p>
+                  </div>
+                ) : salaryStructures.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead>Emp Code</TableHead>
+                          <TableHead>Employee Name</TableHead>
+                          <TableHead>Department</TableHead>
+                          <TableHead>Designation</TableHead>
+                          <TableHead className="text-right">Gross Salary</TableHead>
+                          <TableHead className="text-right">Basic</TableHead>
+                          <TableHead className="text-right">Annual CTC</TableHead>
+                          <TableHead>Data Source</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {salaryStructures.map((emp) => (
+                          <TableRow 
+                            key={emp.employee_id} 
+                            className="hover:bg-slate-50 cursor-pointer"
+                            data-testid={`salary-row-${emp.employee_id}`}
+                          >
+                            <TableCell className="font-medium">{emp.emp_code || '-'}</TableCell>
+                            <TableCell>{emp.employee_name || '-'}</TableCell>
+                            <TableCell>{emp.department || '-'}</TableCell>
+                            <TableCell>{emp.designation || '-'}</TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {emp.gross_salary ? formatCurrency(emp.gross_salary) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {emp.basic_salary ? formatCurrency(emp.basic_salary) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {emp.ctc ? formatCurrency(emp.ctc) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {emp.has_salary_data ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                  {emp.salary_source || 'Available'}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                  No Data
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 mb-2">No salary structures found</p>
+                    <p className="text-xs text-slate-400">Click Search or use Bulk Import to add salary data</p>
+                    <Button 
+                      onClick={() => fetchSalaryStructures('')} 
+                      className="mt-4"
+                      data-testid="load-salary-btn"
+                    >
+                      Load All Salaries
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
         {/* My Payslips */}
         <TabsContent value="my-payslips">
           <Card>
