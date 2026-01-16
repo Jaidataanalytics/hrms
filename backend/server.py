@@ -2626,6 +2626,117 @@ async def delete_business_insurance(business_insurance_id: str, request: Request
     return {"message": "Business insurance record deleted"}
 
 
+# ==================== EMPLOYEE ASSETS ROUTES ====================
+
+@api_router.get("/employee-assets")
+async def get_all_employee_assets(request: Request):
+    """Get all employee assets records"""
+    user = await get_current_user(request)
+    
+    records = await db.employee_assets.find({}, {"_id": 0}).to_list(1000)
+    return records
+
+
+@api_router.get("/employee-assets/{emp_code}")
+async def get_employee_assets_by_code(emp_code: str, request: Request):
+    """Get assets for a specific employee"""
+    user = await get_current_user(request)
+    
+    record = await db.employee_assets.find_one({"emp_code": emp_code}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="No assets found for this employee")
+    return record
+
+
+@api_router.post("/employee-assets")
+async def create_employee_assets(data: dict, request: Request):
+    """Create employee assets record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "it_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    emp_code = data.get("emp_code")
+    if not emp_code:
+        raise HTTPException(status_code=400, detail="Employee code is required")
+    
+    # Find employee
+    employee = await db.employees.find_one({"emp_code": emp_code}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail=f"Employee with code {emp_code} not found")
+    
+    # Check if assets record already exists
+    existing = await db.employee_assets.find_one({"emp_code": emp_code})
+    if existing:
+        raise HTTPException(status_code=400, detail="Assets record already exists for this employee. Use update instead.")
+    
+    asset_doc = {
+        "asset_record_id": f"ast_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee["employee_id"],
+        "emp_code": emp_code,
+        "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+        "sdpl_number": data.get("sdpl_number", ""),
+        "tag": data.get("tag", ""),
+        "mobile_charger": data.get("mobile_charger", False),
+        "laptop": data.get("laptop", False),
+        "system": data.get("system", False),
+        "printer": data.get("printer", False),
+        "sim_mobile_no": data.get("sim_mobile_no", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["user_id"]
+    }
+    
+    await db.employee_assets.insert_one(asset_doc)
+    asset_doc.pop('_id', None)
+    return {"message": "Assets record created", "assets": asset_doc}
+
+
+@api_router.put("/employee-assets/{emp_code}")
+async def update_employee_assets(emp_code: str, data: dict, request: Request):
+    """Update employee assets record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "it_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = await db.employee_assets.find_one({"emp_code": emp_code})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Assets record not found")
+    
+    update_data = {
+        "sdpl_number": data.get("sdpl_number", existing.get("sdpl_number")),
+        "tag": data.get("tag", existing.get("tag")),
+        "mobile_charger": data.get("mobile_charger", existing.get("mobile_charger")),
+        "laptop": data.get("laptop", existing.get("laptop")),
+        "system": data.get("system", existing.get("system")),
+        "printer": data.get("printer", existing.get("printer")),
+        "sim_mobile_no": data.get("sim_mobile_no", existing.get("sim_mobile_no")),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user["user_id"]
+    }
+    
+    await db.employee_assets.update_one(
+        {"emp_code": emp_code},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Assets record updated"}
+
+
+@api_router.delete("/employee-assets/{emp_code}")
+async def delete_employee_assets(emp_code: str, request: Request):
+    """Delete employee assets record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    result = await db.employee_assets.delete_one({"emp_code": emp_code})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Assets record not found")
+    
+    return {"message": "Assets record deleted"}
+
 
 # Include the router in the main app (after all routes are defined)
 app.include_router(api_router)
