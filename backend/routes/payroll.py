@@ -245,7 +245,14 @@ async def process_payroll(payroll_id: str, request: Request):
         # Calculate salary - handle multiple data structures
         # Priority: total_fixed > gross > ctc/12
         gross = emp_salary.get("total_fixed") or emp_salary.get("gross") or (emp_salary.get("ctc", 0) / 12)
-        basic = emp_salary.get("components", [{}])[0].get("amount", gross * 0.5) if emp_salary.get("components") else gross * 0.5
+        
+        # Get basic salary - handle different structures
+        if emp_salary.get("fixed_components"):
+            basic = emp_salary["fixed_components"].get("basic", gross * 0.4)
+        elif emp_salary.get("components"):
+            basic = emp_salary["components"][0].get("amount", gross * 0.5) if emp_salary["components"] else gross * 0.5
+        else:
+            basic = emp_salary.get("basic", gross * 0.4)
         
         # Pro-rate for attendance
         daily_rate = gross / working_days
