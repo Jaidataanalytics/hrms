@@ -413,6 +413,56 @@ async def get_my_payslips(request: Request):
     return payslips
 
 
+@router.get("/employee/{employee_id}")
+async def get_employee_salary(employee_id: str, request: Request):
+    """Get salary structure for an employee"""
+    user = await get_current_user(request)
+    
+    # Check access - HR/Admin or self
+    if user.get("role") not in ["super_admin", "hr_admin", "finance", "hr_executive"]:
+        if user.get("employee_id") != employee_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # First try employee_salaries collection
+    salary = await db.employee_salaries.find_one(
+        {"employee_id": employee_id, "is_active": True}, {"_id": 0}
+    )
+    
+    if not salary:
+        # Try salary_structures collection
+        salary = await db.salary_structures.find_one(
+            {"employee_id": employee_id, "is_active": True}, {"_id": 0}
+        )
+    
+    if not salary:
+        # Try to build from employee record
+        employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+        if employee and employee.get("salary_info"):
+            salary = employee.get("salary_info")
+    
+    return salary or {}
+
+
+@router.get("/payslips")
+async def get_payslips_by_employee(
+    request: Request,
+    employee_id: Optional[str] = None,
+    limit: int = 24
+):
+    """Get payslips for a specific employee (HR/Admin only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "finance", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = {}
+    if employee_id:
+        query["employee_id"] = employee_id
+    
+    payslips = await db.payslips.find(query, {"_id": 0}).sort([("year", -1), ("month", -1)]).to_list(limit)
+    return payslips
+
+
 # ==================== ALL EMPLOYEES PAY INFO (HR/Admin only) ====================
 
 @router.get("/all-employees-pay")
