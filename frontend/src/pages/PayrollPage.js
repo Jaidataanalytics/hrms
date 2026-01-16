@@ -181,6 +181,183 @@ const PayrollPage = () => {
     }
   };
 
+  const openEditSalary = async (emp) => {
+    setEditingEmployee(emp);
+    
+    // Fetch current salary details
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/employee/${emp.employee_id}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        const salary = await response.json();
+        const fc = salary?.fixed_components || {};
+        const dc = salary?.deduction_config || {};
+        const fd = salary?.fixed_deductions || {};
+        
+        setSalaryForm({
+          basic: fc.basic || salary?.basic || 0,
+          da: fc.da || salary?.da || 0,
+          hra: fc.hra || salary?.hra || 0,
+          conveyance: fc.conveyance || salary?.conveyance || 0,
+          grade_pay: fc.grade_pay || 0,
+          other_allowance: fc.other_allowance || salary?.other_allowance || 0,
+          medical_allowance: fc.medical_allowance || 0,
+          epf_applicable: dc.epf_applicable !== false,
+          esi_applicable: dc.esi_applicable !== false,
+          sewa_applicable: dc.sewa_applicable !== false,
+          sewa_advance: fd.sewa_advance || 0,
+          other_deduction: fd.other_deduction || 0,
+          reason: ''
+        });
+      } else {
+        // No salary exists, use defaults
+        setSalaryForm({
+          basic: 0, da: 0, hra: 0, conveyance: 0, grade_pay: 0, other_allowance: 0, medical_allowance: 0,
+          epf_applicable: true, esi_applicable: true, sewa_applicable: true,
+          sewa_advance: 0, other_deduction: 0, reason: ''
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching salary:', error);
+    }
+    
+    setEditSalaryOpen(true);
+  };
+
+  const handleSaveSalary = async () => {
+    if (!editingEmployee) return;
+    
+    setSavingSalary(true);
+    try {
+      const totalFixed = 
+        parseFloat(salaryForm.basic || 0) + 
+        parseFloat(salaryForm.da || 0) + 
+        parseFloat(salaryForm.hra || 0) + 
+        parseFloat(salaryForm.conveyance || 0) + 
+        parseFloat(salaryForm.grade_pay || 0) + 
+        parseFloat(salaryForm.other_allowance || 0) + 
+        parseFloat(salaryForm.medical_allowance || 0);
+      
+      const payload = {
+        ...salaryForm,
+        total_fixed: totalFixed,
+        emp_code: editingEmployee.emp_code,
+        employee_name: editingEmployee.employee_name
+      };
+      
+      const response = await fetch(
+        `${API_URL}/payroll/employee/${editingEmployee.employee_id}/salary`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        if (data.request) {
+          toast.success('Salary change request submitted for approval');
+          fetchSalaryChangeRequests();
+        } else {
+          toast.success('Salary structure updated successfully');
+          fetchSalaryStructures(salaryStructuresSearch);
+        }
+        setEditSalaryOpen(false);
+      } else {
+        toast.error(data.detail || 'Failed to update salary');
+      }
+    } catch (error) {
+      toast.error('Failed to save salary structure');
+    } finally {
+      setSavingSalary(false);
+    }
+  };
+
+  const fetchSalaryChangeRequests = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/salary-change-requests?status=pending`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setSalaryChangeRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Error fetching change requests:', error);
+    }
+  };
+
+  const handleApproveRequest = async (requestId) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/salary-change-requests/${requestId}/approve`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+      
+      if (response.ok) {
+        toast.success('Salary change approved');
+        fetchSalaryChangeRequests();
+        fetchSalaryStructures(salaryStructuresSearch);
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to approve');
+      }
+    } catch (error) {
+      toast.error('Failed to approve salary change');
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    const reason = prompt('Enter rejection reason (optional):');
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/salary-change-requests/${requestId}/reject`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          credentials: 'include',
+          body: JSON.stringify({ reason })
+        }
+      );
+      
+      if (response.ok) {
+        toast.success('Salary change rejected');
+        fetchSalaryChangeRequests();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to reject');
+      }
+    } catch (error) {
+      toast.error('Failed to reject salary change');
+    }
+  };
+
+  const fetchSalaryHistory = async (employeeId) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/employee/${employeeId}/salary-history`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setSalaryHistory(data);
+        setShowSalaryHistory(true);
+      }
+    } catch (error) {
+      toast.error('Failed to fetch salary history');
+    }
+  };
+
   const fetchEmployeeDetails = async (employeeId) => {
     try {
       const response = await fetch(
