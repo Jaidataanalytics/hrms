@@ -773,22 +773,6 @@ async def create_employee(emp_data: EmployeeCreate, request: Request):
     
     return employee
 
-@api_router.get("/employees/{employee_id}", response_model=Employee)
-async def get_employee(employee_id: str, request: Request):
-    user = await get_current_user(request)
-    
-    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
-    
-    # Check access
-    user_role = user.get("role", "employee")
-    if user_role == "employee" and employee_id != user.get("employee_id"):
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    return employee
-
-
 @api_router.get("/employees/search")
 async def search_employees(
     request: Request,
@@ -817,6 +801,22 @@ async def search_employees(
     
     employees = await db.employees.find(query, {"_id": 0}).limit(limit).to_list(limit)
     return employees
+
+
+@api_router.get("/employees/{employee_id}", response_model=Employee)
+async def get_employee(employee_id: str, request: Request):
+    user = await get_current_user(request)
+    
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Check access
+    user_role = user.get("role", "employee")
+    if user_role == "employee" and employee_id != user.get("employee_id"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    return employee
 
 
 @api_router.put("/employees/{employee_id}", response_model=Employee)
