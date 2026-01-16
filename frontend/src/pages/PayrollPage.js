@@ -95,8 +95,22 @@ const PayrollPage = () => {
     action_value: 5,
     apply_per_occurrence: false
   });
+  
+  // Employee Salary Edit states
+  const [editSalaryOpen, setEditSalaryOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [salaryForm, setSalaryForm] = useState({
+    basic: 0, da: 0, hra: 0, conveyance: 0, grade_pay: 0, other_allowance: 0, medical_allowance: 0,
+    epf_applicable: true, esi_applicable: true, sewa_applicable: true,
+    sewa_advance: 0, other_deduction: 0, reason: ''
+  });
+  const [savingSalary, setSavingSalary] = useState(false);
+  const [salaryChangeRequests, setSalaryChangeRequests] = useState([]);
+  const [salaryHistory, setSalaryHistory] = useState([]);
+  const [showSalaryHistory, setShowSalaryHistory] = useState(false);
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance' || user?.role === 'hr_executive';
+  const canApproveSalary = user?.role === 'super_admin' || user?.role === 'finance';
 
   useEffect(() => {
     fetchData();
