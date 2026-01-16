@@ -144,6 +144,28 @@ const PayrollPage = () => {
     }
   };
 
+  const fetchSalaryStructures = async (search = '') => {
+    setSalaryStructuresLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: '500' });
+      if (search) params.append('search', search);
+      
+      const response = await fetch(
+        `${API_URL}/payroll/all-salary-structures?${params}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setSalaryStructures(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching salary structures:', error);
+      toast.error('Failed to load salary structures');
+    } finally {
+      setSalaryStructuresLoading(false);
+    }
+  };
+
   const fetchEmployeeDetails = async (employeeId) => {
     try {
       const response = await fetch(
