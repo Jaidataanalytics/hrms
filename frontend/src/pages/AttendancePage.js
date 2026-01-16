@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
 import { Calendar } from '../components/ui/calendar';
 import {
   Select,
@@ -34,7 +35,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  User
+  User,
+  Search,
+  Download
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
@@ -44,11 +47,20 @@ const AttendancePage = () => {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [orgAttendance, setOrgAttendance] = useState(null);
+  const [historyAttendance, setHistoryAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [markingAttendance, setMarkingAttendance] = useState(false);
   const [attendanceSource, setAttendanceSource] = useState('manual');
   const [viewMode, setViewMode] = useState('organization'); // 'organization' or 'my'
+  
+  // HR filters for organization view
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState('all');
 
   const currentMonth = selectedDate.getMonth() + 1;
   const currentYear = selectedDate.getFullYear();
