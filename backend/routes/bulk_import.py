@@ -792,7 +792,7 @@ async def import_attendance(
     
     try:
         import openpyxl
-        wb = openpyxl.load_workbook(io.BytesIO(content))
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
         ws = wb.active
         
         # Get headers (first row)
@@ -812,15 +812,27 @@ async def import_attendance(
         
         days_in_month = calendar.monthrange(year, month)[1]
         
+        # Find actual last row with data
+        actual_last_row = 1
+        empty_row_count = 0
+        max_empty_rows = 10
+        
+        for row_num in range(2, min(ws.max_row + 1, 10000)):
+            emp_code_cell = ws.cell(row=row_num, column=emp_code_idx + 1).value
+            if emp_code_cell is not None and str(emp_code_cell).strip():
+                actual_last_row = row_num
+                empty_row_count = 0
+            else:
+                empty_row_count += 1
+                if empty_row_count >= max_empty_rows:
+                    break
+        
         imported = 0
         errors = []
         
-        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_row=actual_last_row, values_only=True), start=2):
             try:
-                if not any(row):
-                    continue
-                
-                emp_code = str(row[emp_code_idx] or "").strip()
+                emp_code = str(row[emp_code_idx] or "").strip() if len(row) > emp_code_idx else ""
                 if not emp_code:
                     continue
                 
