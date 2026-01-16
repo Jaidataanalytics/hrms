@@ -391,62 +391,162 @@ const Employee360Page = () => {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-slate-50 rounded-lg p-4">
-                      <p className="text-sm text-slate-500">Annual CTC</p>
-                      <p className="text-xl font-bold text-slate-900">{formatCurrency(salary.annual_ctc || salary.ctc)}</p>
+                      <p className="text-sm text-slate-500">Monthly Fixed</p>
+                      <p className="text-xl font-bold text-slate-900">{formatCurrency(salary.total_fixed || salary.gross || salary.annual_ctc / 12)}</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-4">
-                      <p className="text-sm text-slate-500">Monthly Gross</p>
-                      <p className="text-xl font-bold text-slate-900">{formatCurrency(salary.gross)}</p>
+                      <p className="text-sm text-slate-500">Total Earned</p>
+                      <p className="text-xl font-bold text-slate-900">{formatCurrency(salary.total_earned || salary.gross)}</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-4">
-                      <p className="text-sm text-slate-500">Basic</p>
-                      <p className="text-xl font-bold text-slate-900">{formatCurrency(salary.basic)}</p>
+                      <p className="text-sm text-slate-500">Deductions</p>
+                      <p className="text-xl font-bold text-red-600">{formatCurrency(salary.total_deduction || 0)}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-lg p-4">
-                      <p className="text-sm text-slate-500">HRA</p>
-                      <p className="text-xl font-bold text-slate-900">{formatCurrency(salary.hra)}</p>
+                    <div className="bg-emerald-50 rounded-lg p-4">
+                      <p className="text-sm text-emerald-600">Net Payable</p>
+                      <p className="text-xl font-bold text-emerald-700">{formatCurrency(salary.net_payable || (salary.gross - (salary.total_deduction || 0)))}</p>
                     </div>
                   </div>
 
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-slate-50">
-                          <TableHead>Component</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>Basic Salary</TableCell>
-                          <TableCell className="text-right">{formatCurrency(salary.basic)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>HRA</TableCell>
-                          <TableCell className="text-right">{formatCurrency(salary.hra)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>Special Allowance</TableCell>
-                          <TableCell className="text-right">{formatCurrency(salary.special_allowance)}</TableCell>
-                        </TableRow>
-                        {salary.conveyance && (
-                          <TableRow>
-                            <TableCell>Conveyance</TableCell>
-                            <TableCell className="text-right">{formatCurrency(salary.conveyance)}</TableCell>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Earnings */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50">
+                            <TableHead>Earnings</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
                           </TableRow>
-                        )}
-                        {salary.medical && (
-                          <TableRow>
-                            <TableCell>Medical Allowance</TableCell>
-                            <TableCell className="text-right">{formatCurrency(salary.medical)}</TableCell>
+                        </TableHeader>
+                        <TableBody>
+                          {salary.fixed_components ? (
+                            <>
+                              {salary.fixed_components.basic > 0 && (
+                                <TableRow>
+                                  <TableCell>Basic Salary</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(salary.fixed_components.basic)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.fixed_components.da > 0 && (
+                                <TableRow>
+                                  <TableCell>DA</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(salary.fixed_components.da)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.fixed_components.hra > 0 && (
+                                <TableRow>
+                                  <TableCell>HRA</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(salary.fixed_components.hra)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.fixed_components.conveyance > 0 && (
+                                <TableRow>
+                                  <TableCell>Conveyance</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(salary.fixed_components.conveyance)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.fixed_components.grade_pay > 0 && (
+                                <TableRow>
+                                  <TableCell>Grade Pay</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(salary.fixed_components.grade_pay)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.fixed_components.medical_allowance > 0 && (
+                                <TableRow>
+                                  <TableCell>Medical Allowance</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(salary.fixed_components.medical_allowance)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.fixed_components.other_allowance > 0 && (
+                                <TableRow>
+                                  <TableCell>Other Allowance</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(salary.fixed_components.other_allowance)}</TableCell>
+                                </TableRow>
+                              )}
+                              <TableRow className="bg-slate-50 font-semibold">
+                                <TableCell>Total Fixed</TableCell>
+                                <TableCell className="text-right">{formatCurrency(salary.total_fixed)}</TableCell>
+                              </TableRow>
+                            </>
+                          ) : (
+                            <>
+                              <TableRow>
+                                <TableCell>Basic Salary</TableCell>
+                                <TableCell className="text-right">{formatCurrency(salary.basic)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>HRA</TableCell>
+                                <TableCell className="text-right">{formatCurrency(salary.hra)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>Special Allowance</TableCell>
+                                <TableCell className="text-right">{formatCurrency(salary.special_allowance)}</TableCell>
+                              </TableRow>
+                              <TableRow className="bg-slate-50 font-semibold">
+                                <TableCell>Gross Salary</TableCell>
+                                <TableCell className="text-right">{formatCurrency(salary.gross)}</TableCell>
+                              </TableRow>
+                            </>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Deductions */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-red-50">
+                            <TableHead>Deductions</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
                           </TableRow>
-                        )}
-                        <TableRow className="bg-slate-50 font-semibold">
-                          <TableCell>Gross Salary</TableCell>
-                          <TableCell className="text-right">{formatCurrency(salary.gross)}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {salary.deductions ? (
+                            <>
+                              {salary.deductions.epf > 0 && (
+                                <TableRow>
+                                  <TableCell>EPF</TableCell>
+                                  <TableCell className="text-right text-red-600">{formatCurrency(salary.deductions.epf)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.deductions.esi > 0 && (
+                                <TableRow>
+                                  <TableCell>ESI</TableCell>
+                                  <TableCell className="text-right text-red-600">{formatCurrency(salary.deductions.esi)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.late_deduction > 0 && (
+                                <TableRow>
+                                  <TableCell>Late Deduction</TableCell>
+                                  <TableCell className="text-right text-red-600">{formatCurrency(salary.late_deduction)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.deductions.sewa > 0 && (
+                                <TableRow>
+                                  <TableCell>Sewa</TableCell>
+                                  <TableCell className="text-right text-red-600">{formatCurrency(salary.deductions.sewa)}</TableCell>
+                                </TableRow>
+                              )}
+                              {salary.deductions.other > 0 && (
+                                <TableRow>
+                                  <TableCell>Other</TableCell>
+                                  <TableCell className="text-right text-red-600">{formatCurrency(salary.deductions.other)}</TableCell>
+                                </TableRow>
+                              )}
+                              <TableRow className="bg-red-50 font-semibold">
+                                <TableCell>Total Deductions</TableCell>
+                                <TableCell className="text-right text-red-600">{formatCurrency(salary.total_deduction)}</TableCell>
+                              </TableRow>
+                            </>
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={2} className="text-center text-slate-500">No deduction info available</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </div>
               ) : (
