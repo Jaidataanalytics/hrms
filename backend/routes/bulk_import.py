@@ -841,19 +841,41 @@ async def import_salary(request: Request, file: UploadFile = File(...)):
     
     if filename.endswith('.xlsx'):
         import openpyxl
-        wb = openpyxl.load_workbook(io.BytesIO(content))
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
         ws = wb.active
         headers = [str(cell.value or "").strip() for cell in ws[1]]
+        
+        # Find actual last row with data (not Excel's max_row which can be 1M+)
+        actual_last_row = 1
+        empty_row_count = 0
+        max_empty_rows = 10  # Stop after 10 consecutive empty rows
+        
+        for row_num in range(2, min(ws.max_row + 1, 10000)):  # Cap at 10000 rows max
+            row_values = [ws.cell(row=row_num, column=col).value for col in range(1, len(headers) + 1)]
+            
+            # Check if first column (Emp Code) has value - that's our key indicator
+            if row_values[0] is not None and str(row_values[0]).strip():
+                actual_last_row = row_num
+                empty_row_count = 0
+            else:
+                empty_row_count += 1
+                if empty_row_count >= max_empty_rows:
+                    break
+        
         rows = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if any(row):
+        for row in ws.iter_rows(min_row=2, max_row=actual_last_row, values_only=True):
+            if row[0] is not None and str(row[0]).strip():  # Only if Emp Code exists
                 rows.append(dict(zip(headers, row)))
+                
     elif filename.endswith('.csv'):
         decoded = content.decode('utf-8-sig')
         reader = csv.DictReader(io.StringIO(decoded))
-        rows = list(reader)
+        rows = [row for row in reader if row.get('Emp Code') or row.get('emp_code')]
     else:
         raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
+    
+    if not rows:
+        raise HTTPException(status_code=400, detail="No valid data rows found in file. Make sure 'Emp Code' column has values.")
     
     imported = 0
     errors = []
