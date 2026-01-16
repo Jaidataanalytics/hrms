@@ -196,16 +196,30 @@ async def process_payroll(payroll_id: str, request: Request):
             ]
         }
     
-    # Get all active employees with salary
-    employees_with_salary = await db.employee_salaries.find(
+    # Get salary data from BOTH collections and merge
+    # This ensures all employees with salary data are processed
+    salary_data_map = {}
+    
+    # First, get from employee_salaries (has gross field)
+    emp_salaries = await db.employee_salaries.find(
         {"is_active": True}, {"_id": 0}
     ).to_list(1000)
+    for sal in emp_salaries:
+        emp_id = sal.get("employee_id")
+        if emp_id:
+            salary_data_map[emp_id] = sal
     
-    # If no employee_salaries, try salary_structures
-    if not employees_with_salary:
-        employees_with_salary = await db.salary_structures.find(
-            {"is_active": True}, {"_id": 0}
-        ).to_list(1000)
+    # Then, get from salary_structures (has ctc field)
+    # Only add if not already in employee_salaries
+    sal_structures = await db.salary_structures.find(
+        {"is_active": True}, {"_id": 0}
+    ).to_list(1000)
+    for sal in sal_structures:
+        emp_id = sal.get("employee_id")
+        if emp_id and emp_id not in salary_data_map:
+            salary_data_map[emp_id] = sal
+    
+    employees_with_salary = list(salary_data_map.values())
     
     total_gross = 0
     total_deductions = 0
@@ -216,7 +230,14 @@ async def process_payroll(payroll_id: str, request: Request):
     payslips_created = 0
     
     for emp_salary in employees_with_salary:
-        employee_id = emp_salary["employee_id"]
+        employee_id = emp_salary.get("employee_id")
+        if not employee_id:
+            continue
+            
+        # Skip if employee is not active
+        employee = await db.employees.find_one({"employee_id": employee_id, "is_active": True})
+        if not employee:
+            continue
         
         # Get attendance for the month
         month_str = f"{year}-{str(month).zfill(2)}"
@@ -245,6 +266,9 @@ async def process_payroll(payroll_id: str, request: Request):
         # Calculate salary - handle multiple data structures
         # Priority: total_fixed > gross > ctc/12
         gross = emp_salary.get("total_fixed") or emp_salary.get("gross") or (emp_salary.get("ctc", 0) / 12)
+        
+        if not gross or gross <= 0:
+            continue  # Skip employees with no valid salary
         
         # Get basic salary - handle different structures
         if emp_salary.get("fixed_components"):
