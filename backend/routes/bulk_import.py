@@ -22,6 +22,57 @@ async def get_current_user(request: Request) -> dict:
     return await auth_get_user(request)
 
 
+def parse_excel_with_smart_detection(content: bytes, key_column_index: int = 0, max_rows: int = 10000, max_empty_rows: int = 10):
+    """
+    Parse Excel file with smart row detection to avoid processing empty rows.
+    
+    Args:
+        content: File content as bytes
+        key_column_index: Index of the column that must have a value (usually emp_code or first column)
+        max_rows: Maximum rows to process
+        max_empty_rows: Stop after this many consecutive empty rows
+    
+    Returns:
+        tuple: (headers, rows) where rows is a list of dicts
+    """
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    ws = wb.active
+    
+    # Get headers from row 1
+    headers = [str(cell.value or "").strip().replace('*', '') for cell in ws[1]]
+    
+    # Find actual last row with data
+    actual_last_row = 1
+    empty_row_count = 0
+    
+    for row_num in range(2, min(ws.max_row + 1, max_rows)):
+        key_cell = ws.cell(row=row_num, column=key_column_index + 1).value
+        
+        # Check if key column has a valid value
+        if key_cell is not None and str(key_cell).strip():
+            key_str = str(key_cell).strip()
+            # Skip note/instruction rows
+            if not key_str.startswith("*") and not key_str.lower().startswith("required"):
+                actual_last_row = row_num
+                empty_row_count = 0
+        else:
+            empty_row_count += 1
+            if empty_row_count >= max_empty_rows:
+                break
+    
+    # Extract rows up to actual_last_row
+    rows = []
+    for row in ws.iter_rows(min_row=2, max_row=actual_last_row, values_only=True):
+        key_val = row[key_column_index] if len(row) > key_column_index else None
+        if key_val is not None and str(key_val).strip():
+            key_str = str(key_val).strip()
+            if not key_str.startswith("*") and not key_str.lower().startswith("required"):
+                rows.append(dict(zip(headers, row)))
+    
+    return headers, rows
+
+
 # ==================== EXCEL TEMPLATES ====================
 
 @router.get("/templates/employees")
