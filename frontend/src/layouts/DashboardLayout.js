@@ -43,8 +43,10 @@ import {
   Plane,
   Database,
   Fingerprint,
-  Shield
+  Shield,
+  Search
 } from 'lucide-react';
+import GlobalSearch from '../components/GlobalSearch';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
