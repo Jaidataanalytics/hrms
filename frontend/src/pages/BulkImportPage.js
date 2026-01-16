@@ -51,7 +51,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const BulkImportPage = () => {
   const { user } = useAuth();
-  const [uploading, setUploading] = useState(false);
+  const [uploadingType, setUploadingType] = useState(null); // Track which type is uploading
   const [uploadResult, setUploadResult] = useState(null);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [showAttendanceDialog, setShowAttendanceDialog] = useState(false);
