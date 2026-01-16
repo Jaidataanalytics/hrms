@@ -171,7 +171,7 @@ const BulkImportPage = () => {
   };
 
   const processUpload = async (type, file, extraData = {}) => {
-    setUploading(true);
+    setUploadingType(type); // Set which type is uploading
     setUploadResult(null);
 
     const formData = new FormData();
@@ -229,9 +229,10 @@ const BulkImportPage = () => {
         setShowResultDialog(true);
       }
     } catch (error) {
-      toast.error('Failed to upload file');
+      console.error('Upload error:', error);
+      toast.error('Failed to upload file. Please check your connection and try again.');
     } finally {
-      setUploading(false);
+      setUploadingType(null); // Clear uploading state
     }
   };
 
