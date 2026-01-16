@@ -1140,6 +1140,41 @@ async def mark_attendance(mark_data: AttendanceMarkRequest, request: Request):
     
     return {"message": f"Attendance {mark_data.punch_type} marked successfully", "time": now_time}
 
+
+@api_router.get("/attendance")
+async def get_attendance(
+    request: Request, 
+    employee_id: Optional[str] = None, 
+    month: Optional[int] = None, 
+    year: Optional[int] = None
+):
+    """Get attendance records - HR can view any employee, others view their own"""
+    user = await get_current_user(request)
+    
+    if employee_id:
+        # HR/Admin can view any employee's attendance
+        if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        target_employee_id = employee_id
+    else:
+        # View own attendance
+        target_employee_id = user.get("employee_id")
+        if not target_employee_id:
+            return []
+    
+    query = {"employee_id": target_employee_id}
+    
+    if month and year:
+        # Filter by month/year
+        month_str = str(month).zfill(2)
+        query["date"] = {"$regex": f"^{year}-{month_str}"}
+    elif year:
+        query["date"] = {"$regex": f"^{year}"}
+    
+    attendance = await db.attendance.find(query, {"_id": 0}).sort("date", -1).to_list(100)
+    return attendance
+
+
 @api_router.get("/attendance/my")
 async def get_my_attendance(request: Request, month: Optional[str] = None, year: Optional[int] = None):
     user = await get_current_user(request)
