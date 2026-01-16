@@ -281,6 +281,36 @@ const DashboardLayout = () => {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3">
+              {/* Global Search Button (HR/Admin only) */}
+              {isHR && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:flex items-center gap-2 text-slate-500 hover:text-slate-700 border border-slate-200 px-3"
+                  onClick={() => setSearchOpen(true)}
+                  data-testid="global-search-btn"
+                >
+                  <Search className="w-4 h-4" />
+                  <span className="text-sm">Search...</span>
+                  <kbd className="ml-2 pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-slate-100 px-1.5 font-mono text-xs text-slate-600">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </Button>
+              )}
+              
+              {/* Mobile Search Button */}
+              {isHR && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="sm:hidden"
+                  onClick={() => setSearchOpen(true)}
+                  data-testid="global-search-btn-mobile"
+                >
+                  <Search className="w-5 h-5" />
+                </Button>
+              )}
+
               {/* Notifications */}
               <Button
                 variant="ghost"
