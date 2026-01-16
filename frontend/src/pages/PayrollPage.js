@@ -61,6 +61,9 @@ const PayrollPage = () => {
   const [payrollRuns, setPayrollRuns] = useState([]);
   const [myPayslips, setMyPayslips] = useState([]);
   const [allEmployeesPay, setAllEmployeesPay] = useState([]);
+  const [salaryStructures, setSalaryStructures] = useState([]);
+  const [salaryStructuresLoading, setSalaryStructuresLoading] = useState(false);
+  const [salaryStructuresSearch, setSalaryStructuresSearch] = useState('');
   const [selectedPayslip, setSelectedPayslip] = useState(null);
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState(null);
   const [employeeBreakdown, setEmployeeBreakdown] = useState(null);
@@ -92,7 +95,7 @@ const PayrollPage = () => {
     apply_per_occurrence: false
   });
 
-  const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance';
+  const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance' || user?.role === 'hr_executive';
 
   useEffect(() => {
     fetchData();
