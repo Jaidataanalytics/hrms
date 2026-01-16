@@ -541,6 +541,102 @@ async def get_all_employees_pay_info(
     return enriched_payslips
 
 
+@router.get("/all-salary-structures")
+async def get_all_salary_structures(
+    request: Request,
+    department_id: Optional[str] = None,
+    search: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100
+):
+    """Get all employees' salary structures (HR/Admin only)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized - HR/Admin only")
+    
+    # Get all active employees first
+    emp_query = {"is_active": True}
+    if department_id and department_id != "all":
+        emp_query["department_id"] = department_id
+    
+    employees = await db.employees.find(emp_query, {"_id": 0}).to_list(1000)
+    emp_map = {e.get("employee_id"): e for e in employees}
+    emp_ids = list(emp_map.keys())
+    
+    # Get salary data from both collections
+    salary_data = {}
+    
+    # From employee_salaries
+    emp_salaries = await db.employee_salaries.find(
+        {"employee_id": {"$in": emp_ids}, "is_active": True}, {"_id": 0}
+    ).to_list(1000)
+    for sal in emp_salaries:
+        emp_id = sal.get("employee_id")
+        if emp_id:
+            salary_data[emp_id] = sal
+    
+    # From salary_structures (for those not in employee_salaries)
+    sal_structures = await db.salary_structures.find(
+        {"employee_id": {"$in": emp_ids}, "is_active": True}, {"_id": 0}
+    ).to_list(1000)
+    for sal in sal_structures:
+        emp_id = sal.get("employee_id")
+        if emp_id and emp_id not in salary_data:
+            salary_data[emp_id] = sal
+    
+    # Build result with employee details
+    result = []
+    for emp_id, emp in emp_map.items():
+        sal = salary_data.get(emp_id, {})
+        
+        # Calculate gross from different structures
+        gross = sal.get("total_fixed") or sal.get("gross") or (sal.get("ctc", 0) / 12)
+        basic = None
+        if sal.get("fixed_components"):
+            basic = sal["fixed_components"].get("basic")
+        else:
+            basic = sal.get("basic")
+        
+        emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+        
+        # Apply search filter
+        if search:
+            search_lower = search.lower()
+            if not (search_lower in emp_name.lower() or 
+                    search_lower in (emp.get("emp_code") or "").lower() or
+                    search_lower in (emp.get("email") or "").lower()):
+                continue
+        
+        result.append({
+            "employee_id": emp_id,
+            "emp_code": emp.get("emp_code"),
+            "employee_name": emp_name,
+            "department": emp.get("department_name") or emp.get("department"),
+            "designation": emp.get("designation") or emp.get("job_title"),
+            "employment_type": emp.get("employment_type"),
+            "gross_salary": round(gross, 0) if gross else None,
+            "basic_salary": round(basic, 0) if basic else None,
+            "ctc": sal.get("ctc") or sal.get("annual_ctc"),
+            "has_salary_data": bool(sal),
+            "effective_from": sal.get("effective_from"),
+            "salary_source": "fixed_components" if sal.get("fixed_components") else ("gross" if sal.get("gross") else ("ctc" if sal.get("ctc") else None))
+        })
+    
+    # Sort by employee name
+    result.sort(key=lambda x: x.get("employee_name", ""))
+    
+    # Apply pagination
+    total = len(result)
+    result = result[skip:skip + limit]
+    
+    return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "data": result
+    }
+
+
 @router.get("/employee-salary-details/{employee_id}")
 async def get_employee_salary_details(employee_id: str, request: Request):
     """Get detailed salary info for an employee (HR/Admin only)"""
