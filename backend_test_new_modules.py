@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timedelta
 
 class HRMSNewModulesAPITester:
-    def __init__(self, base_url="https://fastapi-hr-fixes.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://hr-insurance-suite.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
