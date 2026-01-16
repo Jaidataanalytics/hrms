@@ -1381,6 +1381,45 @@ async def apply_leave(leave_data: LeaveApplyRequest, request: Request):
     
     return leave_request
 
+@api_router.get("/leave/requests")
+async def get_leave_requests(
+    request: Request, 
+    employee_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100
+):
+    """Get leave requests - HR can view any employee's, others view their own"""
+    user = await get_current_user(request)
+    
+    query = {}
+    
+    if employee_id:
+        # HR/Admin can view any employee's requests
+        if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        query["employee_id"] = employee_id
+    else:
+        # View own requests
+        own_emp_id = user.get("employee_id")
+        if not own_emp_id:
+            return []
+        query["employee_id"] = own_emp_id
+    
+    if status:
+        query["status"] = status
+    
+    requests_list = await db.leave_requests.find(query, {"_id": 0}).sort("applied_on", -1).to_list(limit)
+    
+    # Enrich with leave type names
+    leave_types = await db.leave_types.find({}, {"_id": 0}).to_list(50)
+    leave_type_map = {lt.get("leave_type_id"): lt.get("name") for lt in leave_types}
+    
+    for req in requests_list:
+        req["leave_type_name"] = leave_type_map.get(req.get("leave_type_id"), "Unknown")
+    
+    return requests_list
+
+
 @api_router.get("/leave/my-requests")
 async def get_my_leave_requests(request: Request, status: Optional[str] = None):
     user = await get_current_user(request)
