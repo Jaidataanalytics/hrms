@@ -927,32 +927,27 @@ const PayrollPage = () => {
                           <TableHead>Emp Code</TableHead>
                           <TableHead>Employee Name</TableHead>
                           <TableHead>Department</TableHead>
-                          <TableHead>Designation</TableHead>
                           <TableHead className="text-right">Gross Salary</TableHead>
                           <TableHead className="text-right">Basic</TableHead>
-                          <TableHead className="text-right">Annual CTC</TableHead>
                           <TableHead>Data Source</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {salaryStructures.map((emp) => (
                           <TableRow 
                             key={emp.employee_id} 
-                            className="hover:bg-slate-50 cursor-pointer"
+                            className="hover:bg-slate-50"
                             data-testid={`salary-row-${emp.employee_id}`}
                           >
                             <TableCell className="font-medium">{emp.emp_code || '-'}</TableCell>
                             <TableCell>{emp.employee_name || '-'}</TableCell>
                             <TableCell>{emp.department || '-'}</TableCell>
-                            <TableCell>{emp.designation || '-'}</TableCell>
                             <TableCell className="text-right font-semibold">
                               {emp.gross_salary ? formatCurrency(emp.gross_salary) : '-'}
                             </TableCell>
                             <TableCell className="text-right">
                               {emp.basic_salary ? formatCurrency(emp.basic_salary) : '-'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {emp.ctc ? formatCurrency(emp.ctc) : '-'}
                             </TableCell>
                             <TableCell>
                               {emp.has_salary_data ? (
@@ -964,6 +959,27 @@ const PayrollPage = () => {
                                   No Data
                                 </Badge>
                               )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openEditSalary(emp)}
+                                  data-testid={`edit-salary-${emp.employee_id}`}
+                                >
+                                  <Edit className="w-4 h-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => fetchSalaryHistory(emp.employee_id)}
+                                  data-testid={`salary-history-${emp.employee_id}`}
+                                >
+                                  <Clock className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
