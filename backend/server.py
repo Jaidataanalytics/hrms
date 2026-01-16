@@ -788,6 +788,37 @@ async def get_employee(employee_id: str, request: Request):
     
     return employee
 
+
+@api_router.get("/employees/search")
+async def search_employees(
+    request: Request,
+    q: str,
+    limit: int = 10
+):
+    """Search employees by name, email, emp_code, or department"""
+    user = await get_current_user(request)
+    
+    # Only HR/Admin can search all employees
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Build search query
+    search_regex = {"$regex": q, "$options": "i"}
+    query = {
+        "$or": [
+            {"first_name": search_regex},
+            {"last_name": search_regex},
+            {"email": search_regex},
+            {"emp_code": search_regex},
+            {"department_name": search_regex},
+            {"designation": search_regex}
+        ]
+    }
+    
+    employees = await db.employees.find(query, {"_id": 0}).limit(limit).to_list(limit)
+    return employees
+
+
 @api_router.put("/employees/{employee_id}", response_model=Employee)
 async def update_employee(employee_id: str, emp_data: dict, request: Request):
     user = await get_current_user(request)
