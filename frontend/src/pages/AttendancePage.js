@@ -439,72 +439,220 @@ const AttendancePage = () => {
         </Card>
       </div>
 
-      {/* Organization Attendance Table - Show when in organization view */}
-      {viewMode === 'organization' && orgAttendance?.today_attendance && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                  Today's Attendance
-                </CardTitle>
-                <CardDescription>
-                  {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </CardDescription>
-              </div>
-              <Badge variant="outline">{orgAttendance.today_attendance.length} records</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Emp Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orgAttendance.today_attendance.length > 0 ? (
-                    orgAttendance.today_attendance.map((att, idx) => {
-                      const statusConfig = {
-                        present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
-                        wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
-                        absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
-                        leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
-                        holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
-                        weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
-                      };
-                      const config = statusConfig[att.status] || statusConfig.present;
-                      return (
-                        <TableRow key={att.attendance_id || idx}>
-                          <TableCell className="font-medium">{att.emp_code}</TableCell>
-                          <TableCell>{att.employee_name}</TableCell>
-                          <TableCell>{att.department || '-'}</TableCell>
-                          <TableCell>
-                            <Badge className={config.className}>{config.label}</Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-500 text-sm">
-                            {att.first_in || att.created_at?.split('T')[1]?.substring(0, 5) || '-'}
+      {/* Organization Attendance Section - Show when in organization view */}
+      {viewMode === 'organization' && isHR && (
+        <>
+          {/* Today's Attendance Quick View */}
+          {orgAttendance?.today_attendance && (
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      Today's Attendance
+                    </CardTitle>
+                    <CardDescription>
+                      {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline">{orgAttendance.today_attendance.length} records</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto max-h-64">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Emp Code</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Time</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orgAttendance.today_attendance.length > 0 ? (
+                        orgAttendance.today_attendance.slice(0, 10).map((att, idx) => {
+                          const statusConfig = {
+                            present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
+                            wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
+                            absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
+                            leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
+                            holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
+                            weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
+                          };
+                          const config = statusConfig[att.status] || statusConfig.present;
+                          return (
+                            <TableRow key={att.attendance_id || idx}>
+                              <TableCell className="font-medium">{att.emp_code}</TableCell>
+                              <TableCell>{att.employee_name}</TableCell>
+                              <TableCell>{att.department || '-'}</TableCell>
+                              <TableCell>
+                                <Badge className={config.className}>{config.label}</Badge>
+                              </TableCell>
+                              <TableCell className="text-slate-500 text-sm">
+                                {att.first_in || att.created_at?.split('T')[1]?.substring(0, 5) || '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                            No attendance records for today
                           </TableCell>
                         </TableRow>
-                      );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-slate-500">
-                        No attendance records for today
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Historical Attendance with Filters */}
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col lg:flex-row justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-primary" />
+                    Attendance History
+                  </CardTitle>
+                  <CardDescription>View and filter attendance records by month, year, and employee</CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {/* Month Select */}
+                  <Select value={filterMonth.toString()} onValueChange={(v) => setFilterMonth(parseInt(v))}>
+                    <SelectTrigger className="w-[140px]" data-testid="filter-month">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        { value: '1', label: 'January' },
+                        { value: '2', label: 'February' },
+                        { value: '3', label: 'March' },
+                        { value: '4', label: 'April' },
+                        { value: '5', label: 'May' },
+                        { value: '6', label: 'June' },
+                        { value: '7', label: 'July' },
+                        { value: '8', label: 'August' },
+                        { value: '9', label: 'September' },
+                        { value: '10', label: 'October' },
+                        { value: '11', label: 'November' },
+                        { value: '12', label: 'December' }
+                      ].map((m) => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Year Select */}
+                  <Select value={filterYear.toString()} onValueChange={(v) => setFilterYear(parseInt(v))}>
+                    <SelectTrigger className="w-[100px]" data-testid="filter-year">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2024, 2025, 2026, 2027].map((y) => (
+                        <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Employee Search */}
+                  <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                    <SelectTrigger className="w-[200px]" data-testid="filter-employee">
+                      <SelectValue placeholder="All Employees" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Employees</SelectItem>
+                      {employees.map((emp) => (
+                        <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                          {emp.first_name} {emp.last_name} ({emp.emp_code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Button variant="outline" onClick={fetchHistoryAttendance} data-testid="refresh-history">
+                    <RefreshCw className={`w-4 h-4 mr-2 ${historyLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {historyLoading ? (
+                <div className="text-center py-12">
+                  <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
+                  <p className="text-slate-500">Loading attendance history...</p>
+                </div>
+              ) : historyAttendance.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead>Date</TableHead>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Punch In</TableHead>
+                        <TableHead>Punch Out</TableHead>
+                        <TableHead>Hours</TableHead>
+                        <TableHead>Late</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historyAttendance.map((att, idx) => {
+                        const statusConfig = {
+                          present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
+                          wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
+                          absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
+                          leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
+                          holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
+                          weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
+                          tour: { label: 'Tour', className: 'bg-indigo-100 text-indigo-700' },
+                        };
+                        const config = statusConfig[att.status] || statusConfig.present;
+                        return (
+                          <TableRow key={att.attendance_id || idx}>
+                            <TableCell className="font-medium">
+                              {new Date(att.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{att.employee_name || att.employee_id}</p>
+                                <p className="text-xs text-slate-500">{att.emp_code}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={config.className}>{config.label}</Badge>
+                            </TableCell>
+                            <TableCell className="text-slate-600">{att.first_in || att.punch_in || '-'}</TableCell>
+                            <TableCell className="text-slate-600">{att.last_out || att.punch_out || '-'}</TableCell>
+                            <TableCell>{att.total_hours ? `${att.total_hours}h` : '-'}</TableCell>
+                            <TableCell>
+                              {att.is_late ? (
+                                <Badge variant="destructive" className="text-xs">Late</Badge>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500 mb-2">No attendance records found</p>
+                  <p className="text-xs text-slate-400">Try adjusting the filters or select a different time period</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Calendar & Details - Show when in my attendance view */}
