@@ -70,7 +70,58 @@ const AttendancePage = () => {
 
   useEffect(() => {
     fetchAttendance();
+    if (isHR) {
+      fetchEmployees();
+    }
   }, [currentMonth, currentYear, viewMode]);
+
+  useEffect(() => {
+    if (isHR && viewMode === 'organization') {
+      fetchHistoryAttendance();
+    }
+  }, [filterMonth, filterYear, selectedEmployee, viewMode]);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch(`${API_URL}/employees`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
+  const fetchHistoryAttendance = async () => {
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams({
+        month: filterMonth,
+        year: filterYear
+      });
+      if (selectedEmployee && selectedEmployee !== 'all') {
+        params.append('employee_id', selectedEmployee);
+      }
+      
+      const response = await fetch(
+        `${API_URL}/attendance?${params}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setHistoryAttendance(data);
+      }
+    } catch (error) {
+      console.error('Error fetching history attendance:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const fetchAttendance = async () => {
     setLoading(true);
