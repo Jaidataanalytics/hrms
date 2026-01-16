@@ -119,6 +119,7 @@ const PayrollPage = () => {
   useEffect(() => {
     if (isHR) {
       fetchAllEmployeesPay();
+      fetchSalaryChangeRequests();
     }
   }, [selectedMonth, selectedYear]);
 
