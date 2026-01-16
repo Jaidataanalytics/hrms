@@ -2774,14 +2774,18 @@ async def get_all_employee_assets(request: Request):
     return records
 
 
-@api_router.get("/employee-assets/{emp_code}")
-async def get_employee_assets_by_code(emp_code: str, request: Request):
-    """Get assets for a specific employee"""
+@api_router.get("/employee-assets/{identifier}")
+async def get_employee_assets_by_code(identifier: str, request: Request):
+    """Get assets for a specific employee by emp_code or employee_id"""
     user = await get_current_user(request)
     
-    record = await db.employee_assets.find_one({"emp_code": emp_code}, {"_id": 0})
+    # Try to find by emp_code first, then by employee_id
+    record = await db.employee_assets.find_one({"emp_code": identifier}, {"_id": 0})
     if not record:
-        raise HTTPException(status_code=404, detail="No assets found for this employee")
+        record = await db.employee_assets.find_one({"employee_id": identifier}, {"_id": 0})
+    if not record:
+        # Return empty object instead of 404 to avoid UI errors
+        return None
     return record
 
 
