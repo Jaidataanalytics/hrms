@@ -42,7 +42,8 @@ import {
   X,
   Calendar,
   FileSpreadsheet,
-  CalendarDays
+  CalendarDays,
+  Package
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
