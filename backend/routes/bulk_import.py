@@ -1624,3 +1624,193 @@ async def import_business_insurance(request: Request, file: UploadFile = File(..
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 
+# ==================== ASSETS IMPORT ====================
+
+@router.get("/templates/assets")
+async def download_assets_template(request: Request):
+    """Download assets import template as Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "it_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    try:
+        import xlsxwriter
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Assets')
+        
+        # Header formats
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        required_format = workbook.add_format({
+            'bold': True, 'bg_color': '#C00000', 'font_color': 'white',
+            'border': 1, 'align': 'center'
+        })
+        
+        # Headers matching user's template format
+        headers = [
+            ("S.NO.", header_format),
+            ("Empl.Code*", required_format),
+            ("NAME", header_format),
+            ("ASSETS OF SDPL NUMBER", header_format),
+            ("TAG", header_format),
+            ("MOBILE & CHARGER", header_format),
+            ("LAPTOP", header_format),
+            ("SYSTEM", header_format),
+            ("PRINTER", header_format),
+            ("SIM(MOBILE NO)", header_format),
+        ]
+        
+        for col, (header, fmt) in enumerate(headers):
+            worksheet.write(0, col, header, fmt)
+            worksheet.set_column(col, col, 20)
+        
+        # Sample data rows
+        sample_data = [
+            (1, "S0003", "Abritee Das Roy", "SDPL-001", "TAG001", "Yes", "Yes", "No", "No", "9876543210"),
+            (2, "S0007", "Anup Kr Mishra", "SDPL-002", "TAG002", "Yes", "No", "Yes", "Yes", "9876543211"),
+            (3, "S0010", "Ravi Kumar", "SDPL-003", "TAG003", "No", "Yes", "No", "No", ""),
+        ]
+        
+        for row_idx, data in enumerate(sample_data, start=1):
+            for col, val in enumerate(data):
+                worksheet.write(row_idx, col, val)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=assets_template.xlsx",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Excel library not available")
+
+
+@router.post("/assets")
+async def import_assets(request: Request, file: UploadFile = File(...)):
+    """Bulk import employee assets from Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "it_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    filename = file.filename.lower()
+    content = await file.read()
+    
+    try:
+        if filename.endswith('.xlsx'):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content))
+            ws = wb.active
+            
+            # Find header row
+            header_row = 1
+            headers = [str(cell.value or "").strip().replace('*', '') for cell in ws[1]]
+            
+            rows = []
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not any(row):
+                    continue
+                rows.append(dict(zip(headers, row)))
+        elif filename.endswith('.csv'):
+            decoded = content.decode('utf-8-sig')
+            reader = csv.DictReader(io.StringIO(decoded))
+            rows = list(reader)
+        else:
+            raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
+        
+        imported = 0
+        errors = []
+        
+        for idx, row in enumerate(rows, start=2):
+            try:
+                # Parse fields flexibly
+                def get_field(row, *names):
+                    for name in names:
+                        for key in row.keys():
+                            if key and name.lower() in key.lower():
+                                return row.get(key)
+                    return None
+                
+                emp_code = get_field(row, "empl.code", "emp_code", "emp code", "employee code")
+                emp_code = str(emp_code).strip() if emp_code else None
+                
+                if not emp_code:
+                    errors.append({"row": idx, "error": "Missing Employee Code"})
+                    continue
+                
+                # Find employee
+                employee = await db.employees.find_one({"emp_code": emp_code}, {"_id": 0})
+                if not employee:
+                    errors.append({"row": idx, "error": f"Employee {emp_code} not found"})
+                    continue
+                
+                # Parse asset fields
+                def parse_bool_or_value(val):
+                    if val is None:
+                        return None
+                    val_str = str(val).strip().lower()
+                    if val_str in ['yes', 'y', 'true', '1']:
+                        return True
+                    elif val_str in ['no', 'n', 'false', '0', '']:
+                        return False
+                    return str(val).strip()  # Return as string if not boolean
+                
+                # Create/update asset record for this employee
+                asset_doc = {
+                    "asset_record_id": f"ast_{uuid.uuid4().hex[:12]}",
+                    "employee_id": employee["employee_id"],
+                    "emp_code": emp_code,
+                    "employee_name": get_field(row, "name") or f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+                    "sdpl_number": str(get_field(row, "assets of sdpl", "sdpl number", "sdpl") or ""),
+                    "tag": str(get_field(row, "tag") or ""),
+                    "mobile_charger": parse_bool_or_value(get_field(row, "mobile", "mobile & charger")),
+                    "laptop": parse_bool_or_value(get_field(row, "laptop")),
+                    "system": parse_bool_or_value(get_field(row, "system")),
+                    "printer": parse_bool_or_value(get_field(row, "printer")),
+                    "sim_mobile_no": str(get_field(row, "sim", "mobile no", "sim(mobile") or ""),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_by": user["user_id"]
+                }
+                
+                # Check if record exists for this employee, update or insert
+                existing = await db.employee_assets.find_one({"emp_code": emp_code})
+                if existing:
+                    await db.employee_assets.update_one(
+                        {"emp_code": emp_code},
+                        {"$set": {
+                            "sdpl_number": asset_doc["sdpl_number"],
+                            "tag": asset_doc["tag"],
+                            "mobile_charger": asset_doc["mobile_charger"],
+                            "laptop": asset_doc["laptop"],
+                            "system": asset_doc["system"],
+                            "printer": asset_doc["printer"],
+                            "sim_mobile_no": asset_doc["sim_mobile_no"],
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                            "updated_by": user["user_id"]
+                        }}
+                    )
+                else:
+                    await db.employee_assets.insert_one(asset_doc)
+                
+                imported += 1
+                
+            except Exception as e:
+                errors.append({"row": idx, "error": str(e)})
+        
+        return {
+            "message": "Assets import completed",
+            "imported": imported,
+            "errors": errors,
+            "total_rows": len(rows)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
