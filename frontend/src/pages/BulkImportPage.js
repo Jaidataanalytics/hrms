@@ -327,6 +327,15 @@ const BulkImportPage = () => {
       color: 'bg-amber-100 text-amber-700',
       fields: ['Emp ID', 'Name', 'Casual Leave', 'Sick Leave', 'Earned Leave', 'Comp Off'],
       format: 'Excel (.xlsx)'
+    },
+    {
+      id: 'assets',
+      title: 'Employee Assets',
+      description: 'Import employee assets (Mobile, Laptop, System, Printer, SIM)',
+      icon: Package,
+      color: 'bg-teal-100 text-teal-700',
+      fields: ['Empl.Code', 'NAME', 'ASSETS OF SDPL NUMBER', 'TAG', 'MOBILE & CHARGER', 'LAPTOP', 'SYSTEM', 'PRINTER', 'SIM(MOBILE NO)'],
+      format: 'Excel (.xlsx)'
     }
   ];
 
