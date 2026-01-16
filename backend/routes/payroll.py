@@ -201,6 +201,12 @@ async def process_payroll(payroll_id: str, request: Request):
         {"is_active": True}, {"_id": 0}
     ).to_list(1000)
     
+    # If no employee_salaries, try salary_structures
+    if not employees_with_salary:
+        employees_with_salary = await db.salary_structures.find(
+            {"is_active": True}, {"_id": 0}
+        ).to_list(1000)
+    
     total_gross = 0
     total_deductions = 0
     total_net = 0
@@ -236,8 +242,9 @@ async def process_payroll(payroll_id: str, request: Request):
         
         paid_days = working_days - lwp_days
         
-        # Calculate salary
-        gross = emp_salary.get("gross", 0)
+        # Calculate salary - handle multiple data structures
+        # Priority: total_fixed > gross > ctc/12
+        gross = emp_salary.get("total_fixed") or emp_salary.get("gross") or (emp_salary.get("ctc", 0) / 12)
         basic = emp_salary.get("components", [{}])[0].get("amount", gross * 0.5) if emp_salary.get("components") else gross * 0.5
         
         # Pro-rate for attendance
