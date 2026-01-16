@@ -2067,6 +2067,275 @@ const PayrollPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Employee Salary Dialog */}
+      <Dialog open={editSalaryOpen} onOpenChange={setEditSalaryOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5" />
+              Edit Salary Structure
+            </DialogTitle>
+            <DialogDescription>
+              {editingEmployee?.employee_name} ({editingEmployee?.emp_code})
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Fixed Components (Earnings) */}
+            <div>
+              <h4 className="font-semibold text-sm text-slate-700 mb-3">Fixed Components (Earnings)</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="basic">BASIC</Label>
+                  <Input
+                    id="basic"
+                    type="number"
+                    value={salaryForm.basic}
+                    onChange={(e) => setSalaryForm({...salaryForm, basic: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="da">DA</Label>
+                  <Input
+                    id="da"
+                    type="number"
+                    value={salaryForm.da}
+                    onChange={(e) => setSalaryForm({...salaryForm, da: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="hra">HRA</Label>
+                  <Input
+                    id="hra"
+                    type="number"
+                    value={salaryForm.hra}
+                    onChange={(e) => setSalaryForm({...salaryForm, hra: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="conveyance">Conveyance</Label>
+                  <Input
+                    id="conveyance"
+                    type="number"
+                    value={salaryForm.conveyance}
+                    onChange={(e) => setSalaryForm({...salaryForm, conveyance: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="grade_pay">Grade Pay</Label>
+                  <Input
+                    id="grade_pay"
+                    type="number"
+                    value={salaryForm.grade_pay}
+                    onChange={(e) => setSalaryForm({...salaryForm, grade_pay: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="other_allowance">Other Allowance</Label>
+                  <Input
+                    id="other_allowance"
+                    type="number"
+                    value={salaryForm.other_allowance}
+                    onChange={(e) => setSalaryForm({...salaryForm, other_allowance: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="medical_allowance">Medical/Spl. Allow</Label>
+                  <Input
+                    id="medical_allowance"
+                    type="number"
+                    value={salaryForm.medical_allowance}
+                    onChange={(e) => setSalaryForm({...salaryForm, medical_allowance: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              
+              <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Total Fixed Salary:</span>
+                  <span className="font-bold text-lg">
+                    {formatCurrency(
+                      parseFloat(salaryForm.basic || 0) + 
+                      parseFloat(salaryForm.da || 0) + 
+                      parseFloat(salaryForm.hra || 0) + 
+                      parseFloat(salaryForm.conveyance || 0) + 
+                      parseFloat(salaryForm.grade_pay || 0) + 
+                      parseFloat(salaryForm.other_allowance || 0) + 
+                      parseFloat(salaryForm.medical_allowance || 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Deduction Configuration */}
+            <div>
+              <h4 className="font-semibold text-sm text-slate-700 mb-3">Deduction Configuration</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="epf_applicable"
+                    checked={salaryForm.epf_applicable}
+                    onCheckedChange={(checked) => setSalaryForm({...salaryForm, epf_applicable: checked})}
+                  />
+                  <Label htmlFor="epf_applicable">EPF Applicable</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="esi_applicable"
+                    checked={salaryForm.esi_applicable}
+                    onCheckedChange={(checked) => setSalaryForm({...salaryForm, esi_applicable: checked})}
+                  />
+                  <Label htmlFor="esi_applicable">ESI Applicable</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="sewa_applicable"
+                    checked={salaryForm.sewa_applicable}
+                    onCheckedChange={(checked) => setSalaryForm({...salaryForm, sewa_applicable: checked})}
+                  />
+                  <Label htmlFor="sewa_applicable">SEWA Applicable</Label>
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed Deductions */}
+            <div>
+              <h4 className="font-semibold text-sm text-slate-700 mb-3">Fixed Deductions</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="sewa_advance">SEWA Advance</Label>
+                  <Input
+                    id="sewa_advance"
+                    type="number"
+                    value={salaryForm.sewa_advance}
+                    onChange={(e) => setSalaryForm({...salaryForm, sewa_advance: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="other_deduction">Other Deduction</Label>
+                  <Input
+                    id="other_deduction"
+                    type="number"
+                    value={salaryForm.other_deduction}
+                    onChange={(e) => setSalaryForm({...salaryForm, other_deduction: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div>
+              <Label htmlFor="reason">Reason for Change</Label>
+              <Input
+                id="reason"
+                value={salaryForm.reason}
+                onChange={(e) => setSalaryForm({...salaryForm, reason: e.target.value})}
+                placeholder="Enter reason for salary change..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditSalaryOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveSalary} disabled={savingSalary}>
+              {savingSalary ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              {user?.role === 'super_admin' ? 'Save Changes' : 'Submit for Approval'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Salary Change Requests Dialog (for approvers) */}
+      {salaryChangeRequests.length > 0 && canApproveSalary && (
+        <Card className="fixed bottom-4 right-4 w-80 shadow-lg border-amber-200 bg-amber-50 z-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
+              <AlertCircle className="w-4 h-4" />
+              Pending Salary Changes ({salaryChangeRequests.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {salaryChangeRequests.slice(0, 3).map((req) => (
+                <div key={req.request_id} className="bg-white p-2 rounded border text-sm">
+                  <p className="font-medium">{req.employee_name}</p>
+                  <p className="text-xs text-slate-500">By {req.requested_by_name}</p>
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" className="h-7 text-xs" onClick={() => handleApproveRequest(req.request_id)}>
+                      Approve
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleRejectRequest(req.request_id)}>
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Salary History Dialog */}
+      <Dialog open={showSalaryHistory} onOpenChange={setShowSalaryHistory}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Salary Change History
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto">
+            {salaryHistory.length > 0 ? (
+              <div className="space-y-4">
+                {salaryHistory.map((entry, idx) => (
+                  <div key={entry.history_id || idx} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-medium">Changed by: {entry.changed_by_name}</p>
+                        {entry.approved_by_name && (
+                          <p className="text-sm text-slate-500">Approved by: {entry.approved_by_name}</p>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-500">
+                        {new Date(entry.changed_at).toLocaleDateString('en-IN', { 
+                          day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <p className="text-sm text-slate-600 mb-2">Reason: {entry.reason || 'Not specified'}</p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="bg-red-50 p-2 rounded">
+                        <p className="text-red-700 font-medium">Previous</p>
+                        <p>Total: {formatCurrency(entry.old_salary?.total_fixed || 0)}</p>
+                      </div>
+                      <div className="bg-green-50 p-2 rounded">
+                        <p className="text-green-700 font-medium">New</p>
+                        <p>Total: {formatCurrency(entry.new_salary?.total_fixed || 0)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <Clock className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                No salary change history found
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
