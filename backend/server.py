@@ -1151,18 +1151,22 @@ async def get_attendance(
     """Get attendance records - HR can view any employee, others view their own"""
     user = await get_current_user(request)
     
-    if employee_id:
+    if employee_id and employee_id != "all":
         # HR/Admin can view any employee's attendance
         if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
             raise HTTPException(status_code=403, detail="Not authorized")
         target_employee_id = employee_id
+        query = {"employee_id": target_employee_id}
+    elif user.get("role") in ["super_admin", "hr_admin", "hr_executive"]:
+        # HR viewing all employees
+        query = {}
+        target_employee_id = None
     else:
         # View own attendance
         target_employee_id = user.get("employee_id")
         if not target_employee_id:
             return []
-    
-    query = {"employee_id": target_employee_id}
+        query = {"employee_id": target_employee_id}
     
     if month and year:
         # Filter by month/year
@@ -1171,7 +1175,22 @@ async def get_attendance(
     elif year:
         query["date"] = {"$regex": f"^{year}"}
     
-    attendance = await db.attendance.find(query, {"_id": 0}).sort("date", -1).to_list(100)
+    attendance = await db.attendance.find(query, {"_id": 0}).sort("date", -1).to_list(500)
+    
+    # Enrich with employee info for HR views
+    if not target_employee_id or target_employee_id == "all":
+        emp_ids = list(set(a.get("employee_id") for a in attendance if a.get("employee_id")))
+        employees = await db.employees.find(
+            {"employee_id": {"$in": emp_ids}}, 
+            {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1, "emp_code": 1}
+        ).to_list(1000)
+        emp_map = {e["employee_id"]: e for e in employees}
+        
+        for att in attendance:
+            emp = emp_map.get(att.get("employee_id"), {})
+            att["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip() or att.get("employee_id")
+            att["emp_code"] = emp.get("emp_code", att.get("employee_id"))
+    
     return attendance
 
 
