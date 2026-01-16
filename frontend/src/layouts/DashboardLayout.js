@@ -59,6 +59,19 @@ const DashboardLayout = () => {
   // Check if user is HR/Admin for search
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
+  // Keyboard shortcut for search (Cmd+K or Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && isHR) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isHR]);
+
   const menuItems = [
     { 
       name: 'Dashboard', 
