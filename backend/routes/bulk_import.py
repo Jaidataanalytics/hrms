@@ -561,22 +561,38 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
     if filename.endswith('.xlsx'):
         # Parse Excel
         import openpyxl
-        wb = openpyxl.load_workbook(io.BytesIO(content))
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
         ws = wb.active
         # Normalize headers - remove asterisks and strip whitespace
         headers = [(cell.value or "").replace('*', '').strip() for cell in ws[1]]
+        
+        # Find actual last row with data
+        actual_last_row = 1
+        empty_row_count = 0
+        max_empty_rows = 10
+        
+        for row_num in range(2, min(ws.max_row + 1, 10000)):
+            first_cell = ws.cell(row=row_num, column=1).value
+            if first_cell is not None and str(first_cell).strip() and not str(first_cell).strip().startswith("*"):
+                actual_last_row = row_num
+                empty_row_count = 0
+            else:
+                empty_row_count += 1
+                if empty_row_count >= max_empty_rows:
+                    break
+        
         rows = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
+        for row in ws.iter_rows(min_row=2, max_row=actual_last_row, values_only=True):
             # Skip note rows and empty rows
             first_cell = str(row[0] or "").strip() if row[0] else ""
-            if first_cell.startswith("*") or first_cell.startswith("Required") or not any(row):
+            if first_cell.startswith("*") or first_cell.startswith("Required") or not first_cell:
                 continue
             rows.append(dict(zip(headers, row)))
     elif filename.endswith('.csv'):
         # Parse CSV
         decoded = content.decode('utf-8-sig')
         reader = csv.DictReader(io.StringIO(decoded))
-        rows = list(reader)
+        rows = [row for row in reader if row.get('first_name') or row.get('First Name')]
     else:
         raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
     
