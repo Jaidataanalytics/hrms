@@ -1242,10 +1242,69 @@ async def get_payroll_rules(request: Request):
     if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
+    # Try new payroll_rules collection first
+    rules = await db.payroll_rules.find_one({"is_active": True}, {"_id": 0})
+    if rules:
+        return rules
+    
+    # Fall back to payroll_config
     config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
     if not config:
         return get_default_payroll_rules()
     return config
+
+
+@router.put("/rules")
+async def update_payroll_rules(data: dict, request: Request):
+    """Update payroll rules (deduction percentages, etc.)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get current rules
+    current_rules = await db.payroll_rules.find_one({"is_active": True})
+    
+    update_data = {
+        "epf_employee_percentage": float(data.get("epf_employee_percentage", 12)),
+        "epf_employer_percentage": float(data.get("epf_employer_percentage", 12)),
+        "epf_wage_ceiling": float(data.get("epf_wage_ceiling", 15000)),
+        
+        "esi_employee_percentage": float(data.get("esi_employee_percentage", 0.75)),
+        "esi_employer_percentage": float(data.get("esi_employer_percentage", 3.25)),
+        "esi_wage_ceiling": float(data.get("esi_wage_ceiling", 21000)),
+        
+        "sewa_percentage": float(data.get("sewa_percentage", 2)),
+        "sewa_applicable": data.get("sewa_applicable", True),
+        
+        "lwf_employee": float(data.get("lwf_employee", 10)),
+        "lwf_employer": float(data.get("lwf_employer", 20)),
+        
+        "default_working_days": int(data.get("default_working_days", 26)),
+        "wfh_pay_percentage": float(data.get("wfh_pay_percentage", 50)),
+        
+        "late_deduction_enabled": data.get("late_deduction_enabled", True),
+        "late_count_threshold": int(data.get("late_count_threshold", 3)),
+        
+        "salary_change_requires_approval": data.get("salary_change_requires_approval", True),
+        
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user.get("user_id")
+    }
+    
+    if current_rules:
+        await db.payroll_rules.update_one(
+            {"rules_id": current_rules.get("rules_id")},
+            {"$set": update_data}
+        )
+    else:
+        update_data["rules_id"] = f"rules_{uuid.uuid4().hex[:12]}"
+        update_data["name"] = "Default Payroll Rules"
+        update_data["is_active"] = True
+        update_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.payroll_rules.insert_one(update_data)
+        update_data.pop("_id", None)
+    
+    return {"message": "Payroll rules updated successfully", "rules": update_data}
 
 
 @router.post("/config")
