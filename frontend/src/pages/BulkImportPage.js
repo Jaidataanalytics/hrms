@@ -454,22 +454,22 @@ const BulkImportPage = () => {
                       className="hidden"
                       id={`upload-${type.id}`}
                       onChange={(e) => handleFileUpload(type.id, e)}
-                      disabled={uploading}
+                      disabled={uploadingType !== null}
                     />
                     <label htmlFor={`upload-${type.id}`}>
                       <Button
                         size="sm"
                         className="w-full gap-2"
-                        disabled={uploading}
+                        disabled={uploadingType !== null}
                         asChild
                       >
                         <span>
-                          {uploading ? (
+                          {uploadingType === type.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <Upload className="w-4 h-4" />
                           )}
-                          Upload
+                          {uploadingType === type.id ? 'Uploading...' : 'Upload'}
                         </span>
                       </Button>
                     </label>
