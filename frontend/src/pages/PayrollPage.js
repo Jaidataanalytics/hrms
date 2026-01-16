@@ -432,6 +432,7 @@ const PayrollPage = () => {
         <TabsList className="bg-white border flex-wrap h-auto">
           {isHR && <TabsTrigger value="runs" data-testid="tab-runs">Payroll Runs</TabsTrigger>}
           {isHR && <TabsTrigger value="employees-pay" data-testid="tab-employees-pay">All Employees</TabsTrigger>}
+          {isHR && <TabsTrigger value="salary-structures" data-testid="tab-salary-structures">Salary Structures</TabsTrigger>}
           <TabsTrigger value="my-payslips" data-testid="tab-my-payslips">My Payslips</TabsTrigger>
           {isHR && <TabsTrigger value="rules" data-testid="tab-rules">Payroll Rules</TabsTrigger>}
           {isHR && <TabsTrigger value="config" data-testid="tab-config">Statutory Config</TabsTrigger>}
