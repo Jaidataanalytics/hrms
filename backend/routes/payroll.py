@@ -481,6 +481,266 @@ async def get_employee_salary(employee_id: str, request: Request):
     return salary or {}
 
 
+# ==================== EMPLOYEE SALARY STRUCTURE MANAGEMENT ====================
+
+@router.put("/employee/{employee_id}/salary")
+async def update_employee_salary(employee_id: str, data: dict, request: Request):
+    """Update or create salary structure for an employee (creates change request if approval required)"""
+    user = await get_current_user(request)
+    
+    # Only HR/Admin/Finance can update salary
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check if employee exists
+    employee = await db.employees.find_one({"employee_id": employee_id})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get current salary for history
+    current_salary = await db.employee_salaries.find_one(
+        {"employee_id": employee_id, "is_active": True}, {"_id": 0}
+    )
+    
+    # Build the new salary structure based on the Excel format
+    new_salary = {
+        "salary_id": f"sal_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "emp_code": data.get("emp_code") or employee.get("emp_code"),
+        "employee_name": data.get("employee_name") or f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+        
+        # Fixed Components (Earnings)
+        "fixed_components": {
+            "basic": float(data.get("basic", 0)),
+            "da": float(data.get("da", 0)),
+            "hra": float(data.get("hra", 0)),
+            "conveyance": float(data.get("conveyance", 0)),
+            "grade_pay": float(data.get("grade_pay", 0)),
+            "other_allowance": float(data.get("other_allowance", 0)),
+            "medical_allowance": float(data.get("medical_allowance", 0)),
+        },
+        "total_fixed": float(data.get("total_fixed", 0)) or (
+            float(data.get("basic", 0)) + float(data.get("da", 0)) + 
+            float(data.get("hra", 0)) + float(data.get("conveyance", 0)) +
+            float(data.get("grade_pay", 0)) + float(data.get("other_allowance", 0)) +
+            float(data.get("medical_allowance", 0))
+        ),
+        
+        # Deduction Configuration
+        "deduction_config": {
+            "epf_applicable": data.get("epf_applicable", True),
+            "epf_percentage": float(data.get("epf_percentage", 12)),  # 12% of Basic
+            "esi_applicable": data.get("esi_applicable", True),
+            "esi_percentage": float(data.get("esi_percentage", 0.75)),  # 0.75% of Gross
+            "esi_ceiling": float(data.get("esi_ceiling", 21000)),  # ESI only if gross < 21000
+            "sewa_applicable": data.get("sewa_applicable", True),
+            "sewa_amount": float(data.get("sewa_amount", 0)),
+            "sewa_percentage": float(data.get("sewa_percentage", 2)),  # 2% of Basic
+            "professional_tax": float(data.get("professional_tax", 0)),
+            "lwf": float(data.get("lwf", 0)),
+        },
+        
+        # Fixed deductions
+        "fixed_deductions": {
+            "sewa_advance": float(data.get("sewa_advance", 0)),
+            "other_deduction": float(data.get("other_deduction", 0)),
+        },
+        
+        "effective_from": data.get("effective_from") or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "is_active": True,
+        "created_by": user.get("user_id"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    # Check if approval is required (based on payroll rules)
+    payroll_rules = await db.payroll_rules.find_one({"is_active": True})
+    requires_approval = payroll_rules.get("salary_change_requires_approval", True) if payroll_rules else True
+    
+    if requires_approval and user.get("role") != "super_admin":
+        # Create a salary change request
+        change_request = {
+            "request_id": f"scr_{uuid.uuid4().hex[:12]}",
+            "employee_id": employee_id,
+            "emp_code": new_salary["emp_code"],
+            "employee_name": new_salary["employee_name"],
+            "current_salary": current_salary,
+            "new_salary": new_salary,
+            "requested_by": user.get("user_id"),
+            "requested_by_name": user.get("name"),
+            "requested_at": datetime.now(timezone.utc).isoformat(),
+            "status": "pending",
+            "reason": data.get("reason", "Salary structure update"),
+        }
+        
+        await db.salary_change_requests.insert_one(change_request)
+        change_request.pop("_id", None)
+        
+        return {
+            "message": "Salary change request submitted for approval",
+            "request": change_request
+        }
+    else:
+        # Direct update (super_admin or no approval required)
+        # Deactivate old salary
+        if current_salary:
+            await db.employee_salaries.update_one(
+                {"salary_id": current_salary.get("salary_id")},
+                {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            
+            # Save to history
+            history_entry = {
+                "history_id": f"sh_{uuid.uuid4().hex[:12]}",
+                "employee_id": employee_id,
+                "old_salary": current_salary,
+                "new_salary": new_salary,
+                "changed_by": user.get("user_id"),
+                "changed_by_name": user.get("name"),
+                "changed_at": datetime.now(timezone.utc).isoformat(),
+                "reason": data.get("reason", "Salary structure update"),
+            }
+            await db.salary_change_history.insert_one(history_entry)
+        
+        # Insert new salary
+        await db.employee_salaries.insert_one(new_salary)
+        new_salary.pop("_id", None)
+        
+        return {
+            "message": "Salary structure updated successfully",
+            "salary": new_salary
+        }
+
+
+@router.get("/salary-change-requests")
+async def get_salary_change_requests(
+    request: Request,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50
+):
+    """Get pending salary change requests for approval"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    requests = await db.salary_change_requests.find(query, {"_id": 0}).sort("requested_at", -1).skip(skip).to_list(limit)
+    total = await db.salary_change_requests.count_documents(query)
+    
+    return {"total": total, "requests": requests}
+
+
+@router.put("/salary-change-requests/{request_id}/approve")
+async def approve_salary_change(request_id: str, request: Request):
+    """Approve a salary change request"""
+    user = await get_current_user(request)
+    
+    # Only super_admin or finance can approve
+    if user.get("role") not in ["super_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Only Super Admin or Finance can approve salary changes")
+    
+    # Get the request
+    change_request = await db.salary_change_requests.find_one({"request_id": request_id})
+    if not change_request:
+        raise HTTPException(status_code=404, detail="Change request not found")
+    
+    if change_request.get("status") != "pending":
+        raise HTTPException(status_code=400, detail=f"Request is already {change_request.get('status')}")
+    
+    employee_id = change_request["employee_id"]
+    new_salary = change_request["new_salary"]
+    current_salary = change_request.get("current_salary")
+    
+    # Deactivate old salary
+    if current_salary:
+        await db.employee_salaries.update_one(
+            {"salary_id": current_salary.get("salary_id")},
+            {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    # Save to history
+    history_entry = {
+        "history_id": f"sh_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "old_salary": current_salary,
+        "new_salary": new_salary,
+        "changed_by": change_request.get("requested_by"),
+        "changed_by_name": change_request.get("requested_by_name"),
+        "approved_by": user.get("user_id"),
+        "approved_by_name": user.get("name"),
+        "changed_at": datetime.now(timezone.utc).isoformat(),
+        "reason": change_request.get("reason"),
+    }
+    await db.salary_change_history.insert_one(history_entry)
+    
+    # Insert new salary
+    new_salary["approved_by"] = user.get("user_id")
+    new_salary["approved_at"] = datetime.now(timezone.utc).isoformat()
+    await db.employee_salaries.insert_one(new_salary)
+    
+    # Update request status
+    await db.salary_change_requests.update_one(
+        {"request_id": request_id},
+        {"$set": {
+            "status": "approved",
+            "approved_by": user.get("user_id"),
+            "approved_by_name": user.get("name"),
+            "approved_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Salary change approved and applied successfully"}
+
+
+@router.put("/salary-change-requests/{request_id}/reject")
+async def reject_salary_change(request_id: str, data: dict, request: Request):
+    """Reject a salary change request"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Only Super Admin or Finance can reject salary changes")
+    
+    change_request = await db.salary_change_requests.find_one({"request_id": request_id})
+    if not change_request:
+        raise HTTPException(status_code=404, detail="Change request not found")
+    
+    if change_request.get("status") != "pending":
+        raise HTTPException(status_code=400, detail=f"Request is already {change_request.get('status')}")
+    
+    await db.salary_change_requests.update_one(
+        {"request_id": request_id},
+        {"$set": {
+            "status": "rejected",
+            "rejected_by": user.get("user_id"),
+            "rejected_by_name": user.get("name"),
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
+            "rejection_reason": data.get("reason", "")
+        }}
+    )
+    
+    return {"message": "Salary change request rejected"}
+
+
+@router.get("/employee/{employee_id}/salary-history")
+async def get_employee_salary_history(employee_id: str, request: Request, limit: int = 20):
+    """Get salary change history for an employee"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "finance", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    history = await db.salary_change_history.find(
+        {"employee_id": employee_id}, {"_id": 0}
+    ).sort("changed_at", -1).to_list(limit)
+    
+    return history
+
+
 @router.get("/payslips")
 async def get_payslips_by_employee(
     request: Request,
