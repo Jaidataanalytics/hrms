@@ -110,6 +110,7 @@ function AppRouter() {
         <Route index element={<Dashboard />} />
         <Route path="employees" element={<EmployeeDirectory />} />
         <Route path="employees/:id" element={<EmployeeProfile />} />
+        <Route path="employee/:employeeId" element={<Employee360Page />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="leave" element={<LeavePage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
