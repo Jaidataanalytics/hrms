@@ -380,6 +380,9 @@ const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+      
+      {/* Global Search Dialog */}
+      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 };
