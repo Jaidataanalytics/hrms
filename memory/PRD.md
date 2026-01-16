@@ -27,8 +27,9 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Salary structure configuration
 - Bulk salary import
 - Payroll rules and calculations
+- Supports multiple salary data structures (gross, fixed_components, ctc)
 
-### 5. Insurance Module (LATEST - January 2026)
+### 5. Insurance Module
 **Two-tab structure:**
 
 #### Employee Insurance Tab
@@ -37,16 +38,30 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - **Accidental Insurance** coverage tracking (checkbox)
 - All fields optional except Employee Code
 - Bulk import with ESIC, PMJJBY, Accidental columns support
-- Template download
 
 #### Business Insurance Tab
 - Policy tracking for business assets
 - Fields: Name of Insurance, Vehicle No. (optional), Insurance Company, Date of Issuance, Due Date
 - Bulk import functionality
-- Template download matching user's format
 - Status tracking (Active, Due Soon, Expired)
 
-### 6. Data Management
+### 6. Global Search & Employee 360 View (NEW - January 2026)
+**Global Search:**
+- Accessible via search button in header (HR/Admin only)
+- Keyboard shortcut: Cmd+K / Ctrl+K
+- Search by name, email, emp_code, department
+- Real-time search with debouncing
+- Click result to navigate to Employee 360 page
+
+**Employee 360 View:**
+- Comprehensive employee profile page
+- Header showing basic info, contact, status badges
+- 6 tabs: Attendance, Salary, Leaves, Payslips, Insurance, Assets
+- Month/Year filtering for attendance
+- Full salary breakdown with earnings and deductions
+- Leave balances and request history
+
+### 7. Data Management
 - Bulk data deletion for all modules
 - Contract labour data management
 
@@ -58,68 +73,63 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Key API Endpoints
 
+### Employee Search & 360 APIs (NEW)
+- `GET /api/employees/search?q={query}&limit={n}` - Search employees
+- `GET /api/employees/{employee_id}` - Get employee details
+- `GET /api/attendance?employee_id={id}&month={m}&year={y}` - Get employee attendance
+- `GET /api/leave/balances?employee_id={id}` - Get leave balances
+- `GET /api/leave/requests?employee_id={id}&limit={n}` - Get leave requests
+- `GET /api/payroll/employee/{employee_id}` - Get salary structure
+- `GET /api/payroll/payslips?employee_id={id}&limit={n}` - Get payslips
+- `GET /api/insurance?employee_id={id}` - Get insurance status
+- `GET /api/employee-assets/{identifier}` - Get assigned assets
+
 ### Insurance APIs
 - `GET /api/insurance` - List employee insurance
 - `POST /api/insurance` - Create employee insurance
-- `PUT /api/insurance/{id}` - Update employee insurance
-- `DELETE /api/insurance/{id}` - Delete employee insurance
 - `GET /api/business-insurance` - List business insurance
 - `POST /api/business-insurance` - Create business insurance
-- `PUT /api/business-insurance/{id}` - Update business insurance
-- `DELETE /api/business-insurance/{id}` - Delete business insurance
-- `GET /api/import/templates/insurance` - Download employee insurance template
-- `GET /api/import/templates/business-insurance` - Download business insurance template
-- `POST /api/import/insurance` - Bulk import employee insurance
-- `POST /api/import/business-insurance` - Bulk import business insurance
 
 ## Database Schema
 
-### insurance (Employee Insurance)
-```json
-{
-  "insurance_id": "string",
-  "employee_id": "string",
-  "emp_code": "string",
-  "employee_name": "string",
-  "esic": "boolean",
-  "pmjjby": "boolean",
-  "accidental_insurance": "boolean",
-  "insurance_date": "string|null",
-  "amount": "number|null",
-  "insurance_company": "string|null",
-  "policy_number": "string|null",
-  "coverage_type": "string|null",
-  "status": "string",
-  "notes": "string|null"
-}
-```
+### Key Collections
+- `employees` - Employee records
+- `employee_salaries` - Salary structures (new format with fixed_components)
+- `salary_structures` - Legacy salary data (ctc-based)
+- `attendance` - Daily attendance records
+- `leave_balances` - Employee leave balances
+- `leave_requests` - Leave applications
+- `insurance` - Employee insurance records
+- `business_insurance` - Company insurance policies
+- `employee_assets` - Assigned assets
 
-### business_insurance
-```json
-{
-  "business_insurance_id": "string",
-  "name_of_insurance": "string",
-  "vehicle_no": "string|null",
-  "insurance_company": "string",
-  "date_of_issuance": "string|null",
-  "due_date": "string|null",
-  "notes": "string|null"
-}
-```
+## Completed Features (January 16, 2026)
+1. ✅ Global Search for employees (HR/Admin)
+2. ✅ Employee 360 comprehensive profile view
+3. ✅ Backend APIs for Employee 360 data fetching
+4. ✅ Salary tab supports new fixed_components structure
+5. ✅ Insurance page with two tabs (Employee + Business)
+6. ✅ Contract Labour simplified tracker
+7. ✅ Bulk import fixes for large Excel files
 
-## Completed Features (January 2026)
-1. Insurance page with two tabs (Employee Insurance + Business Insurance)
-2. ESIC column and functionality for employee insurance
-3. Business insurance CRUD with user-specified template format
-4. Bulk upload for both insurance types
-5. Template download for both types
+## Pending/In Progress Tasks
+1. **P1: Fix Payroll Calculation Bug** - Investigate why payroll calculation is not working. Two collections exist (employee_salaries, salary_structures) with different schemas.
+2. **P1: Enhance Attendance Page** - Add month/year filters and employee search for HR/Admin
+3. **P1: Salary Structure View for HR** - Allow HR to view all employees' salary structures
 
-## Pending/Future Tasks
-1. **P0: Deploy to Production** - All new features are in preview only
-2. **P1: Implement New Payroll Calculation Logic**
-3. **P1: Meeting Management & Task Tracking**
-4. **P2: Fix /api/leave 404 error**
-5. **P2: Biometric device integration testing**
-6. Refactor server.py into smaller route files
-7. AI-powered shift scheduling
-8. Mobile application development
+## Future/Backlog Tasks
+1. Deploy to production (all changes are in preview)
+2. Biometric device integration (on hold by user)
+3. AI-powered shift scheduling
+4. AI-powered performance recommendations
+5. Mobile application development
+
+## Test Credentials
+- **Admin:** admin@shardahr.com / Welcome@123
+- **Test Employee:** EMP7A155FF6 (Test User)
+
+## Recent Test Results
+- Test file: `/app/test_reports/iteration_18.json`
+- All 19 backend tests passed
+- All frontend tests passed
+- Global Search and Employee 360 fully functional
