@@ -50,7 +50,8 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
-  Trash2
+  Trash2,
+  Search
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
