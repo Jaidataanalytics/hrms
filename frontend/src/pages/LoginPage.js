@@ -6,13 +6,27 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { toast } from 'sonner';
-import { Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Lock, Loader2, KeyRound } from 'lucide-react';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
@@ -26,13 +40,60 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      await login(email, password);
-      toast.success('Welcome back!');
-      navigate('/dashboard');
+      const data = await login(email, password);
+      
+      // Check if user must change password
+      if (data?.must_change_password) {
+        setShowChangePassword(true);
+        toast.info('Please change your password to continue');
+      } else {
+        toast.success('Welcome back!');
+        navigate('/dashboard');
+      }
     } catch (error) {
       toast.error(error.message || 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ new_password: newPassword }),
+      });
+
+      if (response.ok) {
+        toast.success('Password changed successfully!');
+        setShowChangePassword(false);
+        navigate('/dashboard');
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to change password');
+      }
+    } catch (error) {
+      toast.error('Failed to change password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
