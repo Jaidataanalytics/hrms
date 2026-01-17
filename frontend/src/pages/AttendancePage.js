@@ -53,7 +53,7 @@ const AttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [markingAttendance, setMarkingAttendance] = useState(false);
   const [attendanceSource, setAttendanceSource] = useState('manual');
-  const [viewMode, setViewMode] = useState('organization'); // 'organization' or 'my'
+  const [viewMode, setViewMode] = useState(isHR ? 'organization' : 'my'); // HR sees organization by default, employees see their own
   
   // HR filters for organization view
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
