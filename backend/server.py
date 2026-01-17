@@ -718,6 +718,50 @@ async def refresh_token(request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Unable to refresh token")
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: Optional[str] = None
+    new_password: str
+    
+
+@api_router.post("/auth/change-password")
+async def change_password(data: ChangePasswordRequest, request: Request):
+    """Change user password. Current password required unless must_change_password is True."""
+    user = await get_current_user(request)
+    
+    db_user = await db.users.find_one({"user_id": user["user_id"]})
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # If not first login, require current password
+    must_change = db_user.get("must_change_password", False)
+    if not must_change:
+        if not data.current_password:
+            raise HTTPException(status_code=400, detail="Current password is required")
+        
+        stored_password = db_user.get("password") or db_user.get("password_hash", "")
+        if not verify_password(data.current_password, stored_password):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    # Hash and update password
+    new_hash = hash_password(data.new_password)
+    
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {
+            "password": new_hash,
+            "password_hash": new_hash,
+            "must_change_password": False,
+            "password_changed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+
 # ==================== EMPLOYEE ROUTES ====================
 
 @api_router.get("/employees", response_model=List[Employee])
