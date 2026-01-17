@@ -2516,6 +2516,98 @@ async def shutdown_db_client():
     client.close()
 
 
+# ==================== ADMIN DATABASE CLEANUP ====================
+
+@api_router.post("/admin/cleanup-duplicates")
+async def cleanup_duplicates(request: Request):
+    """Admin endpoint to clean up duplicate records in the database.
+    Only super_admin can run this. Safe to run multiple times."""
+    user = await get_current_user(request)
+    
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can run cleanup")
+    
+    results = {
+        "employees_deleted": 0,
+        "insurance_deleted": 0,
+        "salaries_deactivated": 0,
+        "details": []
+    }
+    
+    try:
+        from collections import Counter
+        
+        # 1. Fix Employee duplicates by emp_code
+        pipeline = [
+            {"$group": {"_id": "$emp_code", "count": {"$sum": 1}, "docs": {"$push": "$$ROOT"}}},
+            {"$match": {"count": {"$gt": 1}}}
+        ]
+        emp_dups = await db.employees.aggregate(pipeline).to_list(100)
+        
+        for dup in emp_dups:
+            docs = dup['docs']
+            # Sort by is_active (prefer active) and created_at (prefer newer)
+            docs.sort(key=lambda x: (x.get('is_active', False), x.get('created_at', '')), reverse=True)
+            
+            keep_id = docs[0]['employee_id']
+            delete_ids = [d['employee_id'] for d in docs[1:]]
+            
+            result = await db.employees.delete_many({'employee_id': {'$in': delete_ids}})
+            results["employees_deleted"] += result.deleted_count
+            results["details"].append(f"emp_code {dup['_id']}: kept {keep_id}, deleted {len(delete_ids)}")
+        
+        # 2. Fix Insurance duplicates by employee_id
+        pipeline = [
+            {"$group": {"_id": "$employee_id", "count": {"$sum": 1}, "docs": {"$push": "$$ROOT"}}},
+            {"$match": {"count": {"$gt": 1}}}
+        ]
+        ins_dups = await db.insurance.aggregate(pipeline).to_list(100)
+        
+        for dup in ins_dups:
+            docs = dup['docs']
+            # Sort by updated_at/created_at to keep the most recent
+            docs.sort(key=lambda x: x.get('updated_at', x.get('created_at', '')), reverse=True)
+            
+            keep_id = docs[0]['insurance_id']
+            delete_ids = [d['insurance_id'] for d in docs[1:]]
+            
+            result = await db.insurance.delete_many({'insurance_id': {'$in': delete_ids}})
+            results["insurance_deleted"] += result.deleted_count
+            results["details"].append(f"employee_id {dup['_id']}: kept {keep_id}, deleted {len(delete_ids)} insurance records")
+        
+        # 3. Fix Employee_salaries - ensure only one active per employee
+        pipeline = [
+            {"$match": {"is_active": True}},
+            {"$group": {"_id": "$employee_id", "count": {"$sum": 1}, "docs": {"$push": "$$ROOT"}}},
+            {"$match": {"count": {"$gt": 1}}}
+        ]
+        sal_dups = await db.employee_salaries.aggregate(pipeline).to_list(100)
+        
+        for dup in sal_dups:
+            docs = dup['docs']
+            # Sort by updated_at to keep the most recent
+            docs.sort(key=lambda x: x.get('updated_at', x.get('created_at', '')), reverse=True)
+            
+            # Keep the first one active, deactivate others
+            deactivate_ids = [d['salary_id'] for d in docs[1:]]
+            
+            result = await db.employee_salaries.update_many(
+                {'salary_id': {'$in': deactivate_ids}},
+                {'$set': {'is_active': False, 'deactivated_at': datetime.now(timezone.utc).isoformat()}}
+            )
+            results["salaries_deactivated"] += result.modified_count
+            results["details"].append(f"employee_id {dup['_id']}: deactivated {len(deactivate_ids)} duplicate salary records")
+        
+        results["message"] = "Cleanup completed successfully"
+        results["status"] = "success"
+        
+    except Exception as e:
+        results["message"] = f"Error during cleanup: {str(e)}"
+        results["status"] = "error"
+    
+    return results
+
+
 # ==================== EMPLOYEE INSURANCE ROUTES ====================
 
 class InsuranceRecord(BaseModel):
