@@ -1500,8 +1500,8 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                     "employee_id": employee["employee_id"],
                     "emp_code": emp_code,
                     "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
-                    "esic": esic,
-                    "pmjjby": pmjjby,
+                    "esic_covered": esic,
+                    "pmjjby_covered": pmjjby,
                     "accidental_insurance": accidental_insurance,
                     "insurance_date": insurance_date if insurance_date else None,
                     "amount": float(amount) if amount else None,
@@ -1516,7 +1516,20 @@ async def import_insurance(request: Request, file: UploadFile = File(...)):
                     "created_by": user["user_id"]
                 }
                 
-                await db.insurance.insert_one(insurance_doc)
+                # DUPLICATE PREVENTION: Update existing or insert new
+                existing_insurance = await db.insurance.find_one({"employee_id": employee["employee_id"]})
+                if existing_insurance:
+                    # Update existing record instead of creating duplicate
+                    await db.insurance.update_one(
+                        {"employee_id": employee["employee_id"]},
+                        {"$set": {
+                            **insurance_doc,
+                            "insurance_id": existing_insurance["insurance_id"],  # Keep original ID
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                else:
+                    await db.insurance.insert_one(insurance_doc)
                 imported += 1
                 
             except Exception as e:
