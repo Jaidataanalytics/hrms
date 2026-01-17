@@ -1721,7 +1721,24 @@ async def import_business_insurance(request: Request, file: UploadFile = File(..
                     "created_by": user["user_id"]
                 }
                 
-                await db.business_insurance.insert_one(business_insurance_doc)
+                # DUPLICATE PREVENTION: Check if policy with same name and vehicle exists
+                duplicate_query = {"name_of_insurance": name_of_insurance, "insurance_company": insurance_company}
+                if vehicle_no:
+                    duplicate_query["vehicle_no"] = vehicle_no
+                
+                existing = await db.business_insurance.find_one(duplicate_query)
+                if existing:
+                    # Update existing record
+                    await db.business_insurance.update_one(
+                        {"business_insurance_id": existing["business_insurance_id"]},
+                        {"$set": {
+                            **business_insurance_doc,
+                            "business_insurance_id": existing["business_insurance_id"],
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                else:
+                    await db.business_insurance.insert_one(business_insurance_doc)
                 imported += 1
                 
             except Exception as e:
