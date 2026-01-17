@@ -72,17 +72,13 @@ const DashboardLayout = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isHR]);
 
-  const menuItems = [
+  // Base menu items for all users
+  const baseMenuItems = [
     { 
       name: 'Dashboard', 
       path: '/dashboard', 
       icon: LayoutDashboard,
       exact: true
-    },
-    { 
-      name: 'Employees', 
-      path: '/dashboard/employees', 
-      icon: Users 
     },
     { 
       name: 'Attendance', 
@@ -110,6 +106,20 @@ const DashboardLayout = () => {
       icon: Megaphone 
     },
   ];
+
+  // HR-only menu items
+  const hrMenuItems = [
+    { 
+      name: 'Employees', 
+      path: '/dashboard/employees', 
+      icon: Users 
+    },
+  ];
+
+  // Combine menu items based on role
+  const menuItems = isHR 
+    ? [baseMenuItems[0], ...hrMenuItems, ...baseMenuItems.slice(1)] 
+    : baseMenuItems;
 
   const adminMenuItems = [
     { name: 'Documents', path: '/dashboard/documents', icon: FolderOpen },
