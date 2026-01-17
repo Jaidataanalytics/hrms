@@ -636,33 +636,33 @@ class TestDuplicatePrevention:
         try:
             import xlsxwriter
             
-            # First business insurance import
+            # First business insurance import - headers on row 1 (index 0)
             output = io.BytesIO()
             workbook = xlsxwriter.Workbook(output, {'in_memory': True})
             worksheet = workbook.add_worksheet('Business Insurance')
             
-            headers = ["SL NO.", "Name of Insurance", "Vehicle No", "Insurance Company", "Date of Issuance", "Due Date", "Notes"]
-            for col, h in enumerate(headers):
-                worksheet.write(1, col, h)
+            col_headers = ["SL NO.", "Name of Insurance", "Vehicle No", "Insurance Company", "Date of Issuance", "Due Date", "Notes"]
+            for col, h in enumerate(col_headers):
+                worksheet.write(0, col, h)  # Row 0 for headers
             
-            worksheet.write(2, 0, 1)
-            worksheet.write(2, 1, "TEST_Vehicle Insurance")
-            worksheet.write(2, 2, "TEST-1234")
-            worksheet.write(2, 3, "Test Insurance Co")
-            worksheet.write(2, 4, "2025-01-01")
-            worksheet.write(2, 5, "2026-01-01")
-            worksheet.write(2, 6, "Test policy")
+            worksheet.write(1, 0, 1)  # Row 1 for data
+            worksheet.write(1, 1, "TEST_Vehicle Insurance")
+            worksheet.write(1, 2, "TEST-1234")
+            worksheet.write(1, 3, "Test Insurance Co")
+            worksheet.write(1, 4, "2025-01-01")
+            worksheet.write(1, 5, "2026-01-01")
+            worksheet.write(1, 6, "Test policy")
             
             workbook.close()
             output.seek(0)
             
             files = {"file": ("test_biz_ins.xlsx", output, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
-            headers = {"Authorization": f"Bearer {self.token}"}
+            auth_headers = {"Authorization": f"Bearer {self.token}"}
             
             response = requests.post(
                 f"{BASE_URL}/api/import/business-insurance",
                 files=files,
-                headers=headers
+                headers=auth_headers
             )
             
             assert response.status_code == 200
@@ -674,16 +674,16 @@ class TestDuplicatePrevention:
             workbook2 = xlsxwriter.Workbook(output2, {'in_memory': True})
             worksheet2 = workbook2.add_worksheet('Business Insurance')
             
-            for col, h in enumerate(headers):
-                worksheet2.write(1, col, h)
+            for col, h in enumerate(col_headers):
+                worksheet2.write(0, col, h)  # Row 0 for headers
             
-            worksheet2.write(2, 0, 1)
-            worksheet2.write(2, 1, "TEST_Vehicle Insurance")  # Same name
-            worksheet2.write(2, 2, "TEST-1234")  # Same vehicle
-            worksheet2.write(2, 3, "Test Insurance Co")  # Same company
-            worksheet2.write(2, 4, "2025-06-01")  # Changed date
-            worksheet2.write(2, 5, "2026-06-01")  # Changed due date
-            worksheet2.write(2, 6, "Updated policy")  # Changed notes
+            worksheet2.write(1, 0, 1)  # Row 1 for data
+            worksheet2.write(1, 1, "TEST_Vehicle Insurance")  # Same name
+            worksheet2.write(1, 2, "TEST-1234")  # Same vehicle
+            worksheet2.write(1, 3, "Test Insurance Co")  # Same company
+            worksheet2.write(1, 4, "2025-06-01")  # Changed date
+            worksheet2.write(1, 5, "2026-06-01")  # Changed due date
+            worksheet2.write(1, 6, "Updated policy")  # Changed notes
             
             workbook2.close()
             output2.seek(0)
@@ -693,7 +693,7 @@ class TestDuplicatePrevention:
             response2 = requests.post(
                 f"{BASE_URL}/api/import/business-insurance",
                 files=files2,
-                headers=headers
+                headers=auth_headers
             )
             
             assert response2.status_code == 200
@@ -729,13 +729,13 @@ class TestDuplicatePrevention:
         try:
             import xlsxwriter
             
-            # First assets import
+            # First assets import - use correct header format
             output = io.BytesIO()
             workbook = xlsxwriter.Workbook(output, {'in_memory': True})
             worksheet = workbook.add_worksheet('Assets')
             
-            headers = ["S.NO.", "Empl.Code", "NAME", "ASSETS OF SDPL NUMBER", "TAG", "MOBILE & CHARGER", "LAPTOP", "SYSTEM", "PRINTER", "SIM(MOBILE NO)"]
-            for col, h in enumerate(headers):
+            col_headers = ["S.NO.", "Empl.Code", "NAME", "ASSETS OF SDPL NUMBER", "TAG", "MOBILE & CHARGER", "LAPTOP", "SYSTEM", "PRINTER", "SIM(MOBILE NO)"]
+            for col, h in enumerate(col_headers):
                 worksheet.write(0, col, h)
             
             worksheet.write(1, 0, 1)
@@ -753,12 +753,12 @@ class TestDuplicatePrevention:
             output.seek(0)
             
             files = {"file": ("test_assets.xlsx", output, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
-            headers = {"Authorization": f"Bearer {self.token}"}
+            auth_headers = {"Authorization": f"Bearer {self.token}"}
             
             response = requests.post(
                 f"{BASE_URL}/api/import/assets",
                 files=files,
-                headers=headers
+                headers=auth_headers
             )
             
             assert response.status_code == 200
@@ -770,7 +770,7 @@ class TestDuplicatePrevention:
             workbook2 = xlsxwriter.Workbook(output2, {'in_memory': True})
             worksheet2 = workbook2.add_worksheet('Assets')
             
-            for col, h in enumerate(headers):
+            for col, h in enumerate(col_headers):
                 worksheet2.write(0, col, h)
             
             worksheet2.write(1, 0, 1)
@@ -792,7 +792,7 @@ class TestDuplicatePrevention:
             response2 = requests.post(
                 f"{BASE_URL}/api/import/assets",
                 files=files2,
-                headers=headers
+                headers=auth_headers
             )
             
             assert response2.status_code == 200
