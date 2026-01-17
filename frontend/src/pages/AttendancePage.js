@@ -281,26 +281,31 @@ const AttendancePage = () => {
             {viewMode === 'organization' ? 'Organization-wide attendance overview' : 'Track and manage your attendance'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant={viewMode === 'organization' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('organization')}
-            className="gap-2"
-          >
-            <Users className="w-4 h-4" />
-            Organization
-          </Button>
-          <Button
-            variant={viewMode === 'my' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('my')}
-            className="gap-2"
-          >
-            <User className="w-4 h-4" />
-            My Attendance
-          </Button>
-        </div>
+        {/* View Mode Toggle - Only show to HR users */}
+        {isHR && (
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'organization' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('organization')}
+              className="gap-2"
+              data-testid="view-mode-organization"
+            >
+              <Users className="w-4 h-4" />
+              Organization
+            </Button>
+            <Button
+              variant={viewMode === 'my' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('my')}
+              className="gap-2"
+              data-testid="view-mode-my"
+            >
+              <User className="w-4 h-4" />
+              My Attendance
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Quick Mark Attendance */}
