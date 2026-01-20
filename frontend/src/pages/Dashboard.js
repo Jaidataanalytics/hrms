@@ -115,25 +115,6 @@ const Dashboard = () => {
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={() => handleMarkAttendance('IN')}
-            disabled={markingAttendance}
-            className="gap-2"
-            data-testid="mark-in-btn"
-          >
-            <Clock className="w-4 h-4" />
-            Punch In
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleMarkAttendance('OUT')}
-            disabled={markingAttendance}
-            data-testid="mark-out-btn"
-          >
-            Punch Out
-          </Button>
-        </div>
       </div>
 
       {/* Stats Cards - Show for HR/Admin */}
