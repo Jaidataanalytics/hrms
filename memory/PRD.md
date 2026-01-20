@@ -113,6 +113,12 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
    - Employee blocked from `/api/attendance/summary` endpoint (403)
    - Dashboard text updated to "Your attendance will be synced from the biometric system"
 7. ✅ Manual punch-in/out buttons removed from dashboard (biometric sync handles attendance)
+8. ✅ **Payroll Details View & Export (Jan 20, 2026)**:
+   - Click on processed payroll to view full details in a modal
+   - Summary cards: Total Gross, Total Deductions, Total Net Pay, PF+ESI+PT
+   - Detailed table with all employee payslips (Emp Code, Name, Department, Days, Gross, Deductions, Net Pay)
+   - Export to Excel button exports complete payroll data with summary row
+   - Backend endpoint: `GET /api/payroll/runs/{payroll_id}`
 
 ## Upcoming Tasks
 1. 🔴 **P1: Deploy to Production** - Production is critically outdated
