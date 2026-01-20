@@ -886,6 +886,41 @@ async def recalculate_late_status(request: Request):
     }
 
 
+@router.post("/sync/refresh-all")
+async def refresh_all_attendance(request: Request, data: dict = None):
+    """
+    Clear all biometric-synced attendance and re-sync from API.
+    This recalculates IN/OUT based on time (before noon = IN, after noon = OUT).
+    Super Admin only.
+    """
+    from server import get_current_user
+    user = await get_current_user(request)
+    
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin only")
+    
+    from services.biometric_sync import sync_historical_data
+    
+    # Delete all biometric-synced attendance
+    delete_result = await db.attendance.delete_many({
+        "remarks": "Synced from biometric API"
+    })
+    
+    logger.info(f"Deleted {delete_result.deleted_count} biometric attendance records for refresh")
+    
+    # Re-sync historical data
+    days = data.get("days", 365) if data else 365
+    days = min(days, 400)
+    
+    result = await sync_historical_data(days)
+    
+    return {
+        "success": True,
+        "deleted_records": delete_result.deleted_count,
+        "sync_result": result
+    }
+
+
 # ==================== INITIALIZATION ====================
 
 async def load_forward_servers():
