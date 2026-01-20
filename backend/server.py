@@ -2687,7 +2687,8 @@ scheduler = AsyncIOScheduler()
 @app.on_event("startup")
 async def start_scheduler():
     """Start the biometric sync scheduler on app startup"""
-    from services.biometric_sync import sync_biometric_data
+    from services.biometric_sync import sync_biometric_data, sync_historical_data
+    import asyncio
     
     # Add job to run every 3 hours
     scheduler.add_job(
@@ -2700,6 +2701,32 @@ async def start_scheduler():
     
     scheduler.start()
     logger.info("Biometric sync scheduler started - running every 3 hours")
+    
+    # Run initial sync on startup (in background to not block startup)
+    # This ensures production gets data immediately after deployment
+    async def initial_sync():
+        try:
+            # Wait a few seconds for everything to initialize
+            await asyncio.sleep(5)
+            
+            # Check if we have any biometric attendance data
+            count = await db.attendance.count_documents({"remarks": "Synced from biometric API"})
+            
+            if count == 0:
+                # No biometric data exists - run historical sync (past 1 year)
+                logger.info("No biometric attendance data found - running initial historical sync...")
+                await sync_historical_data(days=365)
+                logger.info("Initial historical sync completed")
+            else:
+                # Data exists - just do a regular sync for recent days
+                logger.info(f"Found {count} biometric records - running regular sync...")
+                await sync_biometric_data()
+                logger.info("Regular sync completed")
+        except Exception as e:
+            logger.error(f"Error in initial sync: {e}")
+    
+    # Run initial sync in background
+    asyncio.create_task(initial_sync())
 
 
 @app.on_event("shutdown")
