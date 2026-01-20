@@ -71,6 +71,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+    must_change_password: bool = False
 
 class SessionData(BaseModel):
     session_id: str
