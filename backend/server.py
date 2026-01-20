@@ -528,11 +528,11 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     # Check if user must change password (first login)
     must_change_password = user.get("must_change_password", False)
     
-    return {
-        "access_token": token,
-        "user": user_response,
-        "must_change_password": must_change_password
-    }
+    return TokenResponse(
+        access_token=token,
+        user=user_response,
+        must_change_password=must_change_password
+    )
 
 @api_router.get("/auth/google")
 async def initiate_google_auth(request: Request):
