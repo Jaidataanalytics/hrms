@@ -375,7 +375,7 @@ async def log_sync_result(from_date: str, to_date: str, stats: Dict[str, Any]):
 
 async def get_sync_logs(limit: int = 20) -> List[Dict[str, Any]]:
     """Get recent sync logs"""
-    if not db:
+    if db is None:
         return []
     
     try:
