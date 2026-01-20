@@ -1366,6 +1366,113 @@ async def get_organization_attendance(
     }
 
 
+@api_router.get("/attendance/summary")
+async def get_attendance_summary(
+    request: Request,
+    from_date: str,
+    to_date: str,
+    employee_id: Optional[str] = None
+):
+    """
+    Get attendance summary and analytics for a date range.
+    Returns: late counts, absent counts, present counts per employee.
+    """
+    user = await get_current_user(request)
+    
+    # Only HR can view organization-wide summary
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Build query
+    query = {"date": {"$gte": from_date, "$lte": to_date}}
+    if employee_id and employee_id != "all":
+        query["employee_id"] = employee_id
+    
+    # Get all attendance in range
+    attendance = await db.attendance.find(query, {"_id": 0}).to_list(50000)
+    
+    # Get all active employees
+    employees = await db.employees.find(
+        {"is_active": True},
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
+    ).to_list(1000)
+    emp_map = {e["employee_id"]: e for e in employees}
+    
+    # Calculate per-employee stats
+    employee_stats = {}
+    for att in attendance:
+        emp_id = att.get("employee_id")
+        if emp_id not in employee_stats:
+            emp = emp_map.get(emp_id, {})
+            employee_stats[emp_id] = {
+                "employee_id": emp_id,
+                "emp_code": emp.get("emp_code", ""),
+                "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
+                "department": emp.get("department", ""),
+                "present_days": 0,
+                "absent_days": 0,
+                "late_count": 0,
+                "wfh_days": 0,
+                "leave_days": 0,
+                "total_hours": 0,
+                "total_late_minutes": 0
+            }
+        
+        status = att.get("status", "present")
+        if status == "present":
+            employee_stats[emp_id]["present_days"] += 1
+        elif status == "absent":
+            employee_stats[emp_id]["absent_days"] += 1
+        elif status == "wfh":
+            employee_stats[emp_id]["wfh_days"] += 1
+        elif status == "leave":
+            employee_stats[emp_id]["leave_days"] += 1
+        
+        if att.get("is_late"):
+            employee_stats[emp_id]["late_count"] += 1
+            employee_stats[emp_id]["total_late_minutes"] += att.get("late_minutes", 0)
+        
+        if att.get("total_hours"):
+            employee_stats[emp_id]["total_hours"] += att.get("total_hours", 0)
+    
+    # Convert to list and sort
+    stats_list = list(employee_stats.values())
+    
+    # Calculate rankings
+    most_late = sorted(stats_list, key=lambda x: x["late_count"], reverse=True)[:10]
+    most_absent = sorted(stats_list, key=lambda x: x["absent_days"], reverse=True)[:10]
+    perfect_attendance = [s for s in stats_list if s["absent_days"] == 0 and s["late_count"] == 0]
+    most_hours = sorted(stats_list, key=lambda x: x["total_hours"], reverse=True)[:10]
+    
+    # Overall summary
+    total_records = len(attendance)
+    total_present = sum(s["present_days"] for s in stats_list)
+    total_absent = sum(s["absent_days"] for s in stats_list)
+    total_late = sum(s["late_count"] for s in stats_list)
+    total_wfh = sum(s["wfh_days"] for s in stats_list)
+    
+    return {
+        "from_date": from_date,
+        "to_date": to_date,
+        "overall_summary": {
+            "total_records": total_records,
+            "total_present": total_present,
+            "total_absent": total_absent,
+            "total_late": total_late,
+            "total_wfh": total_wfh,
+            "employees_tracked": len(stats_list),
+            "perfect_attendance_count": len(perfect_attendance)
+        },
+        "rankings": {
+            "most_late": most_late,
+            "most_absent": most_absent,
+            "perfect_attendance": perfect_attendance[:10],
+            "most_hours": most_hours
+        },
+        "employee_stats": stats_list
+    }
+
+
 # ==================== LEAVE ROUTES ====================
 
 @api_router.get("/leave-types", response_model=List[LeaveType])
