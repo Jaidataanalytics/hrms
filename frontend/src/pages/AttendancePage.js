@@ -129,11 +129,43 @@ const AttendancePage = () => {
       if (isHR) {
         fetchSummary();
         fetchEmployees();
+        fetchCalendarData();
       } else {
         fetchMySummary();
       }
     }
   }, [fromDate, toDate, selectedEmployee]);
+
+  const fetchCalendarData = async () => {
+    if (!fromDate || !toDate) return;
+    
+    setCalendarLoading(true);
+    try {
+      const params = new URLSearchParams({
+        from_date: fromDate,
+        to_date: toDate
+      });
+      
+      const response = await fetch(
+        `${API_URL}/attendance/calendar-data?${params}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCalendarData(data.calendar_data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching calendar data:', error);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleDateClick = (dayData) => {
+    setSelectedCalendarDate(dayData.date);
+    setSelectedDayDetails(dayData);
+  };
 
   const fetchEmployees = async () => {
     try {
