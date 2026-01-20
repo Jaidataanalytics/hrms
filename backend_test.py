@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import uuid
 
 class DataManagementAPITester:
-    def __init__(self, base_url="https://hr-insurance-suite.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://payroll-genius-7.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.tests_run = 0

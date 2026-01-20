@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://hr-insurance-suite.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://payroll-genius-7.preview.emergentagent.com')
 
 class TestAuthentication:
     """Test login with new credentials"""
