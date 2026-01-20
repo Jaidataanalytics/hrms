@@ -18,6 +18,7 @@ import {
   Users,
   Clock,
   Calendar,
+  CalendarDays,
   Megaphone,
   Settings,
   LogOut,
