@@ -65,7 +65,7 @@ async def get_employee_map() -> Dict[str, Dict[str, Any]]:
     Returns:
         Dict mapping emp_code to employee info
     """
-    if not db:
+    if db is None:
         logger.error("Database not initialized")
         return {}
     
