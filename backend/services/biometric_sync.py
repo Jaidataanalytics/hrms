@@ -222,6 +222,21 @@ async def update_attendance_record(
         else:
             # Create new attendance record
             import uuid
+            
+            # Calculate late status for new record
+            is_late = False
+            late_minutes = 0
+            if punch_type == "IN":
+                try:
+                    time_format = "%H:%M:%S" if punch_time.count(":") == 2 else "%H:%M"
+                    in_time = datetime.strptime(punch_time, time_format)
+                    late_threshold = datetime.strptime("09:45:00", "%H:%M:%S")
+                    if in_time > late_threshold:
+                        is_late = True
+                        late_minutes = int((in_time - late_threshold).seconds / 60)
+                except:
+                    pass
+            
             attendance_doc = {
                 "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
                 "employee_id": employee_id,
@@ -232,8 +247,8 @@ async def update_attendance_record(
                 "punches": [punch_record],
                 "total_hours": None,
                 "status": "present",
-                "is_late": False,
-                "late_minutes": 0,
+                "is_late": is_late,
+                "late_minutes": late_minutes,
                 "overtime_hours": 0,
                 "remarks": "Synced from biometric API",
                 "created_at": datetime.now(timezone.utc).isoformat(),
