@@ -33,6 +33,7 @@ import TravelPage from "./pages/TravelPage";
 import DataManagementPage from "./pages/DataManagementPage";
 import BiometricPage from "./pages/BiometricPage";
 import InsurancePage from "./pages/InsurancePage";
+import HolidayManagementPage from "./pages/HolidayManagementPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
