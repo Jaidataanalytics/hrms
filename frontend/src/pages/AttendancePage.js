@@ -45,6 +45,10 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const AttendancePage = () => {
   const { user } = useAuth();
+  
+  // Define isHR first as it's used in initial state
+  const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
+  
   const [attendance, setAttendance] = useState([]);
   const [orgAttendance, setOrgAttendance] = useState(null);
   const [historyAttendance, setHistoryAttendance] = useState([]);
@@ -65,8 +69,6 @@ const AttendancePage = () => {
   const currentMonth = selectedDate.getMonth() + 1;
   const currentYear = selectedDate.getFullYear();
   const todayStr = new Date().toISOString().split('T')[0];
-
-  const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
   useEffect(() => {
     fetchAttendance();
