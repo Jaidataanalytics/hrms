@@ -233,7 +233,7 @@ const Dashboard = () => {
                   <AlertCircle className="w-6 h-6 text-amber-600" />
                   <div>
                     <p className="font-medium text-amber-800">No attendance marked today</p>
-                    <p className="text-sm text-amber-600">Use the Punch In button above to mark your attendance</p>
+                    <p className="text-sm text-amber-600">Your attendance will be synced from the biometric system</p>
                   </div>
                 </div>
               )}
