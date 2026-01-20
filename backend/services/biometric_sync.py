@@ -352,8 +352,8 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
             stats["errors"] += 1
             continue
         
-        # Update attendance
-        punch_type = parse_punch_direction(punch_direction)
+        # Update attendance - use time-based IN/OUT detection
+        punch_type = parse_punch_direction(punch_direction, time_str)
         success = await update_attendance_record(
             employee_id=emp_info["employee_id"],
             emp_code=emp_code,
