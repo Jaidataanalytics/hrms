@@ -138,7 +138,7 @@ const DashboardLayout = () => {
     { name: 'Master Setup', path: '/dashboard/master-setup', icon: Building2 },
     { name: 'User Management', path: '/dashboard/user-management', icon: UserCog },
     { name: 'Data Management', path: '/dashboard/data-management', icon: Database },
-    { name: 'Biometric', path: '/dashboard/biometric', icon: Fingerprint },
+    { name: 'API Manager', path: '/dashboard/biometric', icon: Settings },
   ];
 
   const isActive = (path, exact = false) => {
