@@ -96,7 +96,10 @@ const LoginPage = () => {
     try {
       const response = await fetch(`${API_URL}/auth/change-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
         credentials: 'include',
         body: JSON.stringify({ new_password: newPassword }),
       });
@@ -104,6 +107,8 @@ const LoginPage = () => {
       if (response.ok) {
         toast.success('Password changed successfully!');
         setShowChangePassword(false);
+        // Now complete the login process with the new password
+        await login(email, newPassword);
         navigate('/dashboard');
       } else {
         const data = await response.json();
