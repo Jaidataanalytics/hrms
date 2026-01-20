@@ -2519,10 +2519,12 @@ from routes.training import router as training_router
 from routes.travel import router as travel_router
 from routes.data_management import router as data_management_router, set_db as set_data_management_db
 from routes.biometric import router as biometric_router, set_db as set_biometric_db
+from services.biometric_sync import set_db as set_biometric_sync_db
 
-# Set database for data management
+# Set database for data management and biometric sync
 set_data_management_db(db)
 set_biometric_db(db)
+set_biometric_sync_db(db)
 
 api_router.include_router(payroll_router)
 api_router.include_router(performance_router)
