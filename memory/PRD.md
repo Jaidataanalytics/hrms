@@ -8,19 +8,24 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 ### 1. Employee Management
 - Employee directory with search and filters
 - Bulk import/export functionality
+- **Role-Based Access:** Only HR/Admin can access Employees page (employees cannot see this menu)
 - **Duplicate Prevention:** Rejects duplicate emp_code and email during import
 
 ### 2. Attendance Management
-- Organization-wide attendance view for HR
+- Organization-wide attendance view (HR/Admin only)
+- Individual attendance tracking
+- **Role-Based Access:** 
+  - HR/Admin: See Organization toggle and can view all employees
+  - Employees: Only see "My Attendance" view (no Organization toggle)
 - Attendance History with month/year filters
-- **Duplicate Prevention:** Uses upsert (employee_id + date) during import
+- **Duplicate Prevention:** Uses upsert during import
 
 ### 3. Leave Management
 - Leave balance management
-- **Duplicate Prevention:** Uses upsert (employee + leave_type + year) during import
+- **Duplicate Prevention:** Uses upsert during import
 
-### 4. Payroll Management (Major Update - January 2026)
-**Salary Structure (Based on User's Excel Template):**
+### 4. Payroll Management (Enhanced)
+**Salary Structure:**
 - Fixed Components: BASIC, DA, HRA, Conveyance, GRADE PAY, OTHER ALLOWANCE, Medical/Special Allowance
 - Deduction Config: EPF, ESI, SEWA (toggles)
 - Fixed Deductions: SEWA Advance, Other Deduction
@@ -30,55 +35,62 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Approval workflow for non-super_admin
 - Salary change history tracking
 
-**Duplicate Prevention:** Deactivates existing active salary before inserting new
-
 ### 5. Insurance Module
 - Employee Insurance Tab (ESIC, PMJJBY, Accidental)
 - Business Insurance Tab
-- **Duplicate Prevention:** Updates existing record for same employee/policy
 
-### 6. Assets Module
-- Employee asset tracking
-- **Duplicate Prevention:** Updates existing record for same emp_code
-
-### 7. Global Search & Employee 360 View
-- Global search bar (Cmd+K)
+### 6. Global Search & Employee 360 View
+- Global search bar (Cmd+K) - HR/Admin only
 - Comprehensive employee profile page
 
-## Duplicate Prevention Summary (Implemented January 2026)
+## Authentication & Security
 
-| Module | Strategy | Key Field(s) |
-|--------|----------|--------------|
-| Employees | Reject if exists | emp_code, email |
-| Insurance | Update existing | employee_id |
-| Salary | Deactivate old, insert new | employee_id + is_active |
-| Attendance | Upsert | employee_id + date |
-| Leave Balance | Upsert | employee_id + leave_type_id + year |
-| Business Insurance | Update existing | name + company + vehicle_no |
-| Assets | Update existing | emp_code |
+### First Login Password Change (NEW)
+- All new employees imported with `must_change_password: true`
+- On first login:
+  1. User enters email/password
+  2. System checks `must_change_password` flag
+  3. If true, shows password change dialog (cannot be dismissed)
+  4. User must enter new password (min 6 characters)
+  5. After change, redirected to dashboard
+  6. `must_change_password` set to false
 
-## Cleanup Performed
-- **11 duplicate employee records** deleted
-- **5 duplicate insurance records** deleted
-- All collections verified clean with zero duplicates
+### Role-Based Access Control
+| Feature | Admin/HR | Employee |
+|---------|----------|----------|
+| Employees Page | ✅ Visible | ❌ Hidden |
+| Organization Attendance | ✅ Toggle visible | ❌ Hidden |
+| Global Search | ✅ Available | ❌ Hidden |
+| Salary Edit | ✅ Can edit | ❌ View only |
+
+## Admin Cleanup Endpoint
+POST `/api/admin/cleanup-duplicates` - Removes duplicate records (super_admin only)
+- Cleans duplicate employees (by emp_code)
+- Cleans duplicate insurance (by employee_id)
+- Deactivates duplicate salaries (by employee_id)
 
 ## Test Credentials
 - **Admin:** admin@shardahr.com / Admin@123
+- **Employee:** employee@shardahr.com / NewPass@123
+- **HR:** hr@shardahr.com / NewHRPass@123
 
 ## Recent Test Results
-- Test iteration 21: Duplicate Prevention - 13/13 tests passed (100%)
+- Test iteration 22: Employee Role Restrictions - 11/11 tests passed (100%)
+- Test iteration 21: Duplicate Prevention - 13/13 tests passed
 - Test iteration 20: Salary Edit Features - 10/10 tests passed
-- Test iteration 19: Payroll/Attendance features - 14/14 tests passed
-- Test iteration 18: Global Search & Employee 360 - 19/19 tests passed
 
-## Database Stats (After Cleanup)
-- Employees: 45 (reduced from 56)
-- Insurance records: 1 (reduced from 6)
-- Active salaries: 76
-- No duplicate records in any collection
+## Pending: Production Deployment
+After deployment, run cleanup on production:
+```javascript
+// In browser console after logging in as admin
+fetch('/api/admin/cleanup-duplicates', {
+  method: 'POST',
+  credentials: 'include'
+}).then(r => r.json()).then(console.log)
+```
 
 ## Future Tasks
-1. Deploy to production
+1. Deploy to production + run cleanup
 2. Biometric device integration (on hold)
 3. AI-powered shift scheduling
 4. Mobile application
