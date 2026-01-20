@@ -1634,14 +1634,6 @@ async def delete_holiday(
         raise HTTPException(status_code=404, detail="Holiday not found")
     
     return {"message": "Holiday deleted"}
-        "rankings": {
-            "most_late": most_late,
-            "most_absent": most_absent,
-            "perfect_attendance": perfect_attendance[:10],
-            "most_hours": most_hours
-        },
-        "employee_stats": stats_list
-    }
 
 
 # ==================== LEAVE ROUTES ====================
