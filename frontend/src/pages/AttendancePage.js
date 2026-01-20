@@ -881,16 +881,22 @@ const AttendancePage = () => {
                         <Card className="bg-amber-50">
                           <CardContent className="p-4 text-center">
                             <p className="text-3xl font-bold text-amber-600">{summary.overall_summary?.total_late || 0}</p>
-                            <p className="text-sm text-slate-500">Total Late Instances</p>
+                            <p className="text-sm text-slate-500">Late Instances</p>
                           </CardContent>
                         </Card>
                         <Card className="bg-blue-50">
                           <CardContent className="p-4 text-center">
                             <p className="text-3xl font-bold text-blue-600">{summary.overall_summary?.total_wfh || 0}</p>
-                            <p className="text-sm text-slate-500">Total WFH Days</p>
+                            <p className="text-sm text-slate-500">WFH Days</p>
                           </CardContent>
                         </Card>
-                        <Card className="bg-emerald-50">
+                        <Card className="bg-purple-50">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-3xl font-bold text-purple-600">{summary.overall_summary?.total_leave || 0}</p>
+                            <p className="text-sm text-slate-500">Leave Days</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-slate-50 border-emerald-200">
                           <CardContent className="p-4 text-center">
                             <p className="text-3xl font-bold text-emerald-600">{summary.overall_summary?.perfect_attendance_count || 0}</p>
                             <p className="text-sm text-slate-500">Perfect Attendance</p>
