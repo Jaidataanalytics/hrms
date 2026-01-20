@@ -240,7 +240,7 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
     Returns:
         Sync results summary
     """
-    if not db:
+    if db is None:
         logger.error("Database not initialized for biometric sync")
         return {"success": False, "error": "Database not initialized"}
     
