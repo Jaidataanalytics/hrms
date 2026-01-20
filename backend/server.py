@@ -2565,6 +2565,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==================== SCHEDULER FOR BIOMETRIC SYNC ====================
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+scheduler = AsyncIOScheduler()
+
+@app.on_event("startup")
+async def start_scheduler():
+    """Start the biometric sync scheduler on app startup"""
+    from services.biometric_sync import sync_biometric_data
+    
+    # Add job to run every 3 hours
+    scheduler.add_job(
+        sync_biometric_data,
+        IntervalTrigger(hours=3),
+        id="biometric_sync",
+        name="Biometric API Sync (every 3 hours)",
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    logger.info("Biometric sync scheduler started - running every 3 hours")
+
+
+@app.on_event("shutdown")
+async def shutdown_scheduler():
+    """Shutdown scheduler gracefully"""
+    scheduler.shutdown(wait=False)
+    logger.info("Biometric sync scheduler stopped")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
