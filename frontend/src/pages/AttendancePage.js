@@ -41,8 +41,10 @@ import {
   TrendingUp,
   Award,
   AlertTriangle,
-  BarChart3
+  BarChart3,
+  FileSpreadsheet
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
