@@ -249,7 +249,7 @@ async def update_attendance_record(
                 try:
                     time_format = "%H:%M:%S" if punch_time.count(":") == 2 else "%H:%M"
                     in_time = datetime.strptime(punch_time, time_format)
-                    late_threshold = datetime.strptime("09:45:00", "%H:%M:%S")
+                    late_threshold = datetime.strptime("10:00:00", "%H:%M:%S")
                     if in_time > late_threshold:
                         is_late = True
                         late_minutes = int((in_time - late_threshold).seconds / 60)
