@@ -104,7 +104,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 ## Recent Changes (Jan 20, 2026)
 1. ✅ Biometric API Integration - Auto-sync every 3 hours
 2. ✅ Smart IN/OUT detection based on time (before noon = IN, after noon = OUT)
-3. ✅ Late marking (after 09:45 = LATE)
+3. ✅ **Late marking threshold changed from 09:45 to 10:00 AM**
 4. ✅ Date range filters for attendance (Current Month, Last Month, Last 3 Months, Custom)
 5. ✅ Attendance Summary & Analytics tab with rankings
 6. ✅ **Role-Based Attendance Views (Jan 20, 2026)**:
@@ -119,6 +119,18 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
    - Detailed table with all employee payslips (Emp Code, Name, Department, Days, Gross, Deductions, Net Pay)
    - Export to Excel button exports complete payroll data with summary row
    - Backend endpoint: `GET /api/payroll/runs/{payroll_id}`
+9. ✅ **Attendance Calendar View (Jan 20, 2026)**:
+   - New Calendar tab as the default/first tab in Attendance Analytics
+   - Calendar grid showing each day with:
+     - 🟢 Green indicator: Present employee count
+     - 🟡 Amber indicator: Late employee count
+     - 🔴 Red indicator: Absent employee count
+   - Sundays greyed out, Holidays show holiday name
+   - Click on any date to see detailed breakdown in right panel:
+     - Present employees with in/out times
+     - Late employees with in/out times
+     - Absent employees list
+   - Backend endpoint: `GET /api/attendance/calendar-data`
 
 ## Upcoming Tasks
 1. 🔴 **P1: Deploy to Production** - Production is critically outdated
