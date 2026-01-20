@@ -831,7 +831,7 @@ async def get_unmatched_employee_codes(request: Request):
 async def recalculate_late_status(request: Request):
     """
     Recalculate late status for all attendance records.
-    Late = first_in > 09:45
+    Late = first_in > 10:00
     Super Admin only.
     """
     from server import get_current_user
@@ -848,7 +848,7 @@ async def recalculate_late_status(request: Request):
         {"_id": 1, "first_in": 1, "is_late": 1, "late_minutes": 1}
     )
     
-    late_threshold = datetime.strptime("09:45:00", "%H:%M:%S")
+    late_threshold = datetime.strptime("10:00:00", "%H:%M:%S")
     updated = 0
     errors = 0
     
@@ -882,7 +882,7 @@ async def recalculate_late_status(request: Request):
         "message": f"Recalculated late status for {updated} records",
         "updated": updated,
         "errors": errors,
-        "late_threshold": "09:45"
+        "late_threshold": "10:00"
     }
 
 
