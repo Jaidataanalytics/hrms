@@ -24,25 +24,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { toast } from 'sonner';
 import {
   Clock,
-  MapPin,
   Calendar as CalendarIcon,
   CheckCircle2,
   XCircle,
   AlertCircle,
   Home,
-  Plane,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
   Users,
   User,
-  Search,
-  Download,
   TrendingUp,
+  TrendingDown,
   Award,
   AlertTriangle,
   BarChart3,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Building2,
+  Minus,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '../utils/api';
@@ -54,29 +55,19 @@ const AttendancePage = () => {
   
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
   
-  const [attendance, setAttendance] = useState([]);
-  const [orgAttendance, setOrgAttendance] = useState(null);
-  const [historyAttendance, setHistoryAttendance] = useState([]);
-  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [markingAttendance, setMarkingAttendance] = useState(false);
-  const [attendanceSource, setAttendanceSource] = useState('manual');
-  const [viewMode, setViewMode] = useState(isHR ? 'organization' : 'my');
+  const [summary, setSummary] = useState(null);
+  const [mySummary, setMySummary] = useState(null);
+  const [historyAttendance, setHistoryAttendance] = useState([]);
+  const [employees, setEmployees] = useState([]);
   
-  // Date range filters
+  // Date range
   const [dateRangePreset, setDateRangePreset] = useState('current_month');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('all');
-  const [activeTab, setActiveTab] = useState('records');
-
-  const currentMonth = selectedDate.getMonth() + 1;
-  const currentYear = selectedDate.getFullYear();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Calculate dates based on preset
   const getDateRange = (preset) => {
@@ -120,13 +111,6 @@ const AttendancePage = () => {
   };
 
   useEffect(() => {
-    fetchAttendance();
-    if (isHR) {
-      fetchEmployees();
-    }
-  }, [currentMonth, currentYear, viewMode]);
-
-  useEffect(() => {
     if (dateRangePreset !== 'custom') {
       const { from, to } = getDateRange(dateRangePreset);
       setFromDate(from);
@@ -135,9 +119,13 @@ const AttendancePage = () => {
   }, [dateRangePreset]);
 
   useEffect(() => {
-    if (isHR && fromDate && toDate && viewMode === 'organization') {
-      fetchHistoryAttendance();
-      fetchSummary();
+    if (fromDate && toDate) {
+      if (isHR) {
+        fetchSummary();
+        fetchEmployees();
+      } else {
+        fetchMySummary();
+      }
     }
   }, [fromDate, toDate, selectedEmployee]);
 
@@ -156,39 +144,11 @@ const AttendancePage = () => {
     }
   };
 
-  const fetchHistoryAttendance = async () => {
-    if (!fromDate || !toDate) return;
-    
-    setHistoryLoading(true);
-    try {
-      const params = new URLSearchParams({
-        from_date: fromDate,
-        to_date: toDate
-      });
-      if (selectedEmployee && selectedEmployee !== 'all') {
-        params.append('employee_id', selectedEmployee);
-      }
-      
-      const response = await fetch(
-        `${API_URL}/attendance?${params}`,
-        { credentials: 'include', headers: getAuthHeaders() }
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        setHistoryAttendance(data);
-      }
-    } catch (error) {
-      console.error('Error fetching history attendance:', error);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
   const fetchSummary = async () => {
     if (!fromDate || !toDate) return;
     
     setSummaryLoading(true);
+    setLoading(true);
     try {
       const params = new URLSearchParams({
         from_date: fromDate,
@@ -211,280 +171,93 @@ const AttendancePage = () => {
       console.error('Error fetching summary:', error);
     } finally {
       setSummaryLoading(false);
-    }
-  };
-
-  const fetchAttendance = async () => {
-    setLoading(true);
-    try {
-      const authHeaders = getAuthHeaders();
-      
-      const orgResponse = await fetch(
-        `${API_URL}/attendance/organization?month=${currentMonth}&year=${currentYear}&date=${todayStr}`,
-        { credentials: 'include', headers: authHeaders }
-      );
-      
-      if (orgResponse.ok) {
-        const orgData = await orgResponse.json();
-        setOrgAttendance(orgData);
-      }
-      
-      const myResponse = await fetch(
-        `${API_URL}/attendance/my?month=${currentMonth}&year=${currentYear}`,
-        { credentials: 'include', headers: authHeaders }
-      );
-
-      if (myResponse.ok) {
-        const data = await myResponse.json();
-        setAttendance(data);
-      }
-    } catch (error) {
-      console.error('Error fetching attendance:', error);
-    } finally {
       setLoading(false);
     }
   };
 
-  const getGeoLocation = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        resolve(null);
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          });
-        },
-        (error) => {
-          console.warn('Geolocation error:', error);
-          resolve(null);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
-    });
-  };
-
-  const handleMarkAttendance = async (punchType) => {
-    setMarkingAttendance(true);
+  const fetchMySummary = async () => {
+    if (!fromDate || !toDate) return;
+    
+    setSummaryLoading(true);
+    setLoading(true);
     try {
-      toast.info('Getting your location...');
-      const geoLocation = await getGeoLocation();
-      
-      const payload = {
-        punch_type: punchType,
-        source: attendanceSource,
-      };
-      
-      if (geoLocation) {
-        payload.location = `${geoLocation.latitude.toFixed(6)}, ${geoLocation.longitude.toFixed(6)}`;
-        payload.geo_coordinates = geoLocation;
-      }
-
-      const response = await fetch(`${API_URL}/attendance/mark`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
-        body: JSON.stringify(payload),
+      const params = new URLSearchParams({
+        from_date: fromDate,
+        to_date: toDate
       });
-
+      
+      const response = await fetch(
+        `${API_URL}/attendance/my-summary?${params}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      
       if (response.ok) {
         const data = await response.json();
-        const locationMsg = geoLocation ? ' (Location tagged)' : '';
-        toast.success(`${punchType} marked at ${data.time}${locationMsg}`);
-        fetchAttendance();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to mark attendance');
+        setMySummary(data);
       }
     } catch (error) {
-      toast.error('Failed to mark attendance');
+      console.error('Error fetching my summary:', error);
     } finally {
-      setMarkingAttendance(false);
+      setSummaryLoading(false);
+      setLoading(false);
     }
   };
 
-  const getAttendanceForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return attendance.find(a => a.date === dateStr);
-  };
-
-  const getTodayAttendance = () => {
-    const today = new Date().toISOString().split('T')[0];
-    return attendance.find(a => a.date === today);
-  };
-
-  const todayAttendance = getTodayAttendance();
-
-  // Export to Excel functions
-  const exportRecordsToExcel = () => {
-    if (!historyAttendance || historyAttendance.length === 0) {
-      toast.error('No records to export');
-      return;
-    }
-
-    const data = historyAttendance.map(att => ({
-      'Date': att.date,
-      'Employee Name': att.employee_name || att.employee_id,
-      'Employee Code': att.emp_code || '',
-      'Status': att.status?.charAt(0).toUpperCase() + att.status?.slice(1).replace('_', ' ') || '',
-      'In Time': att.first_in || '-',
-      'Out Time': att.last_out || '-',
-      'Total Hours': att.total_hours || '-',
-      'Late': att.is_late ? 'Yes' : 'No',
-      'Late Minutes': att.late_minutes || 0
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Records');
-    
-    // Auto-width columns
-    const colWidths = Object.keys(data[0]).map(key => ({ wch: Math.max(key.length, 15) }));
-    ws['!cols'] = colWidths;
-
-    XLSX.writeFile(wb, `Attendance_Records_${fromDate}_to_${toDate}.xlsx`);
-    toast.success('Attendance records exported successfully');
-  };
-
-  const exportSummaryToExcel = () => {
+  const exportToExcel = () => {
     if (!summary) {
-      toast.error('No summary data to export');
+      toast.error('No data to export');
       return;
     }
 
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: Overall Summary
-    const overallData = [
-      ['Attendance Summary Report'],
+    // Overview sheet
+    const overviewData = [
+      ['Attendance Analytics Report'],
       ['Period', `${fromDate} to ${toDate}`],
+      ['Working Days', summary.working_days_in_range],
+      ['Holidays', summary.holidays_in_range],
+      ['Total Employees', summary.total_employees],
       [''],
-      ['Metric', 'Value'],
-      ['Total Present Days', summary.overall_summary?.total_present || 0],
-      ['Total Absent Days', summary.overall_summary?.total_absent || 0],
-      ['Total Late Instances', summary.overall_summary?.total_late || 0],
-      ['Total WFH Days', summary.overall_summary?.total_wfh || 0],
-      ['Employees with Perfect Attendance', summary.overall_summary?.perfect_attendance_count || 0],
-      ['Total Records', summary.overall_summary?.total_records || 0]
+      ['Key Metrics'],
+      ['Attendance Rate', `${summary.overview?.attendance_rate}%`],
+      ['Avg Daily Attendance', summary.overview?.avg_daily_attendance],
+      ['Perfect Days', summary.overview?.perfect_days_count],
+      ['High Absence Days', summary.overview?.high_absence_days_count],
+      ['Late Instances', summary.overview?.late_instances],
+      ['WFH Count', summary.overview?.wfh_count],
+      ['Leave Count', summary.overview?.leave_count],
+      ['Trend', summary.overview?.trend]
     ];
-    const wsOverall = XLSX.utils.aoa_to_sheet(overallData);
-    wsOverall['!cols'] = [{ wch: 35 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(wb, wsOverall, 'Summary');
+    const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
+    XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
 
-    // Sheet 2: Most Late
-    const lateData = [
-      ['Rank', 'Employee Name', 'Employee Code', 'Department', 'Late Count', 'Total Late Minutes']
-    ];
-    summary.rankings?.most_late?.filter(e => e.late_count > 0).forEach((emp, idx) => {
-      lateData.push([
-        idx + 1,
-        emp.name,
-        emp.emp_code,
-        emp.department || '',
-        emp.late_count,
-        emp.total_late_minutes || 0
-      ]);
-    });
-    const wsLate = XLSX.utils.aoa_to_sheet(lateData);
-    wsLate['!cols'] = [{ wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, wsLate, 'Most Late');
+    // Employee Stats
+    if (summary.employee_stats) {
+      const empData = [
+        ['Name', 'Code', 'Department', 'Present', 'Absent', 'Late', 'WFH', 'Leave', 'Hours']
+      ];
+      summary.employee_stats.forEach(e => {
+        empData.push([e.name, e.emp_code, e.department, e.present_days, e.absent_days, e.late_count, e.wfh_count, e.leave_count, e.total_hours?.toFixed(1)]);
+      });
+      const wsEmp = XLSX.utils.aoa_to_sheet(empData);
+      XLSX.utils.book_append_sheet(wb, wsEmp, 'Employee Stats');
+    }
 
-    // Sheet 3: Most Absent
-    const absentData = [
-      ['Rank', 'Employee Name', 'Employee Code', 'Department', 'Absent Days']
-    ];
-    summary.rankings?.most_absent?.filter(e => e.absent_days > 0).forEach((emp, idx) => {
-      absentData.push([
-        idx + 1,
-        emp.name,
-        emp.emp_code,
-        emp.department || '',
-        emp.absent_days
-      ]);
-    });
-    const wsAbsent = XLSX.utils.aoa_to_sheet(absentData);
-    wsAbsent['!cols'] = [{ wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, wsAbsent, 'Most Absent');
+    // Department Stats
+    if (summary.department_analysis) {
+      const deptData = [
+        ['Department', 'Employees', 'Present Days', 'Absent Days', 'Late Count', 'Attendance Rate']
+      ];
+      summary.department_analysis.forEach(d => {
+        deptData.push([d.department, d.employees, d.present_days, d.absent_days, d.late_count, `${d.attendance_rate}%`]);
+      });
+      const wsDept = XLSX.utils.aoa_to_sheet(deptData);
+      XLSX.utils.book_append_sheet(wb, wsDept, 'Department');
+    }
 
-    // Sheet 4: Perfect Attendance
-    const perfectData = [
-      ['Employee Name', 'Employee Code', 'Department', 'Present Days']
-    ];
-    summary.rankings?.perfect_attendance?.forEach(emp => {
-      perfectData.push([
-        emp.name,
-        emp.emp_code,
-        emp.department || '',
-        emp.present_days
-      ]);
-    });
-    const wsPerfect = XLSX.utils.aoa_to_sheet(perfectData);
-    wsPerfect['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, wsPerfect, 'Perfect Attendance');
-
-    // Sheet 5: All Employee Stats
-    const allStatsData = [
-      ['Employee Name', 'Employee Code', 'Department', 'Present', 'Absent', 'Late', 'WFH', 'Leave', 'Total Hours']
-    ];
-    summary.employee_stats?.forEach(emp => {
-      allStatsData.push([
-        emp.name,
-        emp.emp_code,
-        emp.department || '',
-        emp.present_days,
-        emp.absent_days,
-        emp.late_count,
-        emp.wfh_days,
-        emp.leave_days,
-        emp.total_hours?.toFixed(1) || 0
-      ]);
-    });
-    const wsAllStats = XLSX.utils.aoa_to_sheet(allStatsData);
-    wsAllStats['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, wsAllStats, 'All Employee Stats');
-
-    XLSX.writeFile(wb, `Attendance_Summary_${fromDate}_to_${toDate}.xlsx`);
-    toast.success('Summary report exported successfully');
-  };
-
-  const statusConfig = {
-    present: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    absent: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100' },
-    half_day: { icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-100' },
-    wfh: { icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
-    tour: { icon: Plane, color: 'text-purple-600', bg: 'bg-purple-100' },
-    holiday: { icon: CalendarIcon, color: 'text-slate-600', bg: 'bg-slate-100' },
-    weekly_off: { icon: CalendarIcon, color: 'text-slate-500', bg: 'bg-slate-50' },
-  };
-
-  const getStatusIndicator = (status) => {
-    const config = statusConfig[status] || statusConfig.present;
-    return config;
-  };
-
-  // Calculate stats
-  const presentDays = viewMode === 'organization' 
-    ? orgAttendance?.summary?.present || 0
-    : attendance.filter(a => a.status === 'present').length;
-  const absentDays = viewMode === 'organization'
-    ? orgAttendance?.summary?.absent || 0
-    : attendance.filter(a => a.status === 'absent').length;
-  const wfhDays = viewMode === 'organization'
-    ? orgAttendance?.summary?.wfh || 0
-    : attendance.filter(a => a.status === 'wfh').length;
-  const lateDays = viewMode === 'organization'
-    ? orgAttendance?.summary?.late || 0
-    : attendance.filter(a => a.is_late).length;
-  const totalEmployees = orgAttendance?.summary?.total_employees || 0;
-
-  const navigateMonth = (direction) => {
-    const newDate = new Date(selectedDate);
-    newDate.setMonth(newDate.getMonth() + direction);
-    setSelectedDate(newDate);
+    XLSX.writeFile(wb, `Attendance_Analytics_${fromDate}_to_${toDate}.xlsx`);
+    toast.success('Report exported successfully');
   };
 
   const formatDateRange = () => {
@@ -494,7 +267,13 @@ const AttendancePage = () => {
     return `${from.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${to.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
   };
 
-  if (loading) {
+  const getTrendIcon = (trend) => {
+    if (trend === 'improving') return <TrendingUp className="w-4 h-4 text-emerald-500" />;
+    if (trend === 'declining') return <TrendingDown className="w-4 h-4 text-red-500" />;
+    return <Minus className="w-4 h-4 text-slate-400" />;
+  };
+
+  if (loading && !summary && !mySummary) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <RefreshCw className="w-8 h-8 text-primary animate-spin" />
@@ -502,738 +281,557 @@ const AttendancePage = () => {
     );
   }
 
+  // Employee view - personal summary only
+  if (!isHR) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">My Attendance</h1>
+            <p className="text-slate-600 mt-1">Your personal attendance summary</p>
+          </div>
+          <Select value={dateRangePreset} onValueChange={setDateRangePreset}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current_month">Current Month</SelectItem>
+              <SelectItem value="last_month">Last Month</SelectItem>
+              <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+              <SelectItem value="year_to_date">Year to Date</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {mySummary && (
+          <>
+            <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+              <strong>Period:</strong> {mySummary.from_date} to {mySummary.to_date} | 
+              <strong> Working Days:</strong> {mySummary.working_days}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card className="bg-emerald-50">
+                <CardContent className="p-4 text-center">
+                  <p className="text-3xl font-bold text-emerald-600">{mySummary.summary?.present_days || 0}</p>
+                  <p className="text-sm text-slate-500">Present Days</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-red-50">
+                <CardContent className="p-4 text-center">
+                  <p className="text-3xl font-bold text-red-600">{mySummary.summary?.absent_days || 0}</p>
+                  <p className="text-sm text-slate-500">Absent Days</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-amber-50">
+                <CardContent className="p-4 text-center">
+                  <p className="text-3xl font-bold text-amber-600">{mySummary.summary?.late_count || 0}</p>
+                  <p className="text-sm text-slate-500">Late Instances</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-blue-50">
+                <CardContent className="p-4 text-center">
+                  <p className="text-3xl font-bold text-blue-600">{mySummary.summary?.wfh_count || 0}</p>
+                  <p className="text-sm text-slate-500">WFH</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-purple-50">
+                <CardContent className="p-4 text-center">
+                  <p className="text-3xl font-bold text-purple-600">{mySummary.summary?.leave_count || 0}</p>
+                  <p className="text-sm text-slate-500">Leave</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Attendance Rate</span>
+                    <span className="text-2xl font-bold text-emerald-600">{mySummary.summary?.attendance_rate}%</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Avg Hours/Day</span>
+                    <span className="text-2xl font-bold text-blue-600">{mySummary.summary?.avg_hours_per_day}h</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Attendance Records */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Attendance Records</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>In Time</TableHead>
+                        <TableHead>Out Time</TableHead>
+                        <TableHead>Hours</TableHead>
+                        <TableHead>Late</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mySummary.attendance_records?.sort((a, b) => new Date(b.date) - new Date(a.date)).map((att, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{new Date(att.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
+                          <TableCell>
+                            <Badge className={att.status === 'present' ? 'bg-emerald-100 text-emerald-700' : att.status === 'wfh' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}>
+                              {att.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">{att.first_in || '-'}</TableCell>
+                          <TableCell className="font-mono">{att.last_out || '-'}</TableCell>
+                          <TableCell>{att.total_hours ? `${att.total_hours}h` : '-'}</TableCell>
+                          <TableCell>
+                            {att.is_late ? <Badge variant="destructive">{att.late_minutes}m</Badge> : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // HR/Admin view - full analytics
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Attendance
-          </h1>
-          <p className="text-slate-600 mt-1">
-            {viewMode === 'organization' ? 'Organization-wide attendance overview' : 'Track and manage your attendance'}
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900">Attendance Analytics</h1>
+          <p className="text-slate-600 mt-1">{formatDateRange()}</p>
         </div>
-        {isHR && (
-          <div className="flex gap-2">
-            <Button
-              variant={viewMode === 'organization' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('organization')}
-              className="gap-2"
-              data-testid="view-mode-organization"
-            >
-              <Users className="w-4 h-4" />
-              Organization
-            </Button>
-            <Button
-              variant={viewMode === 'my' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('my')}
-              className="gap-2"
-              data-testid="view-mode-my"
-            >
-              <User className="w-4 h-4" />
-              My Attendance
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={dateRangePreset} onValueChange={setDateRangePreset}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current_month">Current Month</SelectItem>
+              <SelectItem value="last_month">Last Month</SelectItem>
+              <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+              <SelectItem value="year_to_date">Year to Date</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {dateRangePreset === 'custom' && (
+            <>
+              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-[140px]" />
+              <span className="text-slate-400">to</span>
+              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-[140px]" />
+            </>
+          )}
+
+          <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Employees" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Employees</SelectItem>
+              {employees.map((emp) => (
+                <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                  {emp.first_name} {emp.last_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" onClick={fetchSummary} disabled={summaryLoading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${summaryLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button variant="outline" onClick={exportToExcel}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+        </div>
       </div>
 
-      {/* Quick Mark Attendance */}
-      <Card className="border-primary/20 bg-primary/5" data-testid="quick-mark-card">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                Mark Today's Attendance
-              </h3>
-              <p className="text-sm text-slate-600 mt-1">
-                {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
-              {todayAttendance && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="outline" className="bg-white">
-                    First In: {todayAttendance.first_in || 'N/A'}
-                  </Badge>
-                  <Badge variant="outline" className="bg-white">
-                    Last Out: {todayAttendance.last_out || 'In Progress'}
-                  </Badge>
-                  {todayAttendance.total_hours && (
-                    <Badge className="bg-primary">{todayAttendance.total_hours} hrs</Badge>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <Select value={attendanceSource} onValueChange={setAttendanceSource}>
-                <SelectTrigger className="w-full sm:w-32 bg-white" data-testid="source-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Office</SelectItem>
-                  <SelectItem value="wfh">WFH</SelectItem>
-                  <SelectItem value="tour">Tour</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => handleMarkAttendance('IN')}
-                  disabled={markingAttendance}
-                  className="flex-1 sm:flex-none gap-2"
-                  data-testid="punch-in-btn"
-                >
-                  <Clock className="w-4 h-4" />
-                  Punch In
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleMarkAttendance('OUT')}
-                  disabled={markingAttendance}
-                  className="flex-1 sm:flex-none bg-white"
-                  data-testid="punch-out-btn"
-                >
-                  Punch Out
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        {viewMode === 'organization' && (
-          <Card data-testid="stat-total" className="border-slate-200">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900">{totalEmployees}</p>
-                  <p className="text-xs text-slate-500">Total Staff</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        <Card data-testid="stat-present">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{presentDays}</p>
-                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'Present Today' : 'Present'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="stat-absent">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{absentDays}</p>
-                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'Absent Today' : 'Absent'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="stat-wfh">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Home className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{wfhDays}</p>
-                <p className="text-xs text-slate-500">WFH</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="stat-late">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{lateDays}</p>
-                <p className="text-xs text-slate-500">Late</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Organization View - History with Date Range and Summary */}
-      {viewMode === 'organization' && isHR && (
+      {summary && (
         <>
-          {/* Date Range Filters */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <CardTitle className="text-lg">Attendance History & Analytics</CardTitle>
-                  <CardDescription>{formatDateRange()}</CardDescription>
+          {/* Period Info */}
+          <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+            <strong>Period:</strong> {summary.from_date} to {summary.to_date} | 
+            <strong> Working Days:</strong> {summary.working_days_in_range} | 
+            <strong> Holidays:</strong> {summary.holidays_in_range} | 
+            <strong> Employees:</strong> {summary.total_employees} |
+            <strong> Trend:</strong> <span className="inline-flex items-center gap-1">{getTrendIcon(summary.overview?.trend)} {summary.overview?.trend}</span>
+          </div>
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="overview" className="gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="patterns" className="gap-2">
+                <CalendarIcon className="w-4 h-4" />
+                Patterns
+              </TabsTrigger>
+              <TabsTrigger value="employees" className="gap-2">
+                <Users className="w-4 h-4" />
+                Employee Insights
+              </TabsTrigger>
+              <TabsTrigger value="department" className="gap-2">
+                <Building2 className="w-4 h-4" />
+                Department
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Overview Tab */}
+            <TabsContent value="overview">
+              <div className="space-y-6">
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                  <Card className="bg-emerald-50">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-emerald-600">{summary.overview?.attendance_rate}%</p>
+                      <p className="text-xs text-slate-500">Attendance Rate</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-blue-50">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-blue-600">{summary.overview?.avg_daily_attendance}</p>
+                      <p className="text-xs text-slate-500">Avg Daily</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-green-600">{summary.overview?.perfect_days_count}</p>
+                      <p className="text-xs text-slate-500">Perfect Days</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-red-50">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-red-600">{summary.overview?.high_absence_days_count}</p>
+                      <p className="text-xs text-slate-500">High Absence Days</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-amber-50">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-amber-600">{summary.overview?.late_instances}</p>
+                      <p className="text-xs text-slate-500">Late Instances</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-indigo-50">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-indigo-600">{summary.overview?.wfh_count}</p>
+                      <p className="text-xs text-slate-500">WFH Count</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-purple-50">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-purple-600">{summary.overview?.leave_count}</p>
+                      <p className="text-xs text-slate-500">Leave Count</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-teal-50">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold text-teal-600">{summary.overview?.punctuality_champions_count}</p>
+                      <p className="text-xs text-slate-500">Punctual</p>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Date Preset */}
-                  <Select value={dateRangePreset} onValueChange={setDateRangePreset}>
-                    <SelectTrigger className="w-[160px]" data-testid="date-preset">
-                      <SelectValue placeholder="Select period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="current_month">Current Month</SelectItem>
-                      <SelectItem value="last_month">Last Month</SelectItem>
-                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                      <SelectItem value="year_to_date">Year to Date</SelectItem>
-                      <SelectItem value="custom">Custom Range</SelectItem>
-                    </SelectContent>
-                  </Select>
 
-                  {/* Custom Date Inputs */}
-                  {dateRangePreset === 'custom' && (
-                    <>
-                      <Input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        className="w-[140px]"
-                        data-testid="from-date"
-                      />
-                      <span className="text-slate-400">to</span>
-                      <Input
-                        type="date"
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
-                        className="w-[140px]"
-                        data-testid="to-date"
-                      />
-                    </>
-                  )}
-
-                  {/* Employee Filter */}
-                  <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                    <SelectTrigger className="w-[200px]" data-testid="filter-employee">
-                      <SelectValue placeholder="All Employees" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Employees</SelectItem>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.employee_id} value={emp.employee_id}>
-                          {emp.first_name} {emp.last_name} ({emp.emp_code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Button variant="outline" onClick={() => { fetchHistoryAttendance(); fetchSummary(); }} data-testid="refresh-history">
-                    <RefreshCw className={`w-4 h-4 mr-2 ${historyLoading || summaryLoading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
+                {/* Key Insights */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-slate-600">Most Absent Day</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {summary.key_metrics?.most_absent_day?.date ? (
+                        <div>
+                          <p className="text-lg font-bold">{new Date(summary.key_metrics.most_absent_day.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+                          <p className="text-sm text-red-600">{summary.key_metrics.most_absent_day.absent_count} absent ({summary.key_metrics.most_absent_day.absent_pct}%)</p>
+                        </div>
+                      ) : <p className="text-slate-400">No data</p>}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-slate-600">Avg Working Hours</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-lg font-bold">{summary.overview?.avg_daily_hours}h</p>
+                      <p className="text-sm text-slate-500">per employee per day</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-slate-600">Chronic Absentees</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-lg font-bold text-red-600">{summary.overview?.chronic_absentees_count}</p>
+                      <p className="text-sm text-slate-500">employees with 5+ absences</p>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              {/* Tabs for Records vs Summary */}
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="flex items-center justify-between mb-4">
-                  <TabsList>
-                    <TabsTrigger value="records" className="gap-2">
-                      <CalendarIcon className="w-4 h-4" />
-                      Records
-                    </TabsTrigger>
-                    <TabsTrigger value="summary" className="gap-2">
-                      <BarChart3 className="w-4 h-4" />
-                      Summary & Analytics
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  {/* Export Button */}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={activeTab === 'records' ? exportRecordsToExcel : exportSummaryToExcel}
-                    className="gap-2"
-                    data-testid="export-excel"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    Export to Excel
-                  </Button>
+            </TabsContent>
+
+            {/* Patterns Tab */}
+            <TabsContent value="patterns">
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card className={summary.patterns?.monday_blues ? 'border-amber-300 bg-amber-50' : ''}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        Monday Blues
+                        {summary.patterns?.monday_blues && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{summary.patterns?.monday_absence_rate}%</p>
+                      <p className="text-xs text-slate-500">absence rate on Mondays</p>
+                      {summary.patterns?.monday_blues && <p className="text-xs text-amber-600 mt-1">Higher than other days!</p>}
+                    </CardContent>
+                  </Card>
+                  <Card className={summary.patterns?.friday_flight ? 'border-amber-300 bg-amber-50' : ''}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        Friday Flight
+                        {summary.patterns?.friday_flight && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{summary.patterns?.friday_absence_rate}%</p>
+                      <p className="text-xs text-slate-500">absence rate on Fridays</p>
+                      {summary.patterns?.friday_flight && <p className="text-xs text-amber-600 mt-1">Higher than other days!</p>}
+                    </CardContent>
+                  </Card>
+                  <Card className={summary.patterns?.pre_holiday_pattern ? 'border-amber-300 bg-amber-50' : ''}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        Pre-Holiday
+                        {summary.patterns?.pre_holiday_pattern && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{summary.patterns?.pre_holiday_absence_rate}%</p>
+                      <p className="text-xs text-slate-500">absence before holidays</p>
+                      {summary.patterns?.pre_holiday_pattern && <p className="text-xs text-amber-600 mt-1">Pattern detected!</p>}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Other Days</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{summary.patterns?.other_days_absence_rate}%</p>
+                      <p className="text-xs text-slate-500">baseline absence rate</p>
+                    </CardContent>
+                  </Card>
                 </div>
 
-                {/* Records Tab */}
-                <TabsContent value="records">
-                  {historyLoading ? (
-                    <div className="text-center py-12">
-                      <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-                      <p className="text-slate-500">Loading attendance history...</p>
-                    </div>
-                  ) : historyAttendance.length > 0 ? (
+                {/* High Absence Days */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">High Absence Days</CardTitle>
+                    <CardDescription>Days with 4+ employees absent or &gt;10% absence</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {summary.key_metrics?.high_absence_days?.length > 0 ? (
+                      <div className="space-y-2">
+                        {summary.key_metrics.high_absence_days.map((day, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 bg-red-50 rounded">
+                            <span>{new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                            <Badge variant="destructive">{day.absent_count} absent ({day.absent_pct}%)</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 text-center py-4">No high absence days in this period</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Employee Insights Tab */}
+            <TabsContent value="employees">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Most Late */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-amber-500" />
+                      Most Late Arrivals
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {summary.rankings?.most_late?.filter(e => e.late_count > 0).length > 0 ? (
+                      <div className="space-y-2">
+                        {summary.rankings.most_late.filter(e => e.late_count > 0).map((emp, idx) => (
+                          <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-amber-500 text-white' : 'bg-slate-200'}`}>{idx + 1}</span>
+                              <div>
+                                <p className="font-medium text-sm">{emp.name}</p>
+                                <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                              </div>
+                            </div>
+                            <Badge variant="destructive">{emp.late_count}x</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-slate-500 text-center py-4">No late arrivals</p>}
+                  </CardContent>
+                </Card>
+
+                {/* Chronic Absentees */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <XCircle className="w-5 h-5 text-red-500" />
+                      Chronic Absentees (5+ days)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {summary.rankings?.chronic_absentees?.length > 0 ? (
+                      <div className="space-y-2">
+                        {summary.rankings.chronic_absentees.map((emp, idx) => (
+                          <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-red-50 rounded">
+                            <div>
+                              <p className="font-medium text-sm">{emp.name}</p>
+                              <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                            </div>
+                            <Badge className="bg-red-100 text-red-700">{emp.absent_days} days</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-slate-500 text-center py-4">No chronic absentees</p>}
+                  </CardContent>
+                </Card>
+
+                {/* Punctuality Champions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Award className="w-5 h-5 text-emerald-500" />
+                      Punctuality Champions
+                    </CardTitle>
+                    <CardDescription>Zero late arrivals and zero absences</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {summary.rankings?.punctuality_champions?.length > 0 ? (
+                      <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                        {summary.rankings.punctuality_champions.map((emp) => (
+                          <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-emerald-50 rounded">
+                            <div className="flex items-center gap-2">
+                              <Award className="w-4 h-4 text-emerald-500" />
+                              <div>
+                                <p className="font-medium text-sm">{emp.name}</p>
+                                <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-emerald-100 text-emerald-700">{emp.present_days} days</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-slate-500 text-center py-4">No punctuality champions yet</p>}
+                  </CardContent>
+                </Card>
+
+                {/* Most Hours */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-blue-500" />
+                      Most Hours Worked
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {summary.rankings?.most_hours?.filter(e => e.total_hours > 0).length > 0 ? (
+                      <div className="space-y-2">
+                        {summary.rankings.most_hours.filter(e => e.total_hours > 0).map((emp, idx) => (
+                          <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-blue-500 text-white' : 'bg-slate-200'}`}>{idx + 1}</span>
+                              <div>
+                                <p className="font-medium text-sm">{emp.name}</p>
+                                <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-blue-100 text-blue-700">{emp.total_hours?.toFixed(1)}h</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-slate-500 text-center py-4">No hour data</p>}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Department Tab */}
+            <TabsContent value="department">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Department Performance</CardTitle>
+                  <CardDescription>Ranked by attendance rate</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {summary.department_analysis?.length > 0 ? (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50">
-                            <TableHead>Date</TableHead>
-                            <TableHead>Employee</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>In Time</TableHead>
-                            <TableHead>Out Time</TableHead>
-                            <TableHead>Hours</TableHead>
-                            <TableHead>Late</TableHead>
+                            <TableHead>Rank</TableHead>
+                            <TableHead>Department</TableHead>
+                            <TableHead className="text-center">Employees</TableHead>
+                            <TableHead className="text-center">Present</TableHead>
+                            <TableHead className="text-center">Absent</TableHead>
+                            <TableHead className="text-center">Late</TableHead>
+                            <TableHead className="text-center">Attendance Rate</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {historyAttendance.map((att, idx) => {
-                            const statusConfigTable = {
-                              present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
-                              wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
-                              absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
-                              leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
-                              holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
-                              weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
-                              tour: { label: 'Tour', className: 'bg-indigo-100 text-indigo-700' },
-                            };
-                            const config = statusConfigTable[att.status] || statusConfigTable.present;
-                            return (
-                              <TableRow key={att.attendance_id || idx}>
-                                <TableCell className="font-medium">
-                                  {new Date(att.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                </TableCell>
-                                <TableCell>
-                                  <div>
-                                    <p className="font-medium">{att.employee_name || att.employee_id}</p>
-                                    <p className="text-xs text-slate-500">{att.emp_code}</p>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={config.className}>{config.label}</Badge>
-                                </TableCell>
-                                <TableCell className="text-slate-600 font-mono">{att.first_in || '-'}</TableCell>
-                                <TableCell className="text-slate-600 font-mono">{att.last_out || '-'}</TableCell>
-                                <TableCell>{att.total_hours ? `${att.total_hours}h` : '-'}</TableCell>
-                                <TableCell>
-                                  {att.is_late ? (
-                                    <Badge variant="destructive" className="text-xs">
-                                      {att.late_minutes ? `${att.late_minutes} min` : 'Late'}
-                                    </Badge>
-                                  ) : (
-                                    <span className="text-slate-400">-</span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
+                          {summary.department_analysis.map((dept, idx) => (
+                            <TableRow key={dept.department}>
+                              <TableCell>
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-emerald-500 text-white' : idx === summary.department_analysis.length - 1 ? 'bg-red-500 text-white' : 'bg-slate-200'}`}>
+                                  {idx + 1}
+                                </span>
+                              </TableCell>
+                              <TableCell className="font-medium">{dept.department}</TableCell>
+                              <TableCell className="text-center">{dept.employees}</TableCell>
+                              <TableCell className="text-center">{dept.present_days}</TableCell>
+                              <TableCell className="text-center">{dept.absent_days}</TableCell>
+                              <TableCell className="text-center">{dept.late_count}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge className={dept.attendance_rate >= 90 ? 'bg-emerald-100 text-emerald-700' : dept.attendance_rate >= 75 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}>
+                                  {dept.attendance_rate}%
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
                     </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-500 mb-2">No attendance records found</p>
-                      <p className="text-xs text-slate-400">Try adjusting the date range or filters</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                {/* Summary Tab */}
-                <TabsContent value="summary">
-                  {summaryLoading ? (
-                    <div className="text-center py-12">
-                      <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-                      <p className="text-slate-500">Calculating summary...</p>
-                    </div>
-                  ) : summary ? (
-                    <div className="space-y-6">
-                      {/* Period Info */}
-                      <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                        <strong>Period:</strong> {summary.from_date} to {summary.to_date} | 
-                        <strong> Working Days:</strong> {summary.working_days_in_range || 0} | 
-                        <strong> Holidays:</strong> {summary.holidays_in_range || 0} | 
-                        <strong> Employees:</strong> {summary.overall_summary?.employees_tracked || 0}
-                      </div>
-                      
-                      {/* Overall Stats */}
-                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                        <Card className="bg-emerald-50">
-                          <CardContent className="p-4 text-center">
-                            <p className="text-3xl font-bold text-emerald-600">{summary.overall_summary?.total_present || 0}</p>
-                            <p className="text-sm text-slate-500">Present Days</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-red-50">
-                          <CardContent className="p-4 text-center">
-                            <p className="text-3xl font-bold text-red-600">{summary.overall_summary?.total_absent || 0}</p>
-                            <p className="text-sm text-slate-500">Absent Days</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-amber-50">
-                          <CardContent className="p-4 text-center">
-                            <p className="text-3xl font-bold text-amber-600">{summary.overall_summary?.total_late || 0}</p>
-                            <p className="text-sm text-slate-500">Late Instances</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-blue-50">
-                          <CardContent className="p-4 text-center">
-                            <p className="text-3xl font-bold text-blue-600">{summary.overall_summary?.total_wfh || 0}</p>
-                            <p className="text-sm text-slate-500">WFH Days</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-purple-50">
-                          <CardContent className="p-4 text-center">
-                            <p className="text-3xl font-bold text-purple-600">{summary.overall_summary?.total_leave || 0}</p>
-                            <p className="text-sm text-slate-500">Leave Days</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-slate-50 border-emerald-200">
-                          <CardContent className="p-4 text-center">
-                            <p className="text-3xl font-bold text-emerald-600">{summary.overall_summary?.perfect_attendance_count || 0}</p>
-                            <p className="text-sm text-slate-500">Perfect Attendance</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      {/* Rankings Grid */}
-                      <div className="grid md:grid-cols-2 gap-6">
-                        {/* Most Late */}
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center gap-2">
-                              <AlertTriangle className="w-5 h-5 text-amber-500" />
-                              <CardTitle className="text-base">Most Late (Top 10)</CardTitle>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {summary.rankings?.most_late?.filter(e => e.late_count > 0).length > 0 ? (
-                              <div className="space-y-2">
-                                {summary.rankings.most_late.filter(e => e.late_count > 0).slice(0, 10).map((emp, idx) => (
-                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                                    <div className="flex items-center gap-3">
-                                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-amber-500 text-white' : 'bg-slate-200'}`}>
-                                        {idx + 1}
-                                      </span>
-                                      <div>
-                                        <p className="font-medium text-sm">{emp.name}</p>
-                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
-                                      </div>
-                                    </div>
-                                    <Badge variant="destructive">{emp.late_count} times</Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-slate-500 text-center py-4">No late arrivals in this period</p>
-                            )}
-                          </CardContent>
-                        </Card>
-
-                        {/* Most Absent */}
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center gap-2">
-                              <XCircle className="w-5 h-5 text-red-500" />
-                              <CardTitle className="text-base">Most Absent (Top 10)</CardTitle>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {summary.rankings?.most_absent?.filter(e => e.absent_days > 0).length > 0 ? (
-                              <div className="space-y-2">
-                                {summary.rankings.most_absent.filter(e => e.absent_days > 0).slice(0, 10).map((emp, idx) => (
-                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                                    <div className="flex items-center gap-3">
-                                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-red-500 text-white' : 'bg-slate-200'}`}>
-                                        {idx + 1}
-                                      </span>
-                                      <div>
-                                        <p className="font-medium text-sm">{emp.name}</p>
-                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
-                                      </div>
-                                    </div>
-                                    <Badge className="bg-red-100 text-red-700">{emp.absent_days} days</Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-slate-500 text-center py-4">No absences in this period</p>
-                            )}
-                          </CardContent>
-                        </Card>
-
-                        {/* Perfect Attendance */}
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center gap-2">
-                              <Award className="w-5 h-5 text-emerald-500" />
-                              <CardTitle className="text-base">Perfect Attendance</CardTitle>
-                            </div>
-                            <CardDescription>No absences and no late arrivals</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            {summary.rankings?.perfect_attendance?.length > 0 ? (
-                              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                {summary.rankings.perfect_attendance.map((emp, idx) => (
-                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-emerald-50 rounded">
-                                    <div className="flex items-center gap-3">
-                                      <Award className="w-5 h-5 text-emerald-500" />
-                                      <div>
-                                        <p className="font-medium text-sm">{emp.name}</p>
-                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
-                                      </div>
-                                    </div>
-                                    <Badge className="bg-emerald-100 text-emerald-700">{emp.present_days} days</Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-slate-500 text-center py-4">No perfect attendance in this period</p>
-                            )}
-                          </CardContent>
-                        </Card>
-
-                        {/* Most Hours */}
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center gap-2">
-                              <TrendingUp className="w-5 h-5 text-blue-500" />
-                              <CardTitle className="text-base">Most Hours Worked (Top 10)</CardTitle>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {summary.rankings?.most_hours?.filter(e => e.total_hours > 0).length > 0 ? (
-                              <div className="space-y-2">
-                                {summary.rankings.most_hours.filter(e => e.total_hours > 0).slice(0, 10).map((emp, idx) => (
-                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                                    <div className="flex items-center gap-3">
-                                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-blue-500 text-white' : 'bg-slate-200'}`}>
-                                        {idx + 1}
-                                      </span>
-                                      <div>
-                                        <p className="font-medium text-sm">{emp.name}</p>
-                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
-                                      </div>
-                                    </div>
-                                    <Badge className="bg-blue-100 text-blue-700">{emp.total_hours.toFixed(1)}h</Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-slate-500 text-center py-4">No hour data available</p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      {/* All Employee Stats Table */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base">All Employee Statistics</CardTitle>
-                          <CardDescription>Detailed breakdown for each employee in the selected period</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="overflow-x-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="bg-slate-50">
-                                  <TableHead>Employee</TableHead>
-                                  <TableHead className="text-center">Present</TableHead>
-                                  <TableHead className="text-center">Absent</TableHead>
-                                  <TableHead className="text-center">Late</TableHead>
-                                  <TableHead className="text-center">WFH</TableHead>
-                                  <TableHead className="text-center">Leave</TableHead>
-                                  <TableHead className="text-center">Total Hours</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {summary.employee_stats?.map((emp) => (
-                                  <TableRow key={emp.employee_id}>
-                                    <TableCell>
-                                      <div>
-                                        <p className="font-medium">{emp.name}</p>
-                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      <Badge className="bg-emerald-100 text-emerald-700">{emp.present_days}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      {emp.absent_days > 0 ? (
-                                        <Badge className="bg-red-100 text-red-700">{emp.absent_days}</Badge>
-                                      ) : (
-                                        <span className="text-slate-400">0</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      {emp.late_count > 0 ? (
-                                        <Badge variant="destructive">{emp.late_count}</Badge>
-                                      ) : (
-                                        <span className="text-slate-400">0</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      {emp.wfh_days > 0 ? (
-                                        <Badge className="bg-blue-100 text-blue-700">{emp.wfh_days}</Badge>
-                                      ) : (
-                                        <span className="text-slate-400">0</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      {emp.leave_days > 0 ? (
-                                        <Badge className="bg-purple-100 text-purple-700">{emp.leave_days}</Badge>
-                                      ) : (
-                                        <span className="text-slate-400">0</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono">
-                                      {emp.total_hours > 0 ? `${emp.total_hours.toFixed(1)}h` : '-'}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-500">Select a date range to view summary</p>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+                  ) : <p className="text-slate-500 text-center py-8">No department data available</p>}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
-      )}
-
-      {/* My Attendance View - Calendar & Details */}
-      {viewMode === 'my' && (
-      <div className="grid lg:grid-cols-12 gap-6">
-        {/* Calendar */}
-        <Card className="lg:col-span-5" data-testid="calendar-card">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                {selectedDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-              </CardTitle>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth(-1)}>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth(1)}>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              month={selectedDate}
-              onMonthChange={setSelectedDate}
-              className="rounded-md"
-              modifiers={{
-                present: attendance.filter(a => a.status === 'present').map(a => new Date(a.date)),
-                absent: attendance.filter(a => a.status === 'absent').map(a => new Date(a.date)),
-                wfh: attendance.filter(a => a.status === 'wfh').map(a => new Date(a.date)),
-              }}
-              modifiersClassNames={{
-                present: 'bg-emerald-100 text-emerald-900',
-                absent: 'bg-red-100 text-red-900',
-                wfh: 'bg-blue-100 text-blue-900',
-              }}
-            />
-            {/* Legend */}
-            <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                <span className="text-slate-600">Present</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-slate-600">WFH</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span className="text-slate-600">Absent</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Attendance Details */}
-        <Card className="lg:col-span-7" data-testid="attendance-list-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Attendance Log
-            </CardTitle>
-            <CardDescription>Your attendance records for this month</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto">
-              {attendance.length > 0 ? (
-                attendance
-                  .sort((a, b) => new Date(b.date) - new Date(a.date))
-                  .map((record) => {
-                    const status = getStatusIndicator(record.status);
-                    const StatusIcon = status.icon;
-                    return (
-                      <div 
-                        key={record.attendance_id}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                        data-testid={`attendance-record-${record.date}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full ${status.bg} flex items-center justify-center`}>
-                            <StatusIcon className={`w-5 h-5 ${status.color}`} />
-                          </div>
-                          <div>
-                            <p className="font-medium text-slate-900">
-                              {new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
-                            </p>
-                            <p className="text-sm text-slate-500">
-                              {record.first_in || '--:--'} - {record.last_out || '--:--'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant="outline" className="capitalize mb-1">
-                            {record.status.replace('_', ' ')}
-                          </Badge>
-                          {record.is_late && (
-                            <Badge variant="destructive" className="ml-1 text-xs">Late</Badge>
-                          )}
-                          {record.total_hours && (
-                            <p className="text-sm text-slate-600">{record.total_hours} hrs</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-              ) : (
-                <div className="text-center py-8">
-                  <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-500">No attendance records for this month</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
       )}
     </div>
   );
