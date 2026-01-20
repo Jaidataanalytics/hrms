@@ -516,12 +516,16 @@ const AttendancePage = () => {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
+              <TabsTrigger value="calendar" className="gap-2">
+                <CalendarIcon className="w-4 h-4" />
+                Calendar
+              </TabsTrigger>
               <TabsTrigger value="overview" className="gap-2">
                 <BarChart3 className="w-4 h-4" />
                 Overview
               </TabsTrigger>
               <TabsTrigger value="patterns" className="gap-2">
-                <CalendarIcon className="w-4 h-4" />
+                <TrendingUp className="w-4 h-4" />
                 Patterns
               </TabsTrigger>
               <TabsTrigger value="employees" className="gap-2">
@@ -533,6 +537,215 @@ const AttendancePage = () => {
                 Department
               </TabsTrigger>
             </TabsList>
+
+            {/* Calendar Tab */}
+            <TabsContent value="calendar">
+              {calendarLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Calendar Grid */}
+                  <div className="lg:col-span-2">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <CalendarIcon className="w-5 h-5" />
+                          Attendance Calendar
+                        </CardTitle>
+                        <CardDescription>
+                          Click on a date to see detailed attendance breakdown
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-7 gap-1 mb-2 text-center">
+                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                            <div key={day} className="text-xs font-semibold text-slate-500 py-2">{day}</div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-7 gap-1">
+                          {/* Add padding for the first day */}
+                          {calendarData.length > 0 && (() => {
+                            const firstDate = new Date(calendarData[0].date);
+                            const padding = [];
+                            for (let i = 0; i < firstDate.getDay(); i++) {
+                              padding.push(<div key={`pad-${i}`} className="aspect-square"></div>);
+                            }
+                            return padding;
+                          })()}
+                          
+                          {calendarData.map((day) => {
+                            const isSelected = selectedCalendarDate === day.date;
+                            const isSunday = day.is_sunday;
+                            const isHoliday = day.is_holiday;
+                            const hasData = !isSunday && !isHoliday;
+                            
+                            return (
+                              <div
+                                key={day.date}
+                                onClick={() => hasData && handleDateClick(day)}
+                                className={`
+                                  aspect-square p-1 rounded-lg border text-center flex flex-col justify-center
+                                  ${hasData ? 'cursor-pointer hover:shadow-md transition-shadow' : 'cursor-default'}
+                                  ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}
+                                  ${isSunday ? 'bg-slate-100' : ''}
+                                  ${isHoliday ? 'bg-orange-50 border-orange-200' : ''}
+                                  ${hasData && !isSelected ? 'bg-white hover:bg-slate-50' : ''}
+                                `}
+                                data-testid={`calendar-day-${day.date}`}
+                              >
+                                <div className="text-xs font-semibold text-slate-700 mb-1">
+                                  {new Date(day.date).getDate()}
+                                </div>
+                                
+                                {isSunday && (
+                                  <div className="text-[9px] text-slate-400">Sun</div>
+                                )}
+                                
+                                {isHoliday && (
+                                  <div className="text-[9px] text-orange-600 truncate" title={day.holiday_name}>
+                                    {day.holiday_name?.slice(0, 6)}...
+                                  </div>
+                                )}
+                                
+                                {hasData && (
+                                  <div className="flex flex-col gap-0.5 text-[9px]">
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                      <span className="text-emerald-700 font-medium">{day.present_count}</span>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                      <span className="text-amber-700 font-medium">{day.late_count}</span>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                      <span className="text-red-700 font-medium">{day.absent_count}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Legend */}
+                        <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                            <span className="text-sm text-slate-600">Present</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                            <span className="text-sm text-slate-600">Late</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                            <span className="text-sm text-slate-600">Absent</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Day Details Panel */}
+                  <div className="lg:col-span-1">
+                    {selectedDayDetails ? (
+                      <Card className="sticky top-4">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg">
+                            {new Date(selectedDayDetails.date).toLocaleDateString('en-IN', {
+                              weekday: 'long',
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </CardTitle>
+                          <CardDescription>
+                            <div className="flex gap-4 mt-2">
+                              <Badge className="bg-emerald-100 text-emerald-700">{selectedDayDetails.present_count} Present</Badge>
+                              <Badge className="bg-amber-100 text-amber-700">{selectedDayDetails.late_count} Late</Badge>
+                              <Badge className="bg-red-100 text-red-700">{selectedDayDetails.absent_count} Absent</Badge>
+                            </div>
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="max-h-[500px] overflow-y-auto">
+                          {/* Present Employees */}
+                          {selectedDayDetails.present_employees?.length > 0 && (
+                            <div className="mb-4">
+                              <h4 className="text-sm font-semibold text-emerald-700 mb-2 flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4" />
+                                Present ({selectedDayDetails.present_count})
+                              </h4>
+                              <div className="space-y-1 max-h-32 overflow-y-auto">
+                                {selectedDayDetails.present_employees.map((emp, idx) => (
+                                  <div key={idx} className="flex items-center justify-between text-xs p-2 bg-emerald-50 rounded">
+                                    <span className="font-medium truncate flex-1">{emp.name}</span>
+                                    <span className="text-slate-500 ml-2">
+                                      {emp.in_time && `${emp.in_time}`}
+                                      {emp.in_time && emp.out_time && ' - '}
+                                      {emp.out_time && `${emp.out_time}`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Late Employees */}
+                          {selectedDayDetails.late_employees?.length > 0 && (
+                            <div className="mb-4">
+                              <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4" />
+                                Late ({selectedDayDetails.late_count})
+                              </h4>
+                              <div className="space-y-1 max-h-32 overflow-y-auto">
+                                {selectedDayDetails.late_employees.map((emp, idx) => (
+                                  <div key={idx} className="flex items-center justify-between text-xs p-2 bg-amber-50 rounded">
+                                    <span className="font-medium truncate flex-1">{emp.name}</span>
+                                    <span className="text-slate-500 ml-2">
+                                      {emp.in_time && `${emp.in_time}`}
+                                      {emp.in_time && emp.out_time && ' - '}
+                                      {emp.out_time && `${emp.out_time}`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Absent Employees */}
+                          {selectedDayDetails.absent_employees?.length > 0 && (
+                            <div className="mb-4">
+                              <h4 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">
+                                <XCircle className="w-4 h-4" />
+                                Absent ({selectedDayDetails.absent_count})
+                              </h4>
+                              <div className="space-y-1 max-h-32 overflow-y-auto">
+                                {selectedDayDetails.absent_employees.map((emp, idx) => (
+                                  <div key={idx} className="text-xs p-2 bg-red-50 rounded">
+                                    <span className="font-medium">{emp.name}</span>
+                                    {emp.emp_code && <span className="text-slate-400 ml-2">({emp.emp_code})</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Card>
+                        <CardContent className="p-8 text-center">
+                          <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                          <p className="text-slate-500">Select a date to view attendance details</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
 
             {/* Overview Tab */}
             <TabsContent value="overview">
