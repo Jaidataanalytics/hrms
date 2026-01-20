@@ -1376,12 +1376,14 @@ async def get_attendance_summary(
     request: Request,
     from_date: str,
     to_date: str,
-    employee_id: Optional[str] = None
+    employee_id: Optional[str] = None,
+    absence_threshold: Optional[int] = 4,
+    absence_threshold_pct: Optional[int] = 10,
+    chronic_absence_threshold: Optional[int] = 5
 ):
     """
-    Get attendance summary and analytics for a date range.
-    Calculates absent days for working days without punch data.
-    Excludes Sundays and holidays.
+    Get comprehensive attendance analytics for a date range.
+    HR/Admin only for organization view.
     """
     user = await get_current_user(request)
     
@@ -1390,6 +1392,7 @@ async def get_attendance_summary(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     from datetime import datetime, timedelta
+    from collections import defaultdict
     
     # Parse dates
     start_date = datetime.strptime(from_date, "%Y-%m-%d")
@@ -1398,37 +1401,34 @@ async def get_attendance_summary(
     # Get holidays in range
     holidays = await db.holidays.find({
         "date": {"$gte": from_date, "$lte": to_date}
-    }, {"_id": 0, "date": 1}).to_list(100)
-    holiday_dates = set(h["date"] for h in holidays)
+    }, {"_id": 0, "date": 1, "name": 1}).to_list(100)
+    holiday_dates = {h["date"]: h.get("name", "Holiday") for h in holidays}
     
-    # Calculate working days (excluding Sundays and holidays)
+    # Calculate working days with day-of-week info
     working_days = []
+    working_days_by_weekday = defaultdict(list)  # 0=Mon, 4=Fri
+    pre_holiday_days = []
+    
     current = start_date
     while current <= end_date:
         date_str = current.strftime("%Y-%m-%d")
-        # Sunday = 6 in Python's weekday()
-        if current.weekday() != 6 and date_str not in holiday_dates:
+        weekday = current.weekday()
+        
+        # Check if next day is holiday
+        next_day = (current + timedelta(days=1)).strftime("%Y-%m-%d")
+        is_pre_holiday = next_day in holiday_dates
+        
+        if weekday != 6 and date_str not in holiday_dates:  # Not Sunday, not holiday
             working_days.append(date_str)
+            working_days_by_weekday[weekday].append(date_str)
+            if is_pre_holiday:
+                pre_holiday_days.append(date_str)
+        
         current += timedelta(days=1)
     
     total_working_days = len(working_days)
-    
-    # Build query for attendance records
-    query = {"date": {"$gte": from_date, "$lte": to_date}}
-    if employee_id and employee_id != "all":
-        query["employee_id"] = employee_id
-    
-    # Get all attendance in range
-    attendance = await db.attendance.find(query, {"_id": 0}).to_list(50000)
-    
-    # Create attendance lookup: {employee_id: {date: record}}
-    attendance_by_emp = {}
-    for att in attendance:
-        emp_id = att.get("employee_id")
-        date = att.get("date")
-        if emp_id not in attendance_by_emp:
-            attendance_by_emp[emp_id] = {}
-        attendance_by_emp[emp_id][date] = att
+    monday_count = len(working_days_by_weekday[0])
+    friday_count = len(working_days_by_weekday[4])
     
     # Get all active employees
     emp_query = {"is_active": True}
@@ -1440,89 +1440,356 @@ async def get_attendance_summary(
         {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
     ).to_list(1000)
     
-    # Calculate per-employee stats
+    total_employees = len(employees)
+    
+    # Build query for attendance records
+    att_query = {"date": {"$gte": from_date, "$lte": to_date}}
+    if employee_id and employee_id != "all":
+        att_query["employee_id"] = employee_id
+    
+    # Get all attendance in range
+    attendance = await db.attendance.find(att_query, {"_id": 0}).to_list(50000)
+    
+    # Create attendance lookup: {date: {employee_id: record}}
+    attendance_by_date = defaultdict(dict)
+    for att in attendance:
+        attendance_by_date[att.get("date")][att.get("employee_id")] = att
+    
+    # Daily analysis
+    daily_stats = []
+    perfect_days = []
+    high_absence_days = []
+    most_absent_day = {"date": None, "absent_count": 0}
+    
+    # Day-of-week absence tracking
+    monday_absences = 0
+    friday_absences = 0
+    other_day_absences = 0
+    pre_holiday_absences = 0
+    
+    for day in working_days:
+        day_attendance = attendance_by_date.get(day, {})
+        present_count = 0
+        absent_count = 0
+        late_count = 0
+        wfh_count = 0
+        
+        for emp in employees:
+            emp_id = emp.get("employee_id")
+            att = day_attendance.get(emp_id)
+            
+            if att:
+                status = att.get("status", "present")
+                if status == "present":
+                    present_count += 1
+                elif status == "wfh":
+                    wfh_count += 1
+                elif status == "leave":
+                    pass  # Don't count as present or absent
+                else:
+                    present_count += 1
+                
+                if att.get("is_late"):
+                    late_count += 1
+            else:
+                absent_count += 1
+        
+        # Track day-of-week patterns
+        day_date = datetime.strptime(day, "%Y-%m-%d")
+        weekday = day_date.weekday()
+        
+        if weekday == 0:  # Monday
+            monday_absences += absent_count
+        elif weekday == 4:  # Friday
+            friday_absences += absent_count
+        else:
+            other_day_absences += absent_count
+        
+        if day in pre_holiday_days:
+            pre_holiday_absences += absent_count
+        
+        # Check for perfect day
+        if absent_count == 0:
+            perfect_days.append(day)
+        
+        # Check for high absence day
+        absence_pct = (absent_count / total_employees * 100) if total_employees > 0 else 0
+        if absent_count >= absence_threshold or absence_pct >= absence_threshold_pct:
+            high_absence_days.append({
+                "date": day,
+                "absent_count": absent_count,
+                "absent_pct": round(absence_pct, 1)
+            })
+        
+        # Track most absent day
+        if absent_count > most_absent_day["absent_count"]:
+            most_absent_day = {"date": day, "absent_count": absent_count, "absent_pct": round(absence_pct, 1)}
+        
+        daily_stats.append({
+            "date": day,
+            "present": present_count,
+            "absent": absent_count,
+            "wfh": wfh_count,
+            "late": late_count
+        })
+    
+    # Per-employee stats
     employee_stats = []
+    dept_stats = defaultdict(lambda: {"present": 0, "absent": 0, "late": 0, "employees": 0})
+    
     for emp in employees:
         emp_id = emp.get("employee_id")
-        emp_attendance = attendance_by_emp.get(emp_id, {})
+        dept = emp.get("department", "Unknown")
+        dept_stats[dept]["employees"] += 1
         
         stats = {
             "employee_id": emp_id,
             "emp_code": emp.get("emp_code", ""),
             "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
-            "department": emp.get("department", ""),
+            "department": dept,
             "present_days": 0,
             "absent_days": 0,
             "late_count": 0,
-            "wfh_days": 0,
-            "leave_days": 0,
-            "total_hours": 0,
-            "total_late_minutes": 0
+            "wfh_count": 0,
+            "leave_count": 0,
+            "total_hours": 0
         }
         
-        # Check each working day
         for day in working_days:
-            att = emp_attendance.get(day)
+            att = attendance_by_date.get(day, {}).get(emp_id)
             if att:
-                # Has attendance record
                 status = att.get("status", "present")
                 if status == "present":
                     stats["present_days"] += 1
-                elif status == "absent":
-                    stats["absent_days"] += 1
+                    dept_stats[dept]["present"] += 1
                 elif status == "wfh":
-                    stats["wfh_days"] += 1
+                    stats["wfh_count"] += 1
                 elif status == "leave":
-                    stats["leave_days"] += 1
+                    stats["leave_count"] += 1
                 else:
-                    stats["present_days"] += 1  # Default to present if has record
+                    stats["present_days"] += 1
+                    dept_stats[dept]["present"] += 1
                 
                 if att.get("is_late"):
                     stats["late_count"] += 1
-                    stats["total_late_minutes"] += att.get("late_minutes", 0)
+                    dept_stats[dept]["late"] += 1
                 
                 if att.get("total_hours"):
                     stats["total_hours"] += att.get("total_hours", 0)
             else:
-                # No attendance record = absent
                 stats["absent_days"] += 1
+                dept_stats[dept]["absent"] += 1
         
         employee_stats.append(stats)
     
     # Calculate rankings
     most_late = sorted(employee_stats, key=lambda x: x["late_count"], reverse=True)[:10]
     most_absent = sorted(employee_stats, key=lambda x: x["absent_days"], reverse=True)[:10]
-    perfect_attendance = [s for s in employee_stats if s["absent_days"] == 0 and s["late_count"] == 0]
+    chronic_absentees = [s for s in employee_stats if s["absent_days"] >= chronic_absence_threshold]
+    punctuality_champions = [s for s in employee_stats if s["late_count"] == 0 and s["absent_days"] == 0]
     most_hours = sorted(employee_stats, key=lambda x: x["total_hours"], reverse=True)[:10]
     
-    # Overall summary
+    # Calculate totals
     total_present = sum(s["present_days"] for s in employee_stats)
     total_absent = sum(s["absent_days"] for s in employee_stats)
     total_late = sum(s["late_count"] for s in employee_stats)
-    total_wfh = sum(s["wfh_days"] for s in employee_stats)
-    total_leave = sum(s["leave_days"] for s in employee_stats)
+    total_wfh = sum(s["wfh_count"] for s in employee_stats)
+    total_leave = sum(s["leave_count"] for s in employee_stats)
+    total_hours = sum(s["total_hours"] for s in employee_stats)
+    
+    # Attendance rate (excluding WFH)
+    possible_attendance = total_employees * total_working_days
+    attendance_rate = round((total_present / possible_attendance * 100), 1) if possible_attendance > 0 else 0
+    
+    # Average daily attendance
+    avg_daily_attendance = round(total_present / total_working_days, 1) if total_working_days > 0 else 0
+    avg_daily_hours = round(total_hours / total_present, 2) if total_present > 0 else 0
+    
+    # Day-of-week analysis
+    other_days_count = total_working_days - monday_count - friday_count
+    monday_absence_rate = round((monday_absences / (monday_count * total_employees) * 100), 1) if monday_count > 0 else 0
+    friday_absence_rate = round((friday_absences / (friday_count * total_employees) * 100), 1) if friday_count > 0 else 0
+    other_absence_rate = round((other_day_absences / (other_days_count * total_employees) * 100), 1) if other_days_count > 0 else 0
+    pre_holiday_absence_rate = round((pre_holiday_absences / (len(pre_holiday_days) * total_employees) * 100), 1) if pre_holiday_days else 0
+    
+    # Department ranking
+    dept_ranking = []
+    for dept, stats in dept_stats.items():
+        possible = stats["employees"] * total_working_days
+        rate = round((stats["present"] / possible * 100), 1) if possible > 0 else 0
+        dept_ranking.append({
+            "department": dept,
+            "employees": stats["employees"],
+            "present_days": stats["present"],
+            "absent_days": stats["absent"],
+            "late_count": stats["late"],
+            "attendance_rate": rate
+        })
+    
+    dept_ranking = sorted(dept_ranking, key=lambda x: x["attendance_rate"], reverse=True)
+    
+    # Attendance trend (compare first half vs second half)
+    mid_point = len(daily_stats) // 2
+    if mid_point > 0:
+        first_half_present = sum(d["present"] for d in daily_stats[:mid_point])
+        second_half_present = sum(d["present"] for d in daily_stats[mid_point:])
+        first_half_avg = first_half_present / mid_point if mid_point > 0 else 0
+        second_half_avg = second_half_present / (len(daily_stats) - mid_point) if (len(daily_stats) - mid_point) > 0 else 0
+        
+        if second_half_avg > first_half_avg * 1.05:
+            trend = "improving"
+        elif second_half_avg < first_half_avg * 0.95:
+            trend = "declining"
+        else:
+            trend = "stable"
+    else:
+        trend = "insufficient_data"
     
     return {
         "from_date": from_date,
         "to_date": to_date,
         "working_days_in_range": total_working_days,
         "holidays_in_range": len(holiday_dates),
-        "overall_summary": {
-            "total_present": total_present,
-            "total_absent": total_absent,
-            "total_late": total_late,
-            "total_wfh": total_wfh,
-            "total_leave": total_leave,
-            "employees_tracked": len(employee_stats),
-            "perfect_attendance_count": len(perfect_attendance)
+        "total_employees": total_employees,
+        
+        "overview": {
+            "attendance_rate": attendance_rate,
+            "avg_daily_attendance": avg_daily_attendance,
+            "avg_daily_hours": avg_daily_hours,
+            "perfect_days_count": len(perfect_days),
+            "high_absence_days_count": len(high_absence_days),
+            "late_instances": total_late,
+            "wfh_count": total_wfh,
+            "leave_count": total_leave,
+            "punctuality_champions_count": len(punctuality_champions),
+            "chronic_absentees_count": len(chronic_absentees),
+            "trend": trend
         },
+        
+        "key_metrics": {
+            "most_absent_day": most_absent_day,
+            "perfect_days": perfect_days[:10],
+            "high_absence_days": high_absence_days[:10]
+        },
+        
+        "patterns": {
+            "monday_absence_rate": monday_absence_rate,
+            "friday_absence_rate": friday_absence_rate,
+            "other_days_absence_rate": other_absence_rate,
+            "pre_holiday_absence_rate": pre_holiday_absence_rate,
+            "monday_blues": monday_absence_rate > other_absence_rate * 1.2,
+            "friday_flight": friday_absence_rate > other_absence_rate * 1.2,
+            "pre_holiday_pattern": pre_holiday_absence_rate > other_absence_rate * 1.2
+        },
+        
         "rankings": {
             "most_late": most_late,
             "most_absent": most_absent,
-            "perfect_attendance": perfect_attendance[:10],
+            "chronic_absentees": chronic_absentees[:10],
+            "punctuality_champions": punctuality_champions[:10],
             "most_hours": most_hours
         },
+        
+        "department_analysis": dept_ranking,
+        
         "employee_stats": employee_stats
+    }
+
+
+@api_router.get("/attendance/my-summary")
+async def get_my_attendance_summary(
+    request: Request,
+    from_date: str,
+    to_date: str
+):
+    """
+    Get personal attendance summary for logged-in employee.
+    """
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="No employee linked to this user")
+    
+    from datetime import datetime, timedelta
+    
+    # Parse dates
+    start_date = datetime.strptime(from_date, "%Y-%m-%d")
+    end_date = datetime.strptime(to_date, "%Y-%m-%d")
+    
+    # Get holidays
+    holidays = await db.holidays.find({
+        "date": {"$gte": from_date, "$lte": to_date}
+    }, {"_id": 0, "date": 1}).to_list(100)
+    holiday_dates = set(h["date"] for h in holidays)
+    
+    # Calculate working days
+    working_days = []
+    current = start_date
+    while current <= end_date:
+        date_str = current.strftime("%Y-%m-%d")
+        if current.weekday() != 6 and date_str not in holiday_dates:
+            working_days.append(date_str)
+        current += timedelta(days=1)
+    
+    # Get my attendance
+    attendance = await db.attendance.find({
+        "employee_id": employee_id,
+        "date": {"$gte": from_date, "$lte": to_date}
+    }, {"_id": 0}).to_list(500)
+    
+    attendance_by_date = {a["date"]: a for a in attendance}
+    
+    # Calculate stats
+    present_days = 0
+    absent_days = 0
+    late_count = 0
+    wfh_count = 0
+    leave_count = 0
+    total_hours = 0
+    total_late_minutes = 0
+    
+    for day in working_days:
+        att = attendance_by_date.get(day)
+        if att:
+            status = att.get("status", "present")
+            if status == "present":
+                present_days += 1
+            elif status == "wfh":
+                wfh_count += 1
+            elif status == "leave":
+                leave_count += 1
+            else:
+                present_days += 1
+            
+            if att.get("is_late"):
+                late_count += 1
+                total_late_minutes += att.get("late_minutes", 0)
+            
+            if att.get("total_hours"):
+                total_hours += att.get("total_hours", 0)
+        else:
+            absent_days += 1
+    
+    attendance_rate = round((present_days / len(working_days) * 100), 1) if working_days else 0
+    avg_hours = round(total_hours / present_days, 2) if present_days > 0 else 0
+    
+    return {
+        "from_date": from_date,
+        "to_date": to_date,
+        "working_days": len(working_days),
+        "summary": {
+            "present_days": present_days,
+            "absent_days": absent_days,
+            "late_count": late_count,
+            "wfh_count": wfh_count,
+            "leave_count": leave_count,
+            "attendance_rate": attendance_rate,
+            "total_hours": round(total_hours, 2),
+            "avg_hours_per_day": avg_hours,
+            "total_late_minutes": total_late_minutes
+        },
+        "attendance_records": attendance
     }
 
 
