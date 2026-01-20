@@ -1793,6 +1793,131 @@ async def get_my_attendance_summary(
     }
 
 
+@api_router.get("/attendance/calendar-data")
+async def get_attendance_calendar_data(
+    request: Request,
+    from_date: str,
+    to_date: str
+):
+    """
+    Get attendance data for calendar view.
+    Returns daily counts of present, absent, and late employees.
+    HR/Admin only.
+    """
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "finance", "manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get all attendance records in the date range
+    attendance_records = await db.attendance.find({
+        "date": {"$gte": from_date, "$lte": to_date}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Get all active employees for absent calculation
+    employees = await db.employees.find({"is_active": True}, {"_id": 0, "employee_id": 1}).to_list(1000)
+    employee_ids = {e["employee_id"] for e in employees}
+    total_employees = len(employee_ids)
+    
+    # Get holidays in range
+    holidays = await db.holidays.find({
+        "date": {"$gte": from_date, "$lte": to_date}
+    }, {"_id": 0, "date": 1, "name": 1}).to_list(100)
+    holiday_dates = {h["date"]: h["name"] for h in holidays}
+    
+    # Group attendance by date
+    from collections import defaultdict
+    daily_data = defaultdict(lambda: {"present": [], "absent": [], "late": []})
+    
+    for record in attendance_records:
+        date = record.get("date")
+        emp_id = record.get("employee_id")
+        is_late = record.get("is_late", False)
+        first_in = record.get("first_in", "")
+        last_out = record.get("last_out", "")
+        
+        # Get employee name
+        emp = await db.employees.find_one({"employee_id": emp_id}, {"_id": 0, "first_name": 1, "last_name": 1, "emp_code": 1})
+        emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip() if emp else emp_id
+        emp_code = emp.get("emp_code", "") if emp else ""
+        
+        emp_data = {
+            "employee_id": emp_id,
+            "name": emp_name,
+            "emp_code": emp_code,
+            "in_time": first_in,
+            "out_time": last_out
+        }
+        
+        if is_late:
+            daily_data[date]["late"].append(emp_data)
+        else:
+            daily_data[date]["present"].append(emp_data)
+    
+    # Calculate absent for each date (working days only)
+    from datetime import datetime, timedelta
+    
+    start = datetime.strptime(from_date, "%Y-%m-%d")
+    end = datetime.strptime(to_date, "%Y-%m-%d")
+    current = start
+    
+    calendar_data = []
+    
+    while current <= end:
+        date_str = current.strftime("%Y-%m-%d")
+        is_sunday = current.weekday() == 6
+        is_holiday = date_str in holiday_dates
+        
+        day_info = {
+            "date": date_str,
+            "day_name": current.strftime("%A"),
+            "is_sunday": is_sunday,
+            "is_holiday": is_holiday,
+            "holiday_name": holiday_dates.get(date_str, ""),
+            "present_count": 0,
+            "late_count": 0,
+            "absent_count": 0,
+            "present_employees": [],
+            "late_employees": [],
+            "absent_employees": []
+        }
+        
+        if not is_sunday and not is_holiday:
+            # It's a working day
+            present_set = {emp["employee_id"] for emp in daily_data[date_str]["present"]}
+            late_set = {emp["employee_id"] for emp in daily_data[date_str]["late"]}
+            all_present_ids = present_set | late_set
+            absent_ids = employee_ids - all_present_ids
+            
+            day_info["present_count"] = len(daily_data[date_str]["present"])
+            day_info["late_count"] = len(daily_data[date_str]["late"])
+            day_info["absent_count"] = len(absent_ids)
+            day_info["present_employees"] = daily_data[date_str]["present"]
+            day_info["late_employees"] = daily_data[date_str]["late"]
+            
+            # Build absent employee list
+            for emp_id in absent_ids:
+                emp = await db.employees.find_one({"employee_id": emp_id}, {"_id": 0, "first_name": 1, "last_name": 1, "emp_code": 1})
+                if emp:
+                    day_info["absent_employees"].append({
+                        "employee_id": emp_id,
+                        "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
+                        "emp_code": emp.get("emp_code", ""),
+                        "in_time": "",
+                        "out_time": ""
+                    })
+        
+        calendar_data.append(day_info)
+        current += timedelta(days=1)
+    
+    return {
+        "from_date": from_date,
+        "to_date": to_date,
+        "total_employees": total_employees,
+        "calendar_data": calendar_data
+    }
+
+
 # ==================== HOLIDAY MANAGEMENT ====================
 
 @api_router.get("/holidays")
