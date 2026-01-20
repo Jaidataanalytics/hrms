@@ -145,7 +145,7 @@ async def update_attendance_record(
     Returns:
         True if successful
     """
-    if not db:
+    if db is None:
         return False
     
     try:
