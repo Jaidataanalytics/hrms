@@ -108,6 +108,12 @@ const PayrollPage = () => {
   const [salaryChangeRequests, setSalaryChangeRequests] = useState([]);
   const [salaryHistory, setSalaryHistory] = useState([]);
   const [showSalaryHistory, setShowSalaryHistory] = useState(false);
+  
+  // Payroll Details state
+  const [viewPayrollOpen, setViewPayrollOpen] = useState(false);
+  const [selectedPayrollRun, setSelectedPayrollRun] = useState(null);
+  const [payrollDetails, setPayrollDetails] = useState(null);
+  const [loadingPayrollDetails, setLoadingPayrollDetails] = useState(false);
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance' || user?.role === 'hr_executive';
   const canApproveSalary = user?.role === 'super_admin' || user?.role === 'finance';
