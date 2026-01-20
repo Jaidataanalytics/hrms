@@ -834,7 +834,12 @@ const PayrollPage = () => {
                     <TableBody>
                       {payrollRuns.length > 0 ? (
                         payrollRuns.map((run) => (
-                          <TableRow key={run.payroll_id}>
+                          <TableRow 
+                            key={run.payroll_id}
+                            className={`${(run.status === 'processed' || run.status === 'locked') ? 'cursor-pointer hover:bg-slate-100' : ''}`}
+                            onClick={() => (run.status === 'processed' || run.status === 'locked') && handleViewPayroll(run)}
+                            data-testid={`payroll-run-${run.payroll_id}`}
+                          >
                             <TableCell className="font-medium">
                               {getMonthName(run.month)} {run.year}
                             </TableCell>
@@ -846,29 +851,43 @@ const PayrollPage = () => {
                                 {run.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right">
-                              {run.status === 'draft' && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleProcessPayroll(run.payroll_id)}
-                                  disabled={processing}
-                                  className="gap-1"
-                                >
-                                  <Play className="w-3 h-3" />
-                                  Process
-                                </Button>
-                              )}
-                              {run.status === 'processed' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleLockPayroll(run.payroll_id)}
-                                  className="gap-1"
-                                >
-                                  <Lock className="w-3 h-3" />
-                                  Lock
-                                </Button>
-                              )}
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end gap-2">
+                                {(run.status === 'processed' || run.status === 'locked') && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleViewPayroll(run)}
+                                    className="gap-1"
+                                    data-testid={`view-payroll-${run.payroll_id}`}
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    View
+                                  </Button>
+                                )}
+                                {run.status === 'draft' && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleProcessPayroll(run.payroll_id)}
+                                    disabled={processing}
+                                    className="gap-1"
+                                  >
+                                    <Play className="w-3 h-3" />
+                                    Process
+                                  </Button>
+                                )}
+                                {run.status === 'processed' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleLockPayroll(run.payroll_id)}
+                                    className="gap-1"
+                                  >
+                                    <Lock className="w-3 h-3" />
+                                    Lock
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
