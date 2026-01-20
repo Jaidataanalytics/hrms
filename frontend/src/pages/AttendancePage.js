@@ -37,7 +37,11 @@ import {
   Users,
   User,
   Search,
-  Download
+  Download,
+  TrendingUp,
+  Award,
+  AlertTriangle,
+  BarChart3
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
@@ -46,29 +50,72 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 const AttendancePage = () => {
   const { user } = useAuth();
   
-  // Define isHR first as it's used in initial state
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
   
   const [attendance, setAttendance] = useState([]);
   const [orgAttendance, setOrgAttendance] = useState(null);
   const [historyAttendance, setHistoryAttendance] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [markingAttendance, setMarkingAttendance] = useState(false);
   const [attendanceSource, setAttendanceSource] = useState('manual');
-  const [viewMode, setViewMode] = useState(isHR ? 'organization' : 'my'); // HR sees organization by default, employees see their own
+  const [viewMode, setViewMode] = useState(isHR ? 'organization' : 'my');
   
-  // HR filters for organization view
-  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
-  const [employeeSearch, setEmployeeSearch] = useState('');
+  // Date range filters
+  const [dateRangePreset, setDateRangePreset] = useState('current_month');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('all');
+  const [activeTab, setActiveTab] = useState('records');
 
   const currentMonth = selectedDate.getMonth() + 1;
   const currentYear = selectedDate.getFullYear();
   const todayStr = new Date().toISOString().split('T')[0];
+
+  // Calculate dates based on preset
+  const getDateRange = (preset) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    
+    switch (preset) {
+      case 'current_month':
+        return {
+          from: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+          to: today.toISOString().split('T')[0]
+        };
+      case 'last_month':
+        const lastMonth = month === 0 ? 11 : month - 1;
+        const lastYear = month === 0 ? year - 1 : year;
+        const lastDay = new Date(lastYear, lastMonth + 1, 0).getDate();
+        return {
+          from: `${lastYear}-${String(lastMonth + 1).padStart(2, '0')}-01`,
+          to: `${lastYear}-${String(lastMonth + 1).padStart(2, '0')}-${lastDay}`
+        };
+      case 'last_3_months':
+        const threeMonthsAgo = new Date(year, month - 3, 1);
+        return {
+          from: threeMonthsAgo.toISOString().split('T')[0],
+          to: today.toISOString().split('T')[0]
+        };
+      case 'year_to_date':
+        return {
+          from: `${year}-01-01`,
+          to: today.toISOString().split('T')[0]
+        };
+      case 'custom':
+        return { from: fromDate, to: toDate };
+      default:
+        return {
+          from: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+          to: today.toISOString().split('T')[0]
+        };
+    }
+  };
 
   useEffect(() => {
     fetchAttendance();
@@ -78,10 +125,19 @@ const AttendancePage = () => {
   }, [currentMonth, currentYear, viewMode]);
 
   useEffect(() => {
-    if (isHR && viewMode === 'organization') {
-      fetchHistoryAttendance();
+    if (dateRangePreset !== 'custom') {
+      const { from, to } = getDateRange(dateRangePreset);
+      setFromDate(from);
+      setToDate(to);
     }
-  }, [filterMonth, filterYear, selectedEmployee, viewMode]);
+  }, [dateRangePreset]);
+
+  useEffect(() => {
+    if (isHR && fromDate && toDate && viewMode === 'organization') {
+      fetchHistoryAttendance();
+      fetchSummary();
+    }
+  }, [fromDate, toDate, selectedEmployee]);
 
   const fetchEmployees = async () => {
     try {
@@ -99,11 +155,13 @@ const AttendancePage = () => {
   };
 
   const fetchHistoryAttendance = async () => {
+    if (!fromDate || !toDate) return;
+    
     setHistoryLoading(true);
     try {
       const params = new URLSearchParams({
-        month: filterMonth,
-        year: filterYear
+        from_date: fromDate,
+        to_date: toDate
       });
       if (selectedEmployee && selectedEmployee !== 'all') {
         params.append('employee_id', selectedEmployee);
@@ -125,12 +183,40 @@ const AttendancePage = () => {
     }
   };
 
+  const fetchSummary = async () => {
+    if (!fromDate || !toDate) return;
+    
+    setSummaryLoading(true);
+    try {
+      const params = new URLSearchParams({
+        from_date: fromDate,
+        to_date: toDate
+      });
+      if (selectedEmployee && selectedEmployee !== 'all') {
+        params.append('employee_id', selectedEmployee);
+      }
+      
+      const response = await fetch(
+        `${API_URL}/attendance/summary?${params}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSummary(data);
+      }
+    } catch (error) {
+      console.error('Error fetching summary:', error);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   const fetchAttendance = async () => {
     setLoading(true);
     try {
       const authHeaders = getAuthHeaders();
       
-      // Always fetch organization data for the summary cards
       const orgResponse = await fetch(
         `${API_URL}/attendance/organization?month=${currentMonth}&year=${currentYear}&date=${todayStr}`,
         { credentials: 'include', headers: authHeaders }
@@ -141,7 +227,6 @@ const AttendancePage = () => {
         setOrgAttendance(orgData);
       }
       
-      // Also fetch personal attendance
       const myResponse = await fetch(
         `${API_URL}/attendance/my?month=${currentMonth}&year=${currentYear}`,
         { credentials: 'include', headers: authHeaders }
@@ -184,7 +269,6 @@ const AttendancePage = () => {
   const handleMarkAttendance = async (punchType) => {
     setMarkingAttendance(true);
     try {
-      // Get geo-location
       toast.info('Getting your location...');
       const geoLocation = await getGeoLocation();
       
@@ -248,33 +332,46 @@ const AttendancePage = () => {
     return config;
   };
 
+  // Calculate stats
+  const presentDays = viewMode === 'organization' 
+    ? orgAttendance?.summary?.present || 0
+    : attendance.filter(a => a.status === 'present').length;
+  const absentDays = viewMode === 'organization'
+    ? orgAttendance?.summary?.absent || 0
+    : attendance.filter(a => a.status === 'absent').length;
+  const wfhDays = viewMode === 'organization'
+    ? orgAttendance?.summary?.wfh || 0
+    : attendance.filter(a => a.status === 'wfh').length;
+  const lateDays = viewMode === 'organization'
+    ? orgAttendance?.summary?.late || 0
+    : attendance.filter(a => a.is_late).length;
+  const totalEmployees = orgAttendance?.summary?.total_employees || 0;
+
   const navigateMonth = (direction) => {
     const newDate = new Date(selectedDate);
     newDate.setMonth(newDate.getMonth() + direction);
     setSelectedDate(newDate);
   };
 
-  // Summary stats - use org data for organization view
-  const summary = orgAttendance?.summary || {};
-  const presentDays = viewMode === 'organization' ? summary.present || 0 : attendance.filter(a => a.status === 'present').length;
-  const wfhDays = viewMode === 'organization' ? summary.wfh || 0 : attendance.filter(a => a.status === 'wfh').length;
-  const absentDays = viewMode === 'organization' ? summary.absent || 0 : attendance.filter(a => a.status === 'absent').length;
-  const lateDays = viewMode === 'organization' ? summary.late || 0 : attendance.filter(a => a.is_late).length;
-  const totalEmployees = summary.total_employees || 0;
-  const unmarkedCount = summary.unmarked || 0;
+  const formatDateRange = () => {
+    if (!fromDate || !toDate) return '';
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    return `${from.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${to.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in" data-testid="attendance-page">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Attendance
@@ -283,7 +380,6 @@ const AttendancePage = () => {
             {viewMode === 'organization' ? 'Organization-wide attendance overview' : 'Track and manage your attendance'}
           </p>
         </div>
-        {/* View Mode Toggle - Only show to HR users */}
         {isHR && (
           <div className="flex gap-2">
             <Button
@@ -403,20 +499,6 @@ const AttendancePage = () => {
           </CardContent>
         </Card>
 
-        <Card data-testid="stat-wfh">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Home className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{wfhDays}</p>
-                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'WFH Today' : 'WFH'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card data-testid="stat-absent">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -431,6 +513,20 @@ const AttendancePage = () => {
           </CardContent>
         </Card>
 
+        <Card data-testid="stat-wfh">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <Home className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{wfhDays}</p>
+                <p className="text-xs text-slate-500">WFH</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card data-testid="stat-late">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -438,135 +534,62 @@ const AttendancePage = () => {
                 <AlertCircle className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{viewMode === 'organization' ? unmarkedCount : lateDays}</p>
-                <p className="text-xs text-slate-500">{viewMode === 'organization' ? 'Unmarked' : 'Late'}</p>
+                <p className="text-2xl font-bold text-slate-900">{lateDays}</p>
+                <p className="text-xs text-slate-500">Late</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Organization Attendance Section - Show when in organization view */}
+      {/* Organization View - History with Date Range and Summary */}
       {viewMode === 'organization' && isHR && (
         <>
-          {/* Today's Attendance Quick View */}
-          {orgAttendance?.today_attendance && (
-            <Card className="mb-6">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                      Today's Attendance
-                    </CardTitle>
-                    <CardDescription>
-                      {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                    </CardDescription>
-                  </div>
-                  <Badge variant="outline">{orgAttendance.today_attendance.length} records</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto max-h-64">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Emp Code</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Time</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orgAttendance.today_attendance.length > 0 ? (
-                        orgAttendance.today_attendance.slice(0, 10).map((att, idx) => {
-                          const statusConfig = {
-                            present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
-                            wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
-                            absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
-                            leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
-                            holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
-                            weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
-                          };
-                          const config = statusConfig[att.status] || statusConfig.present;
-                          return (
-                            <TableRow key={att.attendance_id || idx}>
-                              <TableCell className="font-medium">{att.emp_code}</TableCell>
-                              <TableCell>{att.employee_name}</TableCell>
-                              <TableCell>{att.department || '-'}</TableCell>
-                              <TableCell>
-                                <Badge className={config.className}>{config.label}</Badge>
-                              </TableCell>
-                              <TableCell className="text-slate-500 text-sm">
-                                {att.first_in || att.created_at?.split('T')[1]?.substring(0, 5) || '-'}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-slate-500">
-                            No attendance records for today
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Historical Attendance with Filters */}
+          {/* Date Range Filters */}
           <Card>
-            <CardHeader>
-              <div className="flex flex-col lg:flex-row justify-between gap-4">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-primary" />
-                    Attendance History
-                  </CardTitle>
-                  <CardDescription>View and filter attendance records by month, year, and employee</CardDescription>
+                  <CardTitle className="text-lg">Attendance History & Analytics</CardTitle>
+                  <CardDescription>{formatDateRange()}</CardDescription>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  {/* Month Select */}
-                  <Select value={filterMonth.toString()} onValueChange={(v) => setFilterMonth(parseInt(v))}>
-                    <SelectTrigger className="w-[140px]" data-testid="filter-month">
-                      <SelectValue placeholder="Month" />
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Date Preset */}
+                  <Select value={dateRangePreset} onValueChange={setDateRangePreset}>
+                    <SelectTrigger className="w-[160px]" data-testid="date-preset">
+                      <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[
-                        { value: '1', label: 'January' },
-                        { value: '2', label: 'February' },
-                        { value: '3', label: 'March' },
-                        { value: '4', label: 'April' },
-                        { value: '5', label: 'May' },
-                        { value: '6', label: 'June' },
-                        { value: '7', label: 'July' },
-                        { value: '8', label: 'August' },
-                        { value: '9', label: 'September' },
-                        { value: '10', label: 'October' },
-                        { value: '11', label: 'November' },
-                        { value: '12', label: 'December' }
-                      ].map((m) => (
-                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                      ))}
+                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="last_month">Last Month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                      <SelectItem value="year_to_date">Year to Date</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
 
-                  {/* Year Select */}
-                  <Select value={filterYear.toString()} onValueChange={(v) => setFilterYear(parseInt(v))}>
-                    <SelectTrigger className="w-[100px]" data-testid="filter-year">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[2024, 2025, 2026, 2027].map((y) => (
-                        <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Custom Date Inputs */}
+                  {dateRangePreset === 'custom' && (
+                    <>
+                      <Input
+                        type="date"
+                        value={fromDate}
+                        onChange={(e) => setFromDate(e.target.value)}
+                        className="w-[140px]"
+                        data-testid="from-date"
+                      />
+                      <span className="text-slate-400">to</span>
+                      <Input
+                        type="date"
+                        value={toDate}
+                        onChange={(e) => setToDate(e.target.value)}
+                        className="w-[140px]"
+                        data-testid="to-date"
+                      />
+                    </>
+                  )}
 
-                  {/* Employee Search */}
+                  {/* Employee Filter */}
                   <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
                     <SelectTrigger className="w-[200px]" data-testid="filter-employee">
                       <SelectValue placeholder="All Employees" />
@@ -581,88 +604,359 @@ const AttendancePage = () => {
                     </SelectContent>
                   </Select>
 
-                  <Button variant="outline" onClick={fetchHistoryAttendance} data-testid="refresh-history">
-                    <RefreshCw className={`w-4 h-4 mr-2 ${historyLoading ? 'animate-spin' : ''}`} />
+                  <Button variant="outline" onClick={() => { fetchHistoryAttendance(); fetchSummary(); }} data-testid="refresh-history">
+                    <RefreshCw className={`w-4 h-4 mr-2 ${historyLoading || summaryLoading ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {historyLoading ? (
-                <div className="text-center py-12">
-                  <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-                  <p className="text-slate-500">Loading attendance history...</p>
-                </div>
-              ) : historyAttendance.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50">
-                        <TableHead>Date</TableHead>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Punch In</TableHead>
-                        <TableHead>Punch Out</TableHead>
-                        <TableHead>Hours</TableHead>
-                        <TableHead>Late</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {historyAttendance.map((att, idx) => {
-                        const statusConfig = {
-                          present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
-                          wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
-                          absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
-                          leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
-                          holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
-                          weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
-                          tour: { label: 'Tour', className: 'bg-indigo-100 text-indigo-700' },
-                        };
-                        const config = statusConfig[att.status] || statusConfig.present;
-                        return (
-                          <TableRow key={att.attendance_id || idx}>
-                            <TableCell className="font-medium">
-                              {new Date(att.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{att.employee_name || att.employee_id}</p>
-                                <p className="text-xs text-slate-500">{att.emp_code}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={config.className}>{config.label}</Badge>
-                            </TableCell>
-                            <TableCell className="text-slate-600">{att.first_in || att.punch_in || '-'}</TableCell>
-                            <TableCell className="text-slate-600">{att.last_out || att.punch_out || '-'}</TableCell>
-                            <TableCell>{att.total_hours ? `${att.total_hours}h` : '-'}</TableCell>
-                            <TableCell>
-                              {att.is_late ? (
-                                <Badge variant="destructive" className="text-xs">Late</Badge>
-                              ) : (
-                                <span className="text-slate-400">-</span>
-                              )}
-                            </TableCell>
+              {/* Tabs for Records vs Summary */}
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="records" className="gap-2">
+                    <CalendarIcon className="w-4 h-4" />
+                    Records
+                  </TabsTrigger>
+                  <TabsTrigger value="summary" className="gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Summary & Analytics
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Records Tab */}
+                <TabsContent value="records">
+                  {historyLoading ? (
+                    <div className="text-center py-12">
+                      <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
+                      <p className="text-slate-500">Loading attendance history...</p>
+                    </div>
+                  ) : historyAttendance.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50">
+                            <TableHead>Date</TableHead>
+                            <TableHead>Employee</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>In Time</TableHead>
+                            <TableHead>Out Time</TableHead>
+                            <TableHead>Hours</TableHead>
+                            <TableHead>Late</TableHead>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-500 mb-2">No attendance records found</p>
-                  <p className="text-xs text-slate-400">Try adjusting the filters or select a different time period</p>
-                </div>
-              )}
+                        </TableHeader>
+                        <TableBody>
+                          {historyAttendance.map((att, idx) => {
+                            const statusConfigTable = {
+                              present: { label: 'Present', className: 'bg-emerald-100 text-emerald-700' },
+                              wfh: { label: 'WFH', className: 'bg-blue-100 text-blue-700' },
+                              absent: { label: 'Absent', className: 'bg-red-100 text-red-700' },
+                              leave: { label: 'Leave', className: 'bg-purple-100 text-purple-700' },
+                              holiday: { label: 'Holiday', className: 'bg-slate-100 text-slate-700' },
+                              weekly_off: { label: 'Week Off', className: 'bg-slate-100 text-slate-600' },
+                              tour: { label: 'Tour', className: 'bg-indigo-100 text-indigo-700' },
+                            };
+                            const config = statusConfigTable[att.status] || statusConfigTable.present;
+                            return (
+                              <TableRow key={att.attendance_id || idx}>
+                                <TableCell className="font-medium">
+                                  {new Date(att.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium">{att.employee_name || att.employee_id}</p>
+                                    <p className="text-xs text-slate-500">{att.emp_code}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={config.className}>{config.label}</Badge>
+                                </TableCell>
+                                <TableCell className="text-slate-600 font-mono">{att.first_in || '-'}</TableCell>
+                                <TableCell className="text-slate-600 font-mono">{att.last_out || '-'}</TableCell>
+                                <TableCell>{att.total_hours ? `${att.total_hours}h` : '-'}</TableCell>
+                                <TableCell>
+                                  {att.is_late ? (
+                                    <Badge variant="destructive" className="text-xs">
+                                      {att.late_minutes ? `${att.late_minutes} min` : 'Late'}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-slate-400">-</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500 mb-2">No attendance records found</p>
+                      <p className="text-xs text-slate-400">Try adjusting the date range or filters</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Summary Tab */}
+                <TabsContent value="summary">
+                  {summaryLoading ? (
+                    <div className="text-center py-12">
+                      <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
+                      <p className="text-slate-500">Calculating summary...</p>
+                    </div>
+                  ) : summary ? (
+                    <div className="space-y-6">
+                      {/* Overall Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <Card className="bg-slate-50">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-3xl font-bold text-slate-900">{summary.overall_summary?.total_present || 0}</p>
+                            <p className="text-sm text-slate-500">Total Present Days</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-red-50">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-3xl font-bold text-red-600">{summary.overall_summary?.total_absent || 0}</p>
+                            <p className="text-sm text-slate-500">Total Absent Days</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-amber-50">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-3xl font-bold text-amber-600">{summary.overall_summary?.total_late || 0}</p>
+                            <p className="text-sm text-slate-500">Total Late Instances</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-blue-50">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-3xl font-bold text-blue-600">{summary.overall_summary?.total_wfh || 0}</p>
+                            <p className="text-sm text-slate-500">Total WFH Days</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-emerald-50">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-3xl font-bold text-emerald-600">{summary.overall_summary?.perfect_attendance_count || 0}</p>
+                            <p className="text-sm text-slate-500">Perfect Attendance</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Rankings Grid */}
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {/* Most Late */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-5 h-5 text-amber-500" />
+                              <CardTitle className="text-base">Most Late (Top 10)</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {summary.rankings?.most_late?.filter(e => e.late_count > 0).length > 0 ? (
+                              <div className="space-y-2">
+                                {summary.rankings.most_late.filter(e => e.late_count > 0).slice(0, 10).map((emp, idx) => (
+                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                                    <div className="flex items-center gap-3">
+                                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-amber-500 text-white' : 'bg-slate-200'}`}>
+                                        {idx + 1}
+                                      </span>
+                                      <div>
+                                        <p className="font-medium text-sm">{emp.name}</p>
+                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                                      </div>
+                                    </div>
+                                    <Badge variant="destructive">{emp.late_count} times</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-slate-500 text-center py-4">No late arrivals in this period</p>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Most Absent */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2">
+                              <XCircle className="w-5 h-5 text-red-500" />
+                              <CardTitle className="text-base">Most Absent (Top 10)</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {summary.rankings?.most_absent?.filter(e => e.absent_days > 0).length > 0 ? (
+                              <div className="space-y-2">
+                                {summary.rankings.most_absent.filter(e => e.absent_days > 0).slice(0, 10).map((emp, idx) => (
+                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                                    <div className="flex items-center gap-3">
+                                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-red-500 text-white' : 'bg-slate-200'}`}>
+                                        {idx + 1}
+                                      </span>
+                                      <div>
+                                        <p className="font-medium text-sm">{emp.name}</p>
+                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                                      </div>
+                                    </div>
+                                    <Badge className="bg-red-100 text-red-700">{emp.absent_days} days</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-slate-500 text-center py-4">No absences in this period</p>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Perfect Attendance */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2">
+                              <Award className="w-5 h-5 text-emerald-500" />
+                              <CardTitle className="text-base">Perfect Attendance</CardTitle>
+                            </div>
+                            <CardDescription>No absences and no late arrivals</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {summary.rankings?.perfect_attendance?.length > 0 ? (
+                              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                {summary.rankings.perfect_attendance.map((emp, idx) => (
+                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-emerald-50 rounded">
+                                    <div className="flex items-center gap-3">
+                                      <Award className="w-5 h-5 text-emerald-500" />
+                                      <div>
+                                        <p className="font-medium text-sm">{emp.name}</p>
+                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                                      </div>
+                                    </div>
+                                    <Badge className="bg-emerald-100 text-emerald-700">{emp.present_days} days</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-slate-500 text-center py-4">No perfect attendance in this period</p>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Most Hours */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="w-5 h-5 text-blue-500" />
+                              <CardTitle className="text-base">Most Hours Worked (Top 10)</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {summary.rankings?.most_hours?.filter(e => e.total_hours > 0).length > 0 ? (
+                              <div className="space-y-2">
+                                {summary.rankings.most_hours.filter(e => e.total_hours > 0).slice(0, 10).map((emp, idx) => (
+                                  <div key={emp.employee_id} className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                                    <div className="flex items-center gap-3">
+                                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx < 3 ? 'bg-blue-500 text-white' : 'bg-slate-200'}`}>
+                                        {idx + 1}
+                                      </span>
+                                      <div>
+                                        <p className="font-medium text-sm">{emp.name}</p>
+                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                                      </div>
+                                    </div>
+                                    <Badge className="bg-blue-100 text-blue-700">{emp.total_hours.toFixed(1)}h</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-slate-500 text-center py-4">No hour data available</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* All Employee Stats Table */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">All Employee Statistics</CardTitle>
+                          <CardDescription>Detailed breakdown for each employee in the selected period</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-slate-50">
+                                  <TableHead>Employee</TableHead>
+                                  <TableHead className="text-center">Present</TableHead>
+                                  <TableHead className="text-center">Absent</TableHead>
+                                  <TableHead className="text-center">Late</TableHead>
+                                  <TableHead className="text-center">WFH</TableHead>
+                                  <TableHead className="text-center">Leave</TableHead>
+                                  <TableHead className="text-center">Total Hours</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {summary.employee_stats?.map((emp) => (
+                                  <TableRow key={emp.employee_id}>
+                                    <TableCell>
+                                      <div>
+                                        <p className="font-medium">{emp.name}</p>
+                                        <p className="text-xs text-slate-500">{emp.emp_code}</p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge className="bg-emerald-100 text-emerald-700">{emp.present_days}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      {emp.absent_days > 0 ? (
+                                        <Badge className="bg-red-100 text-red-700">{emp.absent_days}</Badge>
+                                      ) : (
+                                        <span className="text-slate-400">0</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      {emp.late_count > 0 ? (
+                                        <Badge variant="destructive">{emp.late_count}</Badge>
+                                      ) : (
+                                        <span className="text-slate-400">0</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      {emp.wfh_days > 0 ? (
+                                        <Badge className="bg-blue-100 text-blue-700">{emp.wfh_days}</Badge>
+                                      ) : (
+                                        <span className="text-slate-400">0</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      {emp.leave_days > 0 ? (
+                                        <Badge className="bg-purple-100 text-purple-700">{emp.leave_days}</Badge>
+                                      ) : (
+                                        <span className="text-slate-400">0</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center font-mono">
+                                      {emp.total_hours > 0 ? `${emp.total_hours.toFixed(1)}h` : '-'}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500">Select a date range to view summary</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </>
       )}
 
-      {/* Calendar & Details - Show when in my attendance view */}
+      {/* My Attendance View - Calendar & Details */}
       {viewMode === 'my' && (
       <div className="grid lg:grid-cols-12 gap-6">
         {/* Calendar */}
@@ -682,18 +976,18 @@ const AttendancePage = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pb-4">
+          <CardContent>
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={(date) => date && setSelectedDate(date)}
               month={selectedDate}
               onMonthChange={setSelectedDate}
-              className="rounded-md border-0"
+              className="rounded-md"
               modifiers={{
-                present: (date) => getAttendanceForDate(date)?.status === 'present',
-                absent: (date) => getAttendanceForDate(date)?.status === 'absent',
-                wfh: (date) => getAttendanceForDate(date)?.status === 'wfh',
+                present: attendance.filter(a => a.status === 'present').map(a => new Date(a.date)),
+                absent: attendance.filter(a => a.status === 'absent').map(a => new Date(a.date)),
+                wfh: attendance.filter(a => a.status === 'wfh').map(a => new Date(a.date)),
               }}
               modifiersClassNames={{
                 present: 'bg-emerald-100 text-emerald-900',
@@ -758,6 +1052,9 @@ const AttendancePage = () => {
                           <Badge variant="outline" className="capitalize mb-1">
                             {record.status.replace('_', ' ')}
                           </Badge>
+                          {record.is_late && (
+                            <Badge variant="destructive" className="ml-1 text-xs">Late</Badge>
+                          )}
                           {record.total_hours && (
                             <p className="text-sm text-slate-600">{record.total_hours} hrs</p>
                           )}
