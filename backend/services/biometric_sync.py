@@ -351,7 +351,7 @@ async def sync_historical_data(days: int = 365) -> Dict[str, Any]:
 
 async def log_sync_result(from_date: str, to_date: str, stats: Dict[str, Any]):
     """Log sync operation to database for tracking"""
-    if not db:
+    if db is None:
         return
     
     try:
