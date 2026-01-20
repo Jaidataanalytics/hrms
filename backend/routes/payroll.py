@@ -386,6 +386,63 @@ async def lock_payroll(payroll_id: str, request: Request):
     return {"message": "Payroll locked successfully"}
 
 
+@router.get("/runs/{payroll_id}")
+async def get_payroll_run_details(payroll_id: str, request: Request):
+    """Get detailed payroll run with all payslips"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get payroll run
+    payroll = await db.payroll_runs.find_one({"payroll_id": payroll_id}, {"_id": 0})
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll run not found")
+    
+    month, year = payroll["month"], payroll["year"]
+    
+    # Get all payslips for this payroll run
+    payslips = await db.payslips.find(
+        {"payroll_id": payroll_id}, {"_id": 0}
+    ).to_list(1000)
+    
+    # Also try to find by month/year if payroll_id not set on all payslips
+    if len(payslips) < payroll.get("total_employees", 0):
+        additional_payslips = await db.payslips.find(
+            {"month": month, "year": year, "payroll_id": {"$exists": False}}, {"_id": 0}
+        ).to_list(1000)
+        payslips.extend(additional_payslips)
+    
+    # Enrich with employee details
+    enriched_payslips = []
+    for slip in payslips:
+        employee = await db.employees.find_one(
+            {"employee_id": slip["employee_id"]}, {"_id": 0}
+        )
+        if employee:
+            slip["employee_name"] = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+            slip["emp_code"] = employee.get("emp_code", slip["employee_id"])
+            slip["department"] = employee.get("department_name") or employee.get("department", "")
+            slip["designation"] = employee.get("designation") or employee.get("job_title", "")
+        enriched_payslips.append(slip)
+    
+    # Sort by employee name
+    enriched_payslips.sort(key=lambda x: x.get("employee_name", ""))
+    
+    return {
+        "payroll": payroll,
+        "payslips": enriched_payslips,
+        "summary": {
+            "total_employees": len(enriched_payslips),
+            "total_gross": sum(p.get("gross_salary", 0) for p in enriched_payslips),
+            "total_deductions": sum(p.get("total_deductions", 0) for p in enriched_payslips),
+            "total_net": sum(p.get("net_salary", 0) for p in enriched_payslips),
+            "total_pf": sum(p.get("pf_employee", 0) for p in enriched_payslips),
+            "total_esi": sum(p.get("esi_employee", 0) for p in enriched_payslips),
+            "total_pt": sum(p.get("professional_tax", 0) for p in enriched_payslips),
+        }
+    }
+
+
 # ==================== PAYSLIPS ====================
 
 @router.get("/payslips")
