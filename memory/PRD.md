@@ -19,6 +19,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
   - Employees: Only see "My Attendance" view (no Organization toggle)
 - Attendance History with month/year filters
 - **Duplicate Prevention:** Uses upsert during import
+- **Biometric API Integration:** Auto-sync every 3 hours from external biometric device
 
 ### 3. Leave Management
 - Leave balance management
@@ -43,9 +44,33 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Global search bar (Cmd+K) - HR/Admin only
 - Comprehensive employee profile page
 
+### 7. Biometric API Integration (NEW - Jan 2026)
+**Features:**
+- Automatic sync every 3 hours via APScheduler
+- Manual sync trigger for HR/Admin
+- Historical sync (up to 1 year) for super_admin
+- Sync status dashboard and logs
+
+**API Endpoints:**
+- `POST /api/biometric/sync` - Manual sync (admin only)
+- `POST /api/biometric/sync/historical` - Historical sync (super_admin only)
+- `GET /api/biometric/sync/status` - Get sync logs and stats
+- `GET /api/biometric/sync/unmatched-codes` - List unmatched employee codes
+
+**Technical Details:**
+- External API: `http://115.245.227.203:81/api/v2/WebAPI/GetDeviceLogs`
+- Mapping: `EmployeeCode` (API) → `emp_code` (DB)
+- Punch types: `in` → IN, `out` → OUT
+- Scheduler: APScheduler with 3-hour interval
+
+**Sync Statistics (Initial Run):**
+- Total API records: 64,381
+- Matched employees: 10,212
+- Unmatched (F/C prefix): 54,169
+
 ## Authentication & Security
 
-### First Login Password Change (NEW)
+### First Login Password Change
 - All new employees imported with `must_change_password: true`
 - On first login:
   1. User enters email/password
@@ -62,12 +87,10 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 | Organization Attendance | ✅ Toggle visible | ❌ Hidden |
 | Global Search | ✅ Available | ❌ Hidden |
 | Salary Edit | ✅ Can edit | ❌ View only |
+| Biometric Sync | ✅ Manual trigger | ❌ No access |
 
-## Admin Cleanup Endpoint
-POST `/api/admin/cleanup-duplicates` - Removes duplicate records (super_admin only)
-- Cleans duplicate employees (by emp_code)
-- Cleans duplicate insurance (by employee_id)
-- Deactivates duplicate salaries (by employee_id)
+## Admin Endpoints
+- `POST /api/admin/cleanup-duplicates` - Removes duplicate records (super_admin only)
 
 ## Test Credentials
 - **Admin:** admin@shardahr.com / Admin@123
@@ -75,22 +98,19 @@ POST `/api/admin/cleanup-duplicates` - Removes duplicate records (super_admin on
 - **HR:** hr@shardahr.com / NewHRPass@123
 
 ## Recent Test Results
+- Test iteration 23: Biometric API Integration - 13/13 tests passed (100%)
 - Test iteration 22: Employee Role Restrictions - 11/11 tests passed (100%)
 - Test iteration 21: Duplicate Prevention - 13/13 tests passed
 - Test iteration 20: Salary Edit Features - 10/10 tests passed
 
-## Pending: Production Deployment
-After deployment, run cleanup on production:
-```javascript
-// In browser console after logging in as admin
-fetch('/api/admin/cleanup-duplicates', {
-  method: 'POST',
-  credentials: 'include'
-}).then(r => r.json()).then(console.log)
-```
+## Upcoming Tasks
+1. Add F-prefix and C-prefix employees to database (currently unmatched)
+2. Deploy to production + run cleanup
+3. Build Payroll Rules UI for admins
+4. Validate end-to-end payroll calculation
 
 ## Future Tasks
-1. Deploy to production + run cleanup
-2. Biometric device integration (on hold)
-3. AI-powered shift scheduling
-4. Mobile application
+1. AI-powered shift scheduling
+2. AI-powered performance recommendations
+3. Mobile application
+4. Export employee salaries to spreadsheet
