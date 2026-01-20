@@ -856,18 +856,26 @@ const AttendancePage = () => {
                     </div>
                   ) : summary ? (
                     <div className="space-y-6">
+                      {/* Period Info */}
+                      <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+                        <strong>Period:</strong> {summary.from_date} to {summary.to_date} | 
+                        <strong> Working Days:</strong> {summary.working_days_in_range || 0} | 
+                        <strong> Holidays:</strong> {summary.holidays_in_range || 0} | 
+                        <strong> Employees:</strong> {summary.overall_summary?.employees_tracked || 0}
+                      </div>
+                      
                       {/* Overall Stats */}
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <Card className="bg-slate-50">
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                        <Card className="bg-emerald-50">
                           <CardContent className="p-4 text-center">
-                            <p className="text-3xl font-bold text-slate-900">{summary.overall_summary?.total_present || 0}</p>
-                            <p className="text-sm text-slate-500">Total Present Days</p>
+                            <p className="text-3xl font-bold text-emerald-600">{summary.overall_summary?.total_present || 0}</p>
+                            <p className="text-sm text-slate-500">Present Days</p>
                           </CardContent>
                         </Card>
                         <Card className="bg-red-50">
                           <CardContent className="p-4 text-center">
                             <p className="text-3xl font-bold text-red-600">{summary.overall_summary?.total_absent || 0}</p>
-                            <p className="text-sm text-slate-500">Total Absent Days</p>
+                            <p className="text-sm text-slate-500">Absent Days</p>
                           </CardContent>
                         </Card>
                         <Card className="bg-amber-50">
