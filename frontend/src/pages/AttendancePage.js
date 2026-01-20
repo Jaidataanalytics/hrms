@@ -748,16 +748,30 @@ const AttendancePage = () => {
             <CardContent>
               {/* Tabs for Records vs Summary */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-4">
-                  <TabsTrigger value="records" className="gap-2">
-                    <CalendarIcon className="w-4 h-4" />
-                    Records
-                  </TabsTrigger>
-                  <TabsTrigger value="summary" className="gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Summary & Analytics
-                  </TabsTrigger>
-                </TabsList>
+                <div className="flex items-center justify-between mb-4">
+                  <TabsList>
+                    <TabsTrigger value="records" className="gap-2">
+                      <CalendarIcon className="w-4 h-4" />
+                      Records
+                    </TabsTrigger>
+                    <TabsTrigger value="summary" className="gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Summary & Analytics
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Export Button */}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={activeTab === 'records' ? exportRecordsToExcel : exportSummaryToExcel}
+                    className="gap-2"
+                    data-testid="export-excel"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Export to Excel
+                  </Button>
+                </div>
 
                 {/* Records Tab */}
                 <TabsContent value="records">
