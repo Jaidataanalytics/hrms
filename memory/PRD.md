@@ -56,11 +56,20 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ### 7. Biometric API Integration (Jan 2026)
 **Features:**
-- Automatic sync every 3 hours via APScheduler
+- **Automatic sync on startup** - Checks if data exists, runs historical sync if not
+- Scheduled sync every 3 hours via APScheduler
 - Manual sync trigger for HR/Admin
 - Historical sync (up to 1 year) for super_admin
 - Sync status dashboard and logs
 - Smart IN/OUT detection based on time
+
+**How it works:**
+1. On app startup, checks if biometric attendance data exists
+2. If NO data → automatically runs 1-year historical sync
+3. If data exists → runs regular 2-day sync
+4. Scheduler runs every 3 hours for ongoing updates
+
+**This fixes the production sync issue** - deployed version will now auto-sync on first startup.
 
 **API Endpoints:**
 - `POST /api/biometric/sync` - Manual sync (admin only)
