@@ -62,12 +62,18 @@ const AttendancePage = () => {
   const [historyAttendance, setHistoryAttendance] = useState([]);
   const [employees, setEmployees] = useState([]);
   
+  // Calendar view state
+  const [calendarData, setCalendarData] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [selectedDayDetails, setSelectedDayDetails] = useState(null);
+  
   // Date range
   const [dateRangePreset, setDateRangePreset] = useState('current_month');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('all');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('calendar');
 
   // Calculate dates based on preset
   const getDateRange = (preset) => {
