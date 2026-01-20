@@ -139,6 +139,7 @@ const DashboardLayout = () => {
     { name: 'User Management', path: '/dashboard/user-management', icon: UserCog },
     { name: 'Data Management', path: '/dashboard/data-management', icon: Database },
     { name: 'API Manager', path: '/dashboard/biometric', icon: Settings },
+    { name: 'Holidays', path: '/dashboard/holidays', icon: CalendarDays },
   ];
 
   const isActive = (path, exact = false) => {
