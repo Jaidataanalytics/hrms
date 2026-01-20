@@ -1198,7 +1198,9 @@ async def get_attendance(
     request: Request, 
     employee_id: Optional[str] = None, 
     month: Optional[int] = None, 
-    year: Optional[int] = None
+    year: Optional[int] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None
 ):
     """Get attendance records - HR can view any employee, others view their own"""
     user = await get_current_user(request)
@@ -1220,7 +1222,10 @@ async def get_attendance(
             return []
         query = {"employee_id": target_employee_id}
     
-    if month and year:
+    # Date range filter (preferred over month/year)
+    if from_date and to_date:
+        query["date"] = {"$gte": from_date, "$lte": to_date}
+    elif month and year:
         # Filter by month/year
         month_str = str(month).zfill(2)
         query["date"] = {"$regex": f"^{year}-{month_str}"}
