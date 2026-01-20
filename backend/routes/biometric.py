@@ -827,6 +827,65 @@ async def get_unmatched_employee_codes(request: Request):
     }
 
 
+@router.post("/sync/recalculate-late")
+async def recalculate_late_status(request: Request):
+    """
+    Recalculate late status for all attendance records.
+    Late = first_in > 09:45
+    Super Admin only.
+    """
+    from server import get_current_user
+    user = await get_current_user(request)
+    
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin only")
+    
+    from datetime import datetime
+    
+    # Get all attendance records with first_in
+    cursor = db.attendance.find(
+        {"first_in": {"$ne": None}},
+        {"_id": 1, "first_in": 1, "is_late": 1, "late_minutes": 1}
+    )
+    
+    late_threshold = datetime.strptime("09:45:00", "%H:%M:%S")
+    updated = 0
+    errors = 0
+    
+    async for record in cursor:
+        try:
+            first_in = record.get("first_in")
+            if not first_in:
+                continue
+            
+            # Parse time
+            time_format = "%H:%M:%S" if first_in.count(":") == 2 else "%H:%M"
+            in_time = datetime.strptime(first_in, time_format)
+            
+            is_late = in_time > late_threshold
+            late_minutes = int((in_time - late_threshold).seconds / 60) if is_late else 0
+            
+            # Update if different
+            if record.get("is_late") != is_late or record.get("late_minutes") != late_minutes:
+                await db.attendance.update_one(
+                    {"_id": record["_id"]},
+                    {"$set": {"is_late": is_late, "late_minutes": late_minutes}}
+                )
+                updated += 1
+                
+        except Exception as e:
+            errors += 1
+            logger.error(f"Error recalculating late for record: {e}")
+    
+    return {
+        "success": True,
+        "message": f"Recalculated late status for {updated} records",
+        "updated": updated,
+        "errors": errors,
+        "late_threshold": "09:45"
+    }
+
+
 # ==================== INITIALIZATION ====================
 
 async def load_forward_servers():
