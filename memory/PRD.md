@@ -98,7 +98,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Test Credentials
 - **Admin:** admin@shardahr.com / Admin@123
-- **Employee:** employee@shardahr.com / NewPass@123
+- **Employee:** employee@shardahr.com / Employee@123
 - **HR:** hr@shardahr.com / NewHRPass@123
 
 ## Recent Changes (Jan 20, 2026)
@@ -107,15 +107,22 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 3. ✅ Late marking (after 09:45 = LATE)
 4. ✅ Date range filters for attendance (Current Month, Last Month, Last 3 Months, Custom)
 5. ✅ Attendance Summary & Analytics tab with rankings
+6. ✅ **Role-Based Attendance Views (Jan 20, 2026)**:
+   - Admin/HR: Full "Attendance Analytics" dashboard with tabs (Overview, Patterns, Employee Insights, Department), metrics, rankings, Export button, All Employees filter
+   - Employee: Simplified "My Attendance" view with personal stats only (Present Days, Absent Days, Late, WFH, Leave)
+   - Employee blocked from `/api/attendance/summary` endpoint (403)
+   - Dashboard text updated to "Your attendance will be synced from the biometric system"
+7. ✅ Manual punch-in/out buttons removed from dashboard (biometric sync handles attendance)
 
 ## Upcoming Tasks
-1. Add F-prefix and C-prefix employees to database (currently unmatched in biometric)
-2. Deploy to production
-3. Build Payroll Rules UI for admins
-4. Validate end-to-end payroll calculation
+1. 🔴 **P1: Deploy to Production** - Production is critically outdated
+2. 🟠 **P1: Add Missing Employees** - 100+ unmatched employee codes (F-prefix, C-prefix) from biometric
+3. 🟡 **P2: Build Payroll Rules UI** - Admin interface for EPF/ESI percentages
+4. 🟡 **P2: Validate end-to-end payroll calculation**
 
 ## Future Tasks
 1. AI-powered shift scheduling
 2. AI-powered performance recommendations
 3. Mobile application
 4. Export employee salaries to spreadsheet
+5. Meeting Management & Task Tracking
