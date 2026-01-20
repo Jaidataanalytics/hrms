@@ -319,6 +319,138 @@ const AttendancePage = () => {
 
   const todayAttendance = getTodayAttendance();
 
+  // Export to Excel functions
+  const exportRecordsToExcel = () => {
+    if (!historyAttendance || historyAttendance.length === 0) {
+      toast.error('No records to export');
+      return;
+    }
+
+    const data = historyAttendance.map(att => ({
+      'Date': att.date,
+      'Employee Name': att.employee_name || att.employee_id,
+      'Employee Code': att.emp_code || '',
+      'Status': att.status?.charAt(0).toUpperCase() + att.status?.slice(1).replace('_', ' ') || '',
+      'In Time': att.first_in || '-',
+      'Out Time': att.last_out || '-',
+      'Total Hours': att.total_hours || '-',
+      'Late': att.is_late ? 'Yes' : 'No',
+      'Late Minutes': att.late_minutes || 0
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Records');
+    
+    // Auto-width columns
+    const colWidths = Object.keys(data[0]).map(key => ({ wch: Math.max(key.length, 15) }));
+    ws['!cols'] = colWidths;
+
+    XLSX.writeFile(wb, `Attendance_Records_${fromDate}_to_${toDate}.xlsx`);
+    toast.success('Attendance records exported successfully');
+  };
+
+  const exportSummaryToExcel = () => {
+    if (!summary) {
+      toast.error('No summary data to export');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Overall Summary
+    const overallData = [
+      ['Attendance Summary Report'],
+      ['Period', `${fromDate} to ${toDate}`],
+      [''],
+      ['Metric', 'Value'],
+      ['Total Present Days', summary.overall_summary?.total_present || 0],
+      ['Total Absent Days', summary.overall_summary?.total_absent || 0],
+      ['Total Late Instances', summary.overall_summary?.total_late || 0],
+      ['Total WFH Days', summary.overall_summary?.total_wfh || 0],
+      ['Employees with Perfect Attendance', summary.overall_summary?.perfect_attendance_count || 0],
+      ['Total Records', summary.overall_summary?.total_records || 0]
+    ];
+    const wsOverall = XLSX.utils.aoa_to_sheet(overallData);
+    wsOverall['!cols'] = [{ wch: 35 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, wsOverall, 'Summary');
+
+    // Sheet 2: Most Late
+    const lateData = [
+      ['Rank', 'Employee Name', 'Employee Code', 'Department', 'Late Count', 'Total Late Minutes']
+    ];
+    summary.rankings?.most_late?.filter(e => e.late_count > 0).forEach((emp, idx) => {
+      lateData.push([
+        idx + 1,
+        emp.name,
+        emp.emp_code,
+        emp.department || '',
+        emp.late_count,
+        emp.total_late_minutes || 0
+      ]);
+    });
+    const wsLate = XLSX.utils.aoa_to_sheet(lateData);
+    wsLate['!cols'] = [{ wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, wsLate, 'Most Late');
+
+    // Sheet 3: Most Absent
+    const absentData = [
+      ['Rank', 'Employee Name', 'Employee Code', 'Department', 'Absent Days']
+    ];
+    summary.rankings?.most_absent?.filter(e => e.absent_days > 0).forEach((emp, idx) => {
+      absentData.push([
+        idx + 1,
+        emp.name,
+        emp.emp_code,
+        emp.department || '',
+        emp.absent_days
+      ]);
+    });
+    const wsAbsent = XLSX.utils.aoa_to_sheet(absentData);
+    wsAbsent['!cols'] = [{ wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, wsAbsent, 'Most Absent');
+
+    // Sheet 4: Perfect Attendance
+    const perfectData = [
+      ['Employee Name', 'Employee Code', 'Department', 'Present Days']
+    ];
+    summary.rankings?.perfect_attendance?.forEach(emp => {
+      perfectData.push([
+        emp.name,
+        emp.emp_code,
+        emp.department || '',
+        emp.present_days
+      ]);
+    });
+    const wsPerfect = XLSX.utils.aoa_to_sheet(perfectData);
+    wsPerfect['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, wsPerfect, 'Perfect Attendance');
+
+    // Sheet 5: All Employee Stats
+    const allStatsData = [
+      ['Employee Name', 'Employee Code', 'Department', 'Present', 'Absent', 'Late', 'WFH', 'Leave', 'Total Hours']
+    ];
+    summary.employee_stats?.forEach(emp => {
+      allStatsData.push([
+        emp.name,
+        emp.emp_code,
+        emp.department || '',
+        emp.present_days,
+        emp.absent_days,
+        emp.late_count,
+        emp.wfh_days,
+        emp.leave_days,
+        emp.total_hours?.toFixed(1) || 0
+      ]);
+    });
+    const wsAllStats = XLSX.utils.aoa_to_sheet(allStatsData);
+    wsAllStats['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, wsAllStats, 'All Employee Stats');
+
+    XLSX.writeFile(wb, `Attendance_Summary_${fromDate}_to_${toDate}.xlsx`);
+    toast.success('Summary report exported successfully');
+  };
+
   const statusConfig = {
     present: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-100' },
     absent: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100' },
