@@ -1380,7 +1380,8 @@ async def get_attendance_summary(
 ):
     """
     Get attendance summary and analytics for a date range.
-    Returns: late counts, absent counts, present counts per employee.
+    Calculates absent days for working days without punch data.
+    Excludes Sundays and holidays.
     """
     user = await get_current_user(request)
     
@@ -1388,7 +1389,31 @@ async def get_attendance_summary(
     if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Build query
+    from datetime import datetime, timedelta
+    
+    # Parse dates
+    start_date = datetime.strptime(from_date, "%Y-%m-%d")
+    end_date = datetime.strptime(to_date, "%Y-%m-%d")
+    
+    # Get holidays in range
+    holidays = await db.holidays.find({
+        "date": {"$gte": from_date, "$lte": to_date}
+    }, {"_id": 0, "date": 1}).to_list(100)
+    holiday_dates = set(h["date"] for h in holidays)
+    
+    # Calculate working days (excluding Sundays and holidays)
+    working_days = []
+    current = start_date
+    while current <= end_date:
+        date_str = current.strftime("%Y-%m-%d")
+        # Sunday = 6 in Python's weekday()
+        if current.weekday() != 6 and date_str not in holiday_dates:
+            working_days.append(date_str)
+        current += timedelta(days=1)
+    
+    total_working_days = len(working_days)
+    
+    # Build query for attendance records
     query = {"date": {"$gte": from_date, "$lte": to_date}}
     if employee_id and employee_id != "all":
         query["employee_id"] = employee_id
@@ -1396,78 +1421,219 @@ async def get_attendance_summary(
     # Get all attendance in range
     attendance = await db.attendance.find(query, {"_id": 0}).to_list(50000)
     
-    # Get all active employees
-    employees = await db.employees.find(
-        {"is_active": True},
-        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
-    ).to_list(1000)
-    emp_map = {e["employee_id"]: e for e in employees}
-    
-    # Calculate per-employee stats
-    employee_stats = {}
+    # Create attendance lookup: {employee_id: {date: record}}
+    attendance_by_emp = {}
     for att in attendance:
         emp_id = att.get("employee_id")
-        if emp_id not in employee_stats:
-            emp = emp_map.get(emp_id, {})
-            employee_stats[emp_id] = {
-                "employee_id": emp_id,
-                "emp_code": emp.get("emp_code", ""),
-                "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
-                "department": emp.get("department", ""),
-                "present_days": 0,
-                "absent_days": 0,
-                "late_count": 0,
-                "wfh_days": 0,
-                "leave_days": 0,
-                "total_hours": 0,
-                "total_late_minutes": 0
-            }
-        
-        status = att.get("status", "present")
-        if status == "present":
-            employee_stats[emp_id]["present_days"] += 1
-        elif status == "absent":
-            employee_stats[emp_id]["absent_days"] += 1
-        elif status == "wfh":
-            employee_stats[emp_id]["wfh_days"] += 1
-        elif status == "leave":
-            employee_stats[emp_id]["leave_days"] += 1
-        
-        if att.get("is_late"):
-            employee_stats[emp_id]["late_count"] += 1
-            employee_stats[emp_id]["total_late_minutes"] += att.get("late_minutes", 0)
-        
-        if att.get("total_hours"):
-            employee_stats[emp_id]["total_hours"] += att.get("total_hours", 0)
+        date = att.get("date")
+        if emp_id not in attendance_by_emp:
+            attendance_by_emp[emp_id] = {}
+        attendance_by_emp[emp_id][date] = att
     
-    # Convert to list and sort
-    stats_list = list(employee_stats.values())
+    # Get all active employees
+    emp_query = {"is_active": True}
+    if employee_id and employee_id != "all":
+        emp_query["employee_id"] = employee_id
+    
+    employees = await db.employees.find(
+        emp_query,
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
+    ).to_list(1000)
+    
+    # Calculate per-employee stats
+    employee_stats = []
+    for emp in employees:
+        emp_id = emp.get("employee_id")
+        emp_attendance = attendance_by_emp.get(emp_id, {})
+        
+        stats = {
+            "employee_id": emp_id,
+            "emp_code": emp.get("emp_code", ""),
+            "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
+            "department": emp.get("department", ""),
+            "present_days": 0,
+            "absent_days": 0,
+            "late_count": 0,
+            "wfh_days": 0,
+            "leave_days": 0,
+            "total_hours": 0,
+            "total_late_minutes": 0
+        }
+        
+        # Check each working day
+        for day in working_days:
+            att = emp_attendance.get(day)
+            if att:
+                # Has attendance record
+                status = att.get("status", "present")
+                if status == "present":
+                    stats["present_days"] += 1
+                elif status == "absent":
+                    stats["absent_days"] += 1
+                elif status == "wfh":
+                    stats["wfh_days"] += 1
+                elif status == "leave":
+                    stats["leave_days"] += 1
+                else:
+                    stats["present_days"] += 1  # Default to present if has record
+                
+                if att.get("is_late"):
+                    stats["late_count"] += 1
+                    stats["total_late_minutes"] += att.get("late_minutes", 0)
+                
+                if att.get("total_hours"):
+                    stats["total_hours"] += att.get("total_hours", 0)
+            else:
+                # No attendance record = absent
+                stats["absent_days"] += 1
+        
+        employee_stats.append(stats)
     
     # Calculate rankings
-    most_late = sorted(stats_list, key=lambda x: x["late_count"], reverse=True)[:10]
-    most_absent = sorted(stats_list, key=lambda x: x["absent_days"], reverse=True)[:10]
-    perfect_attendance = [s for s in stats_list if s["absent_days"] == 0 and s["late_count"] == 0]
-    most_hours = sorted(stats_list, key=lambda x: x["total_hours"], reverse=True)[:10]
+    most_late = sorted(employee_stats, key=lambda x: x["late_count"], reverse=True)[:10]
+    most_absent = sorted(employee_stats, key=lambda x: x["absent_days"], reverse=True)[:10]
+    perfect_attendance = [s for s in employee_stats if s["absent_days"] == 0 and s["late_count"] == 0]
+    most_hours = sorted(employee_stats, key=lambda x: x["total_hours"], reverse=True)[:10]
     
     # Overall summary
-    total_records = len(attendance)
-    total_present = sum(s["present_days"] for s in stats_list)
-    total_absent = sum(s["absent_days"] for s in stats_list)
-    total_late = sum(s["late_count"] for s in stats_list)
-    total_wfh = sum(s["wfh_days"] for s in stats_list)
+    total_present = sum(s["present_days"] for s in employee_stats)
+    total_absent = sum(s["absent_days"] for s in employee_stats)
+    total_late = sum(s["late_count"] for s in employee_stats)
+    total_wfh = sum(s["wfh_days"] for s in employee_stats)
+    total_leave = sum(s["leave_days"] for s in employee_stats)
     
     return {
         "from_date": from_date,
         "to_date": to_date,
+        "working_days_in_range": total_working_days,
+        "holidays_in_range": len(holiday_dates),
         "overall_summary": {
-            "total_records": total_records,
             "total_present": total_present,
             "total_absent": total_absent,
             "total_late": total_late,
             "total_wfh": total_wfh,
-            "employees_tracked": len(stats_list),
+            "total_leave": total_leave,
+            "employees_tracked": len(employee_stats),
             "perfect_attendance_count": len(perfect_attendance)
         },
+        "rankings": {
+            "most_late": most_late,
+            "most_absent": most_absent,
+            "perfect_attendance": perfect_attendance[:10],
+            "most_hours": most_hours
+        },
+        "employee_stats": employee_stats
+    }
+
+
+# ==================== HOLIDAY MANAGEMENT ====================
+
+@api_router.get("/holidays")
+async def get_holidays(
+    request: Request,
+    year: Optional[int] = None
+):
+    """Get all holidays, optionally filtered by year"""
+    user = await get_current_user(request)
+    
+    query = {}
+    if year:
+        query["date"] = {"$regex": f"^{year}"}
+    
+    holidays = await db.holidays.find(query, {"_id": 0}).sort("date", 1).to_list(500)
+    return holidays
+
+
+@api_router.post("/holidays")
+async def create_holiday(
+    request: Request,
+    data: dict
+):
+    """Create a new holiday (HR/Admin only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    date = data.get("date")
+    name = data.get("name")
+    holiday_type = data.get("type", "public")  # public, restricted, optional
+    
+    if not date or not name:
+        raise HTTPException(status_code=400, detail="Date and name are required")
+    
+    # Check if holiday already exists
+    existing = await db.holidays.find_one({"date": date})
+    if existing:
+        raise HTTPException(status_code=400, detail="Holiday already exists for this date")
+    
+    import uuid
+    holiday = {
+        "holiday_id": f"hol_{uuid.uuid4().hex[:8]}",
+        "date": date,
+        "name": name,
+        "type": holiday_type,
+        "created_by": user.get("user_id"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.holidays.insert_one(holiday)
+    holiday.pop("_id", None)
+    
+    return {"message": "Holiday created", "holiday": holiday}
+
+
+@api_router.put("/holidays/{holiday_id}")
+async def update_holiday(
+    request: Request,
+    holiday_id: str,
+    data: dict
+):
+    """Update a holiday (HR/Admin only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    update_data = {}
+    if "name" in data:
+        update_data["name"] = data["name"]
+    if "type" in data:
+        update_data["type"] = data["type"]
+    if "date" in data:
+        update_data["date"] = data["date"]
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    result = await db.holidays.update_one(
+        {"holiday_id": holiday_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    
+    return {"message": "Holiday updated"}
+
+
+@api_router.delete("/holidays/{holiday_id}")
+async def delete_holiday(
+    request: Request,
+    holiday_id: str
+):
+    """Delete a holiday (HR/Admin only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    result = await db.holidays.delete_one({"holiday_id": holiday_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    
+    return {"message": "Holiday deleted"}
         "rankings": {
             "most_late": most_late,
             "most_absent": most_absent,
