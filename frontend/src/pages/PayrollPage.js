@@ -466,6 +466,112 @@ const PayrollPage = () => {
     }
   };
 
+  const fetchPayrollDetails = async (payrollId) => {
+    setLoadingPayrollDetails(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/runs/${payrollId}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setPayrollDetails(data);
+        setViewPayrollOpen(true);
+      } else {
+        toast.error('Failed to fetch payroll details');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch payroll details');
+    } finally {
+      setLoadingPayrollDetails(false);
+    }
+  };
+
+  const handleViewPayroll = (run) => {
+    setSelectedPayrollRun(run);
+    if (run.status === 'processed' || run.status === 'locked') {
+      fetchPayrollDetails(run.payroll_id);
+    } else {
+      toast.info('Process the payroll first to view details');
+    }
+  };
+
+  const exportPayrollToExcel = async () => {
+    if (!payrollDetails || !payrollDetails.payslips) {
+      toast.error('No payroll data to export');
+      return;
+    }
+
+    try {
+      const XLSX = await import('xlsx');
+      
+      // Prepare data for export
+      const exportData = payrollDetails.payslips.map((slip, index) => ({
+        'S.No': index + 1,
+        'Emp Code': slip.emp_code || slip.employee_id,
+        'Employee Name': slip.employee_name || '-',
+        'Department': slip.department || '-',
+        'Designation': slip.designation || '-',
+        'Working Days': slip.working_days || 26,
+        'Present Days': slip.present_days || 0,
+        'Paid Days': slip.paid_days || 0,
+        'LWP Days': slip.lwp_days || 0,
+        'Basic': slip.basic || 0,
+        'HRA': slip.hra || 0,
+        'Special Allowance': slip.special_allowance || 0,
+        'Gross Salary': slip.gross_salary || 0,
+        'PF (Employee)': slip.pf_employee || 0,
+        'ESI (Employee)': slip.esi_employee || 0,
+        'Professional Tax': slip.professional_tax || 0,
+        'Total Deductions': slip.total_deductions || 0,
+        'Net Salary': slip.net_salary || 0,
+      }));
+
+      // Add summary row
+      exportData.push({});
+      exportData.push({
+        'S.No': '',
+        'Emp Code': 'TOTALS',
+        'Employee Name': `${payrollDetails.summary?.total_employees || 0} Employees`,
+        'Department': '',
+        'Designation': '',
+        'Working Days': '',
+        'Present Days': '',
+        'Paid Days': '',
+        'LWP Days': '',
+        'Basic': '',
+        'HRA': '',
+        'Special Allowance': '',
+        'Gross Salary': payrollDetails.summary?.total_gross || 0,
+        'PF (Employee)': payrollDetails.summary?.total_pf || 0,
+        'ESI (Employee)': payrollDetails.summary?.total_esi || 0,
+        'Professional Tax': payrollDetails.summary?.total_pt || 0,
+        'Total Deductions': payrollDetails.summary?.total_deductions || 0,
+        'Net Salary': payrollDetails.summary?.total_net || 0,
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Payroll');
+
+      // Auto-size columns
+      const maxWidth = 20;
+      const cols = Object.keys(exportData[0] || {}).map(() => ({ wch: maxWidth }));
+      worksheet['!cols'] = cols;
+
+      // Generate filename
+      const monthName = getMonthName(payrollDetails.payroll?.month || selectedMonth);
+      const year = payrollDetails.payroll?.year || selectedYear;
+      const filename = `Payroll_${monthName}_${year}.xlsx`;
+
+      XLSX.writeFile(workbook, filename);
+      toast.success(`Exported to ${filename}`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export payroll');
+    }
+  };
+
   const handleSaveRuleSection = async (section) => {
     try {
       const response = await fetch(`${API_URL}/payroll/rules/${section}`, {
