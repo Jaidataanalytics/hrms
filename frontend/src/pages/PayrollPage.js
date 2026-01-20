@@ -2467,6 +2467,121 @@ const PayrollPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Payroll Details Dialog */}
+      <Dialog open={viewPayrollOpen} onOpenChange={setViewPayrollOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Payroll Details - {selectedPayrollRun && `${getMonthName(selectedPayrollRun.month)} ${selectedPayrollRun.year}`}
+              </DialogTitle>
+              <Button 
+                onClick={exportPayrollToExcel} 
+                className="gap-2"
+                disabled={!payrollDetails}
+                data-testid="export-payroll-btn"
+              >
+                <Download className="w-4 h-4" />
+                Export to Excel
+              </Button>
+            </div>
+            <DialogDescription>
+              {selectedPayrollRun && (
+                <div className="flex gap-4 mt-2">
+                  <Badge className={statusColors[selectedPayrollRun.status]}>
+                    {selectedPayrollRun.status}
+                  </Badge>
+                  <span className="text-slate-600">{payrollDetails?.summary?.total_employees || 0} employees</span>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingPayrollDetails ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : payrollDetails ? (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-xs text-blue-600 font-medium">Total Gross</p>
+                  <p className="text-lg font-bold text-blue-800">{formatCurrency(payrollDetails.summary?.total_gross)}</p>
+                </div>
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <p className="text-xs text-red-600 font-medium">Total Deductions</p>
+                  <p className="text-lg font-bold text-red-800">{formatCurrency(payrollDetails.summary?.total_deductions)}</p>
+                </div>
+                <div className="bg-emerald-50 p-3 rounded-lg">
+                  <p className="text-xs text-emerald-600 font-medium">Total Net Pay</p>
+                  <p className="text-lg font-bold text-emerald-800">{formatCurrency(payrollDetails.summary?.total_net)}</p>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <p className="text-xs text-purple-600 font-medium">PF + ESI + PT</p>
+                  <p className="text-lg font-bold text-purple-800">
+                    {formatCurrency(
+                      (payrollDetails.summary?.total_pf || 0) + 
+                      (payrollDetails.summary?.total_esi || 0) + 
+                      (payrollDetails.summary?.total_pt || 0)
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Payslips Table */}
+              <div className="flex-1 overflow-auto border rounded-lg">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-slate-50 z-10">
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Emp Code</TableHead>
+                      <TableHead>Employee Name</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead className="text-center">Days</TableHead>
+                      <TableHead className="text-right">Gross</TableHead>
+                      <TableHead className="text-right">Deductions</TableHead>
+                      <TableHead className="text-right">Net Pay</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payrollDetails.payslips?.map((slip, index) => (
+                      <TableRow key={slip.payslip_id || index} data-testid={`payslip-row-${index}`}>
+                        <TableCell className="text-slate-500">{index + 1}</TableCell>
+                        <TableCell className="font-medium">{slip.emp_code || slip.employee_id}</TableCell>
+                        <TableCell>{slip.employee_name || '-'}</TableCell>
+                        <TableCell className="text-slate-600">{slip.department || '-'}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm">
+                            {slip.paid_days || 0}/{slip.working_days || 26}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(slip.gross_salary)}</TableCell>
+                        <TableCell className="text-right text-red-600">{formatCurrency(slip.total_deductions)}</TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-600">{formatCurrency(slip.net_salary)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {(!payrollDetails.payslips || payrollDetails.payslips.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                          No payslips found for this payroll run
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-slate-500">
+              <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+              No payroll data available
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
