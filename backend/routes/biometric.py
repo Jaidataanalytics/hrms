@@ -720,6 +720,113 @@ async def forward_to_servers(raw_body: bytes, headers: dict):
             logger.error(f"Failed to forward to {server['name']}: {e}")
 
 
+# ==================== API SYNC ENDPOINTS ====================
+
+@router.post("/sync")
+async def trigger_biometric_sync(request: Request, data: dict = None):
+    """
+    Manually trigger biometric API sync.
+    HR/Admin only.
+    
+    Optional body:
+    - from_date: Start date (YYYY-MM-DD)
+    - to_date: End date (YYYY-MM-DD)
+    """
+    from server import get_current_user
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    from services.biometric_sync import sync_biometric_data
+    
+    from_date = data.get("from_date") if data else None
+    to_date = data.get("to_date") if data else None
+    
+    result = await sync_biometric_data(from_date, to_date)
+    return result
+
+
+@router.post("/sync/historical")
+async def trigger_historical_sync(request: Request, data: dict = None):
+    """
+    Sync historical biometric data (up to 1 year).
+    Super Admin only - this can be a heavy operation.
+    
+    Optional body:
+    - days: Number of days to sync (default 365)
+    """
+    from server import get_current_user
+    user = await get_current_user(request)
+    
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin only")
+    
+    from services.biometric_sync import sync_historical_data
+    
+    days = data.get("days", 365) if data else 365
+    
+    # Limit to max 400 days
+    days = min(days, 400)
+    
+    result = await sync_historical_data(days)
+    return result
+
+
+@router.get("/sync/status")
+async def get_sync_status(request: Request):
+    """Get recent biometric sync logs"""
+    from server import get_current_user
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    from services.biometric_sync import get_sync_logs
+    
+    logs = await get_sync_logs(limit=20)
+    
+    # Get last sync time
+    last_sync = logs[0] if logs else None
+    
+    return {
+        "last_sync": last_sync.get("synced_at") if last_sync else None,
+        "last_sync_stats": {
+            "total": last_sync.get("total_records", 0) if last_sync else 0,
+            "matched": last_sync.get("matched", 0) if last_sync else 0,
+            "updated": last_sync.get("updated", 0) if last_sync else 0,
+            "unmatched": last_sync.get("unmatched", 0) if last_sync else 0
+        } if last_sync else None,
+        "recent_logs": logs
+    }
+
+
+@router.get("/sync/unmatched-codes")
+async def get_unmatched_employee_codes(request: Request):
+    """Get list of employee codes from biometric that don't exist in database"""
+    from server import get_current_user
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get all unmatched codes from recent sync logs
+    logs = await db.biometric_sync_logs.find(
+        {}, {"unmatched_codes": 1, "_id": 0}
+    ).sort("synced_at", -1).limit(5).to_list(5)
+    
+    all_unmatched = set()
+    for log in logs:
+        codes = log.get("unmatched_codes", [])
+        all_unmatched.update(codes)
+    
+    return {
+        "unmatched_codes": sorted(list(all_unmatched)),
+        "count": len(all_unmatched),
+        "message": "These employee codes exist in biometric system but not in database"
+    }
+
+
 # ==================== INITIALIZATION ====================
 
 async def load_forward_servers():
