@@ -179,8 +179,25 @@ async def update_attendance_record(
             first_in = min(in_times) if in_times else existing.get("first_in")
             last_out = max(out_times) if out_times else existing.get("last_out")
             
-            # Calculate total hours
+            # Calculate total hours and late status
             total_hours = None
+            is_late = False
+            late_minutes = 0
+            
+            if first_in:
+                try:
+                    # Parse first_in time
+                    time_format = "%H:%M:%S" if first_in.count(":") == 2 else "%H:%M"
+                    in_time = datetime.strptime(first_in, time_format)
+                    late_threshold = datetime.strptime("09:45:00", "%H:%M:%S")
+                    
+                    # Check if late (after 09:45)
+                    if in_time > late_threshold:
+                        is_late = True
+                        late_minutes = int((in_time - late_threshold).seconds / 60)
+                except:
+                    pass
+            
             if first_in and last_out:
                 try:
                     t1 = datetime.strptime(first_in, "%H:%M:%S" if first_in.count(":") == 2 else "%H:%M")
@@ -197,6 +214,8 @@ async def update_attendance_record(
                     "last_out": last_out,
                     "total_hours": total_hours,
                     "status": "present",
+                    "is_late": is_late,
+                    "late_minutes": late_minutes,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }}
             )
