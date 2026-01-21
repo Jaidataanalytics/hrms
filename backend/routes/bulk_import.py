@@ -1985,10 +1985,6 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
                         if val is not None:
                             return str(val).strip()
             return None
-                        val = row.get(key)
-                        if val is not None:
-                            return str(val).strip()
-            return None
         
         def parse_number_tags(tag_string):
             """Parse NUMBER TAG column to extract individual tags with their asset types"""
