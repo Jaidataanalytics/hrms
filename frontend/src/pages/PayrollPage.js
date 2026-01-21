@@ -1344,6 +1344,183 @@ const PayrollPage = () => {
                 </CardContent>
               </Card>
 
+              {/* Leave Policy Rules (Quotas, Carry Forward, Sunday Rules) */}
+              <Card className="mb-4">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-primary" />
+                      Leave Policy Rules
+                    </CardTitle>
+                    <Button size="sm" onClick={handleSaveLeavePolicyRules}>
+                      <Save className="w-4 h-4 mr-1" /> Save
+                    </Button>
+                  </div>
+                  <CardDescription>Configure annual leave quotas, carry forward rules, and Sunday leave penalties</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Financial Year Start */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Financial Year Start</Label>
+                      <Input
+                        value={leavePolicyRules.financial_year_start || "04-01"}
+                        onChange={(e) => setLeavePolicyRules({...leavePolicyRules, financial_year_start: e.target.value})}
+                        placeholder="04-01"
+                      />
+                      <p className="text-xs text-slate-500">Format: MM-DD (e.g., 04-01 for April 1st)</p>
+                    </div>
+                  </div>
+
+                  {/* Annual Quotas */}
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Annual Leave Quotas</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Casual Leave (CL)</Label>
+                        <Input
+                          type="number"
+                          value={leavePolicyRules.annual_quotas?.CL || 6}
+                          onChange={(e) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            annual_quotas: {...leavePolicyRules.annual_quotas, CL: Number(e.target.value)}
+                          })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Sick Leave (SL)</Label>
+                        <Input
+                          type="number"
+                          value={leavePolicyRules.annual_quotas?.SL || 6}
+                          onChange={(e) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            annual_quotas: {...leavePolicyRules.annual_quotas, SL: Number(e.target.value)}
+                          })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Earned Leave (EL)</Label>
+                        <Input
+                          type="number"
+                          value={leavePolicyRules.annual_quotas?.EL || 12}
+                          onChange={(e) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            annual_quotas: {...leavePolicyRules.annual_quotas, EL: Number(e.target.value)}
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Carry Forward Rules */}
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Carry Forward Rules</h4>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={leavePolicyRules.carry_forward?.CL || false}
+                          onCheckedChange={(v) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            carry_forward: {...leavePolicyRules.carry_forward, CL: v}
+                          })}
+                        />
+                        <Label>CL Carries Forward</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={leavePolicyRules.carry_forward?.SL || false}
+                          onCheckedChange={(v) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            carry_forward: {...leavePolicyRules.carry_forward, SL: v}
+                          })}
+                        />
+                        <Label>SL Carries Forward</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={leavePolicyRules.carry_forward?.EL || true}
+                          onCheckedChange={(v) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            carry_forward: {...leavePolicyRules.carry_forward, EL: v}
+                          })}
+                        />
+                        <Label>EL Carries Forward</Label>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Max EL Accumulation</Label>
+                        <Input
+                          type="number"
+                          value={leavePolicyRules.carry_forward?.max_el_accumulation || 30}
+                          onChange={(e) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            carry_forward: {...leavePolicyRules.carry_forward, max_el_accumulation: Number(e.target.value)}
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sunday Leave Rules */}
+                  <div className="border rounded-lg p-4 bg-amber-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-amber-800">Sunday Leave Penalty Rules</h4>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={leavePolicyRules.sunday_leave_rules?.enabled || false}
+                          onCheckedChange={(v) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            sunday_leave_rules: {...leavePolicyRules.sunday_leave_rules, enabled: v}
+                          })}
+                        />
+                        <Label className="text-amber-800">Enabled</Label>
+                      </div>
+                    </div>
+                    <p className="text-sm text-amber-700 mb-4">
+                      Automatically mark Sunday as leave if employee exceeds leave thresholds
+                    </p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Weekly Threshold</Label>
+                        <Input
+                          type="number"
+                          value={leavePolicyRules.sunday_leave_rules?.weekly_threshold || 2}
+                          onChange={(e) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            sunday_leave_rules: {...leavePolicyRules.sunday_leave_rules, weekly_threshold: Number(e.target.value)}
+                          })}
+                        />
+                        <p className="text-xs text-amber-600">If &gt; this many leaves in a week</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Monthly Threshold</Label>
+                        <Input
+                          type="number"
+                          value={leavePolicyRules.sunday_leave_rules?.monthly_threshold || 6}
+                          onChange={(e) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            sunday_leave_rules: {...leavePolicyRules.sunday_leave_rules, monthly_threshold: Number(e.target.value)}
+                          })}
+                        />
+                        <p className="text-xs text-amber-600">If &gt; this many leaves in a month</p>
+                      </div>
+                      <div className="flex items-center gap-2 pt-6">
+                        <Switch
+                          checked={leavePolicyRules.sunday_leave_rules?.auto_apply || true}
+                          onCheckedChange={(v) => setLeavePolicyRules({
+                            ...leavePolicyRules,
+                            sunday_leave_rules: {...leavePolicyRules.sunday_leave_rules, auto_apply: v}
+                          })}
+                        />
+                        <div>
+                          <Label>Auto Apply</Label>
+                          <p className="text-xs text-amber-600">Auto-trigger with HR warning</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Overtime Rules */}
               <RuleSection title="Overtime Rules" section="overtime_rules">
                 <div className="grid md:grid-cols-3 gap-4">
