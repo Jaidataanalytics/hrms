@@ -1929,7 +1929,7 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
         
         def parse_number_tags(tag_string):
             """Parse NUMBER TAG column to extract individual tags with their asset types"""
-            if not tag_string or tag_string.upper() == "NO":
+            if not tag_string or str(tag_string).upper() == "NO":
                 return {}
             
             tags = {}
@@ -1964,11 +1964,11 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
             val_str = str(value).strip().upper()
             return val_str not in ['NO', 'N', 'NA', 'N/A', '-', '']
         
-        for idx, row in enumerate(rows, start=start_row):
+        for idx, row in enumerate(rows, start=3):  # Data starts at row 3 in Excel (1-indexed)
             try:
-                # Get employee info
-                emp_code = get_field(row, "empl.code", "emp_code", "emp code", "employee code", "s.no")
-                emp_name = get_field(row, "name", "employee_name")
+                # Get employee info using normalized keys
+                emp_code = get_val(row, 'emp_code')
+                emp_name = get_val(row, 'name')
                 
                 if not emp_code:
                     errors.append({"row": idx, "error": f"Missing Employee Code. Row data: {row}"})
