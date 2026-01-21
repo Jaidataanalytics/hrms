@@ -138,12 +138,13 @@ const PayrollPage = () => {
   const fetchData = async () => {
     try {
       const authHeaders = getAuthHeaders();
-      const [runsRes, payslipsRes, rulesRes, leaveRulesRes, customRulesRes] = await Promise.all([
+      const [runsRes, payslipsRes, rulesRes, leaveRulesRes, customRulesRes, leavePolicyRes] = await Promise.all([
         isHR ? fetch(`${API_URL}/payroll/runs`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
         fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include', headers: authHeaders }),
         isHR ? fetch(`${API_URL}/payroll/rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
         isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
         isHR ? fetch(`${API_URL}/payroll/custom-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/leave-policy-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
       ]);
 
       if (runsRes.ok) setPayrollRuns(await runsRes.json());
@@ -151,6 +152,7 @@ const PayrollPage = () => {
       if (rulesRes.ok) setPayrollRules(await rulesRes.json());
       if (leaveRulesRes.ok) setLeaveTypeRules(await leaveRulesRes.json());
       if (customRulesRes.ok) setCustomRules(await customRulesRes.json());
+      if (leavePolicyRes.ok) setLeavePolicyRules(await leavePolicyRes.json());
     } catch (error) {
       console.error('Error fetching payroll data:', error);
     } finally {
