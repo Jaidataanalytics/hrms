@@ -53,7 +53,7 @@ import {
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const AssetsPage = () => {
-  const { user } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [assets, setAssets] = useState([]);
   const [employeeAssets, setEmployeeAssets] = useState([]);
   const [myAssets, setMyAssets] = useState([]);
@@ -61,10 +61,17 @@ const AssetsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('assignments');
+  const [activeTab, setActiveTab] = useState('inventory');
+  
+  // Asset operations state
+  const [editAssetOpen, setEditAssetOpen] = useState(false);
+  const [reassignAssetOpen, setReassignAssetOpen] = useState(false);
+  const [selectedAssetForEdit, setSelectedAssetForEdit] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployeeCode, setSelectedEmployeeCode] = useState('');
 
   const [assetForm, setAssetForm] = useState({
     name: '', asset_tag: '', category: 'laptop', brand: '', model: '',
@@ -80,7 +87,7 @@ const AssetsPage = () => {
 
   const fetchAssetDetails = async (assetId) => {
     try {
-      const response = await fetch(`${API_URL}/assets/${assetId}`, { credentials: 'include' });
+      const response = await fetch(`${API_URL}/assets/${assetId}`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setSelectedAsset(data);
@@ -92,34 +99,51 @@ const AssetsPage = () => {
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch(`${API_URL}/assets/employees/list`, { credentials: 'include', headers: getAuthHeaders() });
+      if (response.ok) {
+        setEmployees(await response.json());
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
-  }, [filterCategory, filterStatus, searchTerm]);
+    if (isAdmin) fetchEmployees();
+  }, [filterType, filterStatus, searchTerm]);
 
   const fetchData = async () => {
     try {
       const promises = [
-        fetch(`${API_URL}/my-assets`, { credentials: 'include' }),
-        fetch(`${API_URL}/asset-requests`, { credentials: 'include' })
+        fetch(`${API_URL}/my-assets`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/asset-requests`, { credentials: 'include', headers: getAuthHeaders() })
       ];
 
       if (isAdmin) {
+        // Fetch asset inventory
         let url = `${API_URL}/assets?`;
-        if (filterCategory !== 'all') url += `category=${filterCategory}&`;
+        if (filterType !== 'all') url += `asset_type=${filterType}&`;
         if (filterStatus !== 'all') url += `status=${filterStatus}&`;
-        promises.push(fetch(url, { credentials: 'include' }));
+        if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
+        promises.push(fetch(url, { credentials: 'include', headers: getAuthHeaders() }));
         
-        // Fetch employee asset assignments (from bulk import)
+        // Fetch employee asset assignments
         let empAssetsUrl = `${API_URL}/assets/employee-assignments?`;
         if (searchTerm) empAssetsUrl += `search=${encodeURIComponent(searchTerm)}&`;
-        promises.push(fetch(empAssetsUrl, { credentials: 'include' }));
+        promises.push(fetch(empAssetsUrl, { credentials: 'include', headers: getAuthHeaders() }));
       }
 
       const responses = await Promise.all(promises);
       
       if (responses[0].ok) setMyAssets(await responses[0].json());
       if (responses[1].ok) setRequests(await responses[1].json());
-      if (isAdmin && responses[2]?.ok) setAssets(await responses[2].json());
+      if (isAdmin && responses[2]?.ok) {
+        const assetData = await responses[2].json();
+        setAssets(assetData.assets || []);
+      }
       if (isAdmin && responses[3]?.ok) {
         const empData = await responses[3].json();
         setEmployeeAssets(empData.records || []);
@@ -128,6 +152,138 @@ const AssetsPage = () => {
       console.error('Error fetching assets:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Asset operations
+  const handleEditAsset = (asset) => {
+    setSelectedAssetForEdit(asset);
+    setEditAssetOpen(true);
+  };
+
+  const handleSaveAssetEdit = async () => {
+    if (!selectedAssetForEdit) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/assets/${selectedAssetForEdit.asset_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          description: selectedAssetForEdit.description,
+          asset_tag: selectedAssetForEdit.asset_tag,
+          asset_type: selectedAssetForEdit.asset_type,
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Asset updated successfully');
+        setEditAssetOpen(false);
+        fetchData();
+      } else {
+        toast.error('Failed to update asset');
+      }
+    } catch (error) {
+      toast.error('Failed to update asset');
+    }
+  };
+
+  const handleDeleteAsset = async (assetId) => {
+    if (!confirm('Are you sure you want to delete this asset?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/assets/${assetId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        toast.success('Asset deleted successfully');
+        fetchData();
+      } else {
+        toast.error('Failed to delete asset');
+      }
+    } catch (error) {
+      toast.error('Failed to delete asset');
+    }
+  };
+
+  const handleUnassignAsset = async (assetId) => {
+    if (!confirm('Return this asset to inventory?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/assets/${assetId}/unassign`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        toast.success('Asset returned to inventory');
+        fetchData();
+      } else {
+        toast.error('Failed to unassign asset');
+      }
+    } catch (error) {
+      toast.error('Failed to unassign asset');
+    }
+  };
+
+  const handleReassignAsset = (asset) => {
+    setSelectedAssetForEdit(asset);
+    setSelectedEmployeeCode('');
+    setReassignAssetOpen(true);
+  };
+
+  const handleSaveReassign = async () => {
+    if (!selectedAssetForEdit || !selectedEmployeeCode) {
+      toast.error('Please select an employee');
+      return;
+    }
+    
+    try {
+      const selectedEmp = employees.find(e => e.emp_code === selectedEmployeeCode);
+      const response = await fetch(`${API_URL}/assets/${selectedAssetForEdit.asset_id}/reassign`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          emp_code: selectedEmployeeCode,
+          employee_name: selectedEmp?.name || selectedEmployeeCode
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Asset reassigned successfully');
+        setReassignAssetOpen(false);
+        fetchData();
+      } else {
+        toast.error('Failed to reassign asset');
+      }
+    } catch (error) {
+      toast.error('Failed to reassign asset');
+    }
+  };
+
+  const handleDeleteEmployeeAssignment = async (empCode) => {
+    if (!confirm('Delete this employee assignment and unassign all their assets?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/assets/employee-assignments/${empCode}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        toast.success('Employee assignment deleted');
+        fetchData();
+      } else {
+        toast.error('Failed to delete assignment');
+      }
+    } catch (error) {
+      toast.error('Failed to delete assignment');
     }
   };
 
