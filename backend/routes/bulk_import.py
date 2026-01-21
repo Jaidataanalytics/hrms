@@ -1841,97 +1841,46 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
             wb = openpyxl.load_workbook(io.BytesIO(content))
             ws = wb.active
             
-            # Read all rows as raw data first
+            # Read all rows as raw data
             all_rows = list(ws.iter_rows(values_only=True))
             
-            # Find the header row - look for row containing column names
-            header_row_idx = 0
-            data_start_row = 1
+            # Based on actual file structure:
+            # Row 0: S.NO. | Empl.Code | NAME | ASSETS OF SDPL (merged) | | | | | NUMBER TAG
+            # Row 1: | | | MOBILE & CHARGER | LAPTOP | SYSTEM | PRINTER | SIM | 
+            # Row 2+: Data
             
-            for idx, row in enumerate(all_rows[:5]):  # Check first 5 rows
-                row_str = ' '.join(str(c or '').lower() for c in row)
-                # Check if this row has expected column headers
-                if 'empl' in row_str or 's.no' in row_str or 'name' in row_str:
-                    # Check next row for sub-headers like MOBILE & CHARGER
-                    if idx + 1 < len(all_rows):
-                        next_row_str = ' '.join(str(c or '').lower() for c in all_rows[idx + 1])
-                        if 'mobile' in next_row_str or 'laptop' in next_row_str:
-                            # This is a merged header structure, data starts from row after sub-headers
-                            header_row_idx = idx
-                            data_start_row = idx + 2
-                            break
-                    header_row_idx = idx
-                    data_start_row = idx + 1
-                    break
+            # Column indices based on actual structure
+            COL_SERIAL = 0      # S.NO.
+            COL_EMP_CODE = 1    # Empl.Code
+            COL_NAME = 2        # NAME
+            COL_MOBILE = 3      # MOBILE & CHARGER
+            COL_LAPTOP = 4      # LAPTOP
+            COL_SYSTEM = 5      # SYSTEM
+            COL_PRINTER = 6     # PRINTER
+            COL_SIM = 7         # SIM(MOBILE NO)
+            COL_NUMBER_TAG = 8  # NUMBER TAG
             
-            # Build column mapping by analyzing headers
-            # For merged header Excel: Row 1 has S.NO., Empl.Code, NAME, ASSETS OF SDPL (merged)
-            # Row 2 has sub-columns: empty, empty, empty, MOBILE & CHARGER, LAPTOP, SYSTEM, PRINTER, SIM, NUMBER TAG
+            # Find data start row (skip header rows)
+            data_start_row = 2  # Default: skip rows 0 and 1
             
-            header_row = all_rows[header_row_idx] if header_row_idx < len(all_rows) else []
-            sub_header_row = all_rows[header_row_idx + 1] if header_row_idx + 1 < len(all_rows) else []
-            
-            # Create column mapping
-            col_map = {}
-            for col_idx in range(min(len(header_row), 15)):
-                h1 = str(header_row[col_idx] or '').strip().lower()
-                h2 = str(sub_header_row[col_idx] or '').strip().lower() if col_idx < len(sub_header_row) else ''
-                
-                # Map based on header names
-                if 's.no' in h1 or 'serial' in h1:
-                    col_map['s_no'] = col_idx
-                if 'empl' in h1 and 'code' in h1:
-                    col_map['emp_code'] = col_idx
-                if h1 == 'name' or (h1 == '' and col_idx == 2):  # NAME is often in column C (index 2)
-                    col_map['name'] = col_idx
-                
-                # Sub-headers for assets
-                if 'mobile' in h2 or 'charger' in h2:
-                    col_map['mobile_charger'] = col_idx
-                if h2 == 'laptop' or 'laptop' in h2:
-                    col_map['laptop'] = col_idx
-                if h2 == 'system' or 'system' in h2 or 'desktop' in h2:
-                    col_map['system'] = col_idx
-                if h2 == 'printer' or 'printer' in h2:
-                    col_map['printer'] = col_idx
-                if 'sim' in h2 or 'mobile no' in h2:
-                    col_map['sim'] = col_idx
-                if 'number' in h2 and 'tag' in h2:
-                    col_map['number_tag'] = col_idx
-                elif 'tag' in h2 and 'number_tag' not in col_map:
-                    col_map['number_tag'] = col_idx
-            
-            # If column mapping is still incomplete, try position-based mapping for standard structure
-            # Standard structure: S.NO | Empl.Code | NAME | MOBILE | LAPTOP | SYSTEM | PRINTER | SIM | NUMBER TAG
-            if 'emp_code' not in col_map and 's_no' in col_map:
-                # S.NO column might actually contain employee code
-                col_map['emp_code'] = col_map['s_no']
-            
-            if len(col_map) < 4:
-                # Fallback: assume fixed positions based on your screenshot
-                # A=S.NO/EmpCode, B=Name, C=MobileCharger, D=Laptop, E=System, F=Printer, G=SIM, H=NumberTag
-                col_map = {
-                    'emp_code': 0,  # Column A - Employee Code (S0015, F0004, etc.)
-                    'name': 1,      # Column B - Name
-                    'mobile_charger': 2,  # Column C
-                    'laptop': 3,    # Column D
-                    'system': 4,    # Column E
-                    'printer': 5,   # Column F
-                    'sim': 6,       # Column G
-                    'number_tag': 7 # Column H
-                }
-            
-            # Now process data rows
+            # Process data rows
             rows = []
             for row_data in all_rows[data_start_row:]:
                 if not any(row_data):
                     continue
                 
-                row_dict = {}
-                for field_name, col_idx in col_map.items():
-                    if col_idx < len(row_data):
-                        row_dict[field_name] = row_data[col_idx]
-                
+                # Create normalized row dict
+                row_dict = {
+                    'serial': row_data[COL_SERIAL] if len(row_data) > COL_SERIAL else None,
+                    'emp_code': row_data[COL_EMP_CODE] if len(row_data) > COL_EMP_CODE else None,
+                    'name': row_data[COL_NAME] if len(row_data) > COL_NAME else None,
+                    'mobile_charger': row_data[COL_MOBILE] if len(row_data) > COL_MOBILE else None,
+                    'laptop': row_data[COL_LAPTOP] if len(row_data) > COL_LAPTOP else None,
+                    'system': row_data[COL_SYSTEM] if len(row_data) > COL_SYSTEM else None,
+                    'printer': row_data[COL_PRINTER] if len(row_data) > COL_PRINTER else None,
+                    'sim': row_data[COL_SIM] if len(row_data) > COL_SIM else None,
+                    'number_tag': row_data[COL_NUMBER_TAG] if len(row_data) > COL_NUMBER_TAG else None,
+                }
                 rows.append(row_dict)
                 
         elif filename.endswith('.csv'):
@@ -1960,8 +1909,6 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
                         norm_row['sim'] = v
                     elif 'tag' in k_lower:
                         norm_row['number_tag'] = v
-                    elif 's.no' in k_lower:
-                        norm_row['emp_code'] = v  # Use S.NO as emp_code if no dedicated column
                 normalized_rows.append(norm_row)
             rows = normalized_rows
         else:
@@ -1972,19 +1919,13 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
         employees_processed = 0
         errors = []
         
-        def get_field(row, *names):
-            """Flexibly get field value by checking multiple possible column names"""
-            for name in names:
-                if name in row:
-                    val = row.get(name)
-                    if val is not None:
-                        return str(val).strip()
-                for key in row.keys():
-                    if key and name.lower() in str(key).lower():
-                        val = row.get(key)
-                        if val is not None:
-                            return str(val).strip()
-            return None
+        def get_val(row, key):
+            """Get value from row, handling None and empty strings"""
+            val = row.get(key)
+            if val is None:
+                return None
+            val_str = str(val).strip()
+            return val_str if val_str else None
         
         def parse_number_tags(tag_string):
             """Parse NUMBER TAG column to extract individual tags with their asset types"""
