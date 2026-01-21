@@ -319,6 +319,7 @@ export const AuthProvider = ({ children }) => {
     processGoogleSession,
     checkAuth,
     refreshToken, // Expose this so components can manually refresh if needed
+    getAuthHeaders, // Expose for API calls
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
