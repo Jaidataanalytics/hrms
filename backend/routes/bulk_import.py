@@ -2027,10 +2027,10 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
             try:
                 # Get employee info
                 emp_code = get_field(row, "empl.code", "emp_code", "emp code", "employee code", "s.no")
-                emp_name = get_field(row, "name", "employee name")
+                emp_name = get_field(row, "name", "employee_name")
                 
                 if not emp_code:
-                    errors.append({"row": idx, "error": "Missing Employee Code"})
+                    errors.append({"row": idx, "error": f"Missing Employee Code. Row data: {row}"})
                     continue
                 
                 # Try to find employee in database
@@ -2042,13 +2042,13 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
                 employee_id = employee["employee_id"] if employee else None
                 employee_name = emp_name or (f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip() if employee else emp_code)
                 
-                # Get asset values from columns
-                mobile_charger = get_field(row, "mobile & charger", "mobile", "charger")
+                # Get asset values from columns - use normalized field names
+                mobile_charger = get_field(row, "mobile_charger", "mobile & charger", "mobile", "charger")
                 laptop = get_field(row, "laptop")
                 system = get_field(row, "system", "desktop")
                 printer = get_field(row, "printer")
-                sim_mobile_no = get_field(row, "sim", "mobile no", "sim(mobile")
-                number_tag = get_field(row, "number tag", "tag", "number")
+                sim_mobile_no = get_field(row, "sim", "sim_mobile_no", "mobile no", "sim(mobile")
+                number_tag = get_field(row, "number_tag", "number tag", "tag")
                 
                 # Parse tags to match with assets
                 asset_tags = parse_number_tags(number_tag)
