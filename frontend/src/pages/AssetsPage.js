@@ -1085,6 +1085,102 @@ const AssetsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Asset Dialog */}
+      <Dialog open={editAssetOpen} onOpenChange={setEditAssetOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Asset</DialogTitle>
+            <DialogDescription>Update asset details</DialogDescription>
+          </DialogHeader>
+          {selectedAssetForEdit && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Asset Tag</Label>
+                <Input
+                  value={selectedAssetForEdit.asset_tag || ''}
+                  onChange={(e) => setSelectedAssetForEdit({...selectedAssetForEdit, asset_tag: e.target.value})}
+                  placeholder="SDPL/SALES/L/01"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Asset Type</Label>
+                <Select 
+                  value={selectedAssetForEdit.asset_type || 'laptop'} 
+                  onValueChange={(v) => setSelectedAssetForEdit({...selectedAssetForEdit, asset_type: v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mobile">Mobile & Charger</SelectItem>
+                    <SelectItem value="laptop">Laptop</SelectItem>
+                    <SelectItem value="system">Desktop/System</SelectItem>
+                    <SelectItem value="printer">Printer</SelectItem>
+                    <SelectItem value="scanner">Scanner</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={selectedAssetForEdit.description || ''}
+                  onChange={(e) => setSelectedAssetForEdit({...selectedAssetForEdit, description: e.target.value})}
+                  placeholder="Dell Laptop (RAM 8GB, i5 Processor)"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditAssetOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveAssetEdit}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reassign Asset Dialog */}
+      <Dialog open={reassignAssetOpen} onOpenChange={setReassignAssetOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedAssetForEdit?.status === 'assigned' ? 'Reassign Asset' : 'Assign Asset'}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedAssetForEdit && (
+                <span className="block mt-2">
+                  Asset: <strong>{selectedAssetForEdit.description}</strong>
+                  <br />
+                  Tag: <code className="bg-slate-100 px-1 rounded">{selectedAssetForEdit.asset_tag}</code>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select Employee</Label>
+              <Select value={selectedEmployeeCode} onValueChange={setSelectedEmployeeCode}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an employee..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.emp_code} value={emp.emp_code}>
+                      {emp.emp_code} - {emp.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReassignAssetOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveReassign}>
+              {selectedAssetForEdit?.status === 'assigned' ? 'Reassign' : 'Assign'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
