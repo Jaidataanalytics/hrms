@@ -218,38 +218,6 @@ async def get_my_assets(request: Request):
     return assets
 
 
-# ==================== EMPLOYEE ASSETS (from bulk import) ====================
-
-@router.get("/employee-assignments")
-async def list_employee_asset_assignments(
-    request: Request,
-    search: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100
-):
-    """List employee assets from bulk import (Admin only)"""
-    user = await get_current_user(request)
-    if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    query = {}
-    if search:
-        query["$or"] = [
-            {"emp_code": {"$regex": search, "$options": "i"}},
-            {"employee_name": {"$regex": search, "$options": "i"}},
-            {"sdpl_number": {"$regex": search, "$options": "i"}},
-            {"tag": {"$regex": search, "$options": "i"}}
-        ]
-    
-    total = await db.employee_assets.count_documents(query)
-    records = await db.employee_assets.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
-    
-    return {
-        "total": total,
-        "records": records
-    }
-
-
 # ==================== ASSET REQUESTS ====================
 
 @router.get("/requests")
