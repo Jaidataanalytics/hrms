@@ -76,6 +76,12 @@ const PayrollPage = () => {
   const [payrollRules, setPayrollRules] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
   const [leaveTypeRules, setLeaveTypeRules] = useState([]);
+  const [leavePolicyRules, setLeavePolicyRules] = useState({
+    financial_year_start: "04-01",
+    annual_quotas: { CL: 6, SL: 6, EL: 12 },
+    carry_forward: { CL: false, SL: false, EL: true, max_el_accumulation: 30 },
+    sunday_leave_rules: { enabled: true, weekly_threshold: 2, monthly_threshold: 6, auto_apply: true }
+  });
   const [expandedSections, setExpandedSections] = useState({});
   const [breakdownExpandedSections, setBreakdownExpandedSections] = useState({
     attendance: true,
