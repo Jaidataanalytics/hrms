@@ -47,7 +47,12 @@ import {
   Calendar,
   IndianRupee,
   Tag,
-  Hash
+  Hash,
+  Edit,
+  Trash2,
+  ArrowRightLeft,
+  Printer,
+  Phone
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
