@@ -18,29 +18,43 @@ async def get_current_user(request: Request) -> dict:
     return await auth_get_user(request)
 
 
-# ==================== ASSETS ====================
+# ==================== ASSETS INVENTORY ====================
 
 @router.get("")
 async def list_assets(
     request: Request,
-    category: Optional[str] = None,
+    asset_type: Optional[str] = None,
     status: Optional[str] = None,
+    search: Optional[str] = None,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 200
 ):
-    """List all assets (Admin only)"""
+    """List all assets from inventory (Admin only)"""
     user = await get_current_user(request)
-    if user.get("role") not in ["super_admin", "hr_admin", "it_admin"]:
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    query = {"is_active": True}
-    if category and category != "all":
-        query["category"] = category
+    query = {"is_active": {"$ne": False}}
+    
+    if asset_type and asset_type != "all":
+        query["asset_type"] = asset_type
     if status and status != "all":
         query["status"] = status
+    if search:
+        query["$or"] = [
+            {"asset_tag": {"$regex": search, "$options": "i"}},
+            {"description": {"$regex": search, "$options": "i"}},
+            {"assigned_to_name": {"$regex": search, "$options": "i"}},
+            {"emp_code": {"$regex": search, "$options": "i"}}
+        ]
     
-    assets = await db.assets.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
-    return assets
+    total = await db.assets.count_documents(query)
+    assets = await db.assets.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    return {
+        "total": total,
+        "assets": assets
+    }
 
 
 @router.post("")
