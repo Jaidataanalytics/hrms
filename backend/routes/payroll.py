@@ -1181,6 +1181,28 @@ def get_default_payroll_rules():
             "default": {"is_paid": False, "deduction_percent": 100},
         },
         
+        # Leave Policy Rules (Annual quotas, carry forward, Sunday rules)
+        "leave_policy_rules": {
+            "financial_year_start": "04-01",  # April 1st
+            "annual_quotas": {
+                "CL": 6,   # Casual Leave per year
+                "SL": 6,   # Sick Leave per year
+                "EL": 12,  # Earned Leave per year
+            },
+            "carry_forward": {
+                "CL": False,  # CL lapses
+                "SL": False,  # SL lapses
+                "EL": True,   # EL carries forward
+                "max_el_accumulation": 30,  # Max EL that can be accumulated
+            },
+            "sunday_leave_rules": {
+                "enabled": True,
+                "weekly_threshold": 2,     # If >2 leaves in a week, count 1 Sunday as leave
+                "monthly_threshold": 6,    # If >6 leaves in a month, count 1 Sunday as leave
+                "auto_apply": True,        # Auto-apply with HR warning
+            },
+        },
+        
         # Overtime Rules
         "overtime_rules": {
             "enabled": True,
