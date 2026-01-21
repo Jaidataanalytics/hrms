@@ -1568,7 +1568,7 @@ async def update_leave_policy_rules(data: dict, request: Request):
     config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
     
     if not config:
-        config = get_default_payroll_config()
+        config = get_default_payroll_rules()
     
     # Update leave policy rules
     config["leave_policy_rules"] = {
