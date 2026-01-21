@@ -366,12 +366,6 @@ const AssetsPage = () => {
     disposed: 'bg-slate-100 text-slate-600'
   };
 
-  const filteredAssets = assets.filter(asset => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         asset.asset_tag.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
