@@ -91,8 +91,8 @@ async def create_asset(data: dict, request: Request):
     return asset
 
 
-# ==================== EMPLOYEE ASSETS (from bulk import) ====================
-# NOTE: This must be BEFORE /{asset_id} route to prevent path matching issues
+# ==================== EMPLOYEE ASSETS SUMMARY ====================
+# NOTE: These routes must be BEFORE /{asset_id} to prevent path matching issues
 
 @router.get("/employee-assignments")
 async def list_employee_asset_assignments(
@@ -101,7 +101,7 @@ async def list_employee_asset_assignments(
     skip: int = 0,
     limit: int = 100
 ):
-    """List employee assets from bulk import (Admin only)"""
+    """List employee asset summaries with their assigned assets"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -110,19 +110,82 @@ async def list_employee_asset_assignments(
     if search:
         query["$or"] = [
             {"emp_code": {"$regex": search, "$options": "i"}},
-            {"employee_name": {"$regex": search, "$options": "i"}},
-            {"sdpl_number": {"$regex": search, "$options": "i"}},
-            {"tag": {"$regex": search, "$options": "i"}}
+            {"employee_name": {"$regex": search, "$options": "i"}}
         ]
     
     total = await db.employee_assets.count_documents(query)
     records = await db.employee_assets.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    # Enrich with assigned assets count
+    for record in records:
+        emp_code = record.get("emp_code")
+        assets = await db.assets.find(
+            {"emp_code": emp_code, "status": "assigned", "is_active": {"$ne": False}}, 
+            {"_id": 0, "asset_id": 1, "asset_type": 1, "description": 1, "asset_tag": 1}
+        ).to_list(50)
+        record["assigned_assets"] = assets
+        record["assets_count"] = len(assets)
     
     return {
         "total": total,
         "records": records
     }
 
+
+@router.delete("/employee-assignments/{emp_code}")
+async def delete_employee_assignment(emp_code: str, request: Request):
+    """Delete employee asset summary and unassign all their assets"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Unassign all assets from this employee
+    await db.assets.update_many(
+        {"emp_code": emp_code},
+        {"$set": {
+            "status": "available",
+            "assigned_to": None,
+            "assigned_to_name": None,
+            "emp_code": None,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Delete employee asset summary
+    result = await db.employee_assets.delete_one({"emp_code": emp_code})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Employee assignment not found")
+    
+    return {"message": "Employee assignment deleted and assets unassigned"}
+
+
+@router.put("/employee-assignments/{emp_code}")
+async def update_employee_assignment(emp_code: str, data: dict, request: Request):
+    """Update employee asset summary (SIM number, etc.)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    update_data = {
+        "sim_mobile_no": data.get("sim_mobile_no", ""),
+        "employee_name": data.get("employee_name", ""),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user["user_id"]
+    }
+    
+    result = await db.employee_assets.update_one(
+        {"emp_code": emp_code},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Employee assignment not found")
+    
+    return await db.employee_assets.find_one({"emp_code": emp_code}, {"_id": 0})
+
+
+# ==================== INDIVIDUAL ASSET OPERATIONS ====================
 
 @router.get("/{asset_id}")
 async def get_asset(asset_id: str, request: Request):
@@ -137,14 +200,181 @@ async def get_asset(asset_id: str, request: Request):
 
 @router.put("/{asset_id}")
 async def update_asset(asset_id: str, data: dict, request: Request):
-    """Update asset"""
+    """Update asset details"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Only allow updating specific fields
+    allowed_fields = ["description", "asset_tag", "asset_type", "notes", "condition"]
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = user["user_id"]
+    
+    result = await db.assets.update_one({"asset_id": asset_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    return await db.assets.find_one({"asset_id": asset_id}, {"_id": 0})
+
+
+@router.delete("/{asset_id}")
+async def delete_asset(asset_id: str, request: Request):
+    """Delete asset (soft delete)"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "it_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.assets.update_one({"asset_id": asset_id}, {"$set": data})
+    result = await db.assets.update_one(
+        {"asset_id": asset_id},
+        {"$set": {
+            "is_active": False,
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "deleted_by": user["user_id"]
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    return {"message": "Asset deleted successfully"}
+
+
+@router.put("/{asset_id}/reassign")
+async def reassign_asset(asset_id: str, data: dict, request: Request):
+    """Reassign asset to a different employee"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    emp_code = data.get("emp_code")
+    if not emp_code:
+        raise HTTPException(status_code=400, detail="Employee code required")
+    
+    # Get employee info
+    employee = await db.employees.find_one(
+        {"$or": [{"emp_code": emp_code}, {"employee_id": emp_code}]},
+        {"_id": 0}
+    )
+    
+    # Get or create employee asset summary
+    emp_summary = await db.employee_assets.find_one({"emp_code": emp_code})
+    
+    employee_id = employee["employee_id"] if employee else None
+    employee_name = data.get("employee_name") or (
+        f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip() if employee else emp_code
+    )
+    
+    # Update asset
+    result = await db.assets.update_one(
+        {"asset_id": asset_id},
+        {"$set": {
+            "status": "assigned",
+            "assigned_to": employee_id,
+            "assigned_to_name": employee_name,
+            "emp_code": emp_code,
+            "assigned_date": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": user["user_id"]
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    # Create employee asset summary if doesn't exist
+    if not emp_summary:
+        await db.employee_assets.insert_one({
+            "emp_code": emp_code,
+            "employee_id": employee_id,
+            "employee_name": employee_name,
+            "sim_mobile_no": "",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    # Log assignment history
+    await db.asset_history.insert_one({
+        "history_id": f"ahist_{uuid.uuid4().hex[:12]}",
+        "asset_id": asset_id,
+        "action": "reassigned",
+        "to_employee": emp_code,
+        "to_employee_name": employee_name,
+        "performed_by": user["user_id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
     return await db.assets.find_one({"asset_id": asset_id}, {"_id": 0})
+
+
+@router.put("/{asset_id}/unassign")
+async def unassign_asset(asset_id: str, request: Request):
+    """Unassign asset - return to inventory"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get current asset info for history
+    asset = await db.assets.find_one({"asset_id": asset_id}, {"_id": 0})
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    previous_employee = asset.get("emp_code")
+    
+    # Update asset
+    await db.assets.update_one(
+        {"asset_id": asset_id},
+        {"$set": {
+            "status": "available",
+            "assigned_to": None,
+            "assigned_to_name": None,
+            "emp_code": None,
+            "assigned_date": None,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": user["user_id"]
+        }}
+    )
+    
+    # Log return history
+    await db.asset_history.insert_one({
+        "history_id": f"ahist_{uuid.uuid4().hex[:12]}",
+        "asset_id": asset_id,
+        "action": "unassigned",
+        "from_employee": previous_employee,
+        "performed_by": user["user_id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return await db.assets.find_one({"asset_id": asset_id}, {"_id": 0})
+
+
+@router.get("/employees/list")
+async def get_employees_for_assignment(request: Request, search: Optional[str] = None):
+    """Get list of employees for asset assignment dropdown"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "it_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = {"is_active": True}
+    if search:
+        query["$or"] = [
+            {"emp_code": {"$regex": search, "$options": "i"}},
+            {"first_name": {"$regex": search, "$options": "i"}},
+            {"last_name": {"$regex": search, "$options": "i"}}
+        ]
+    
+    employees = await db.employees.find(
+        query, 
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1}
+    ).limit(50).to_list(50)
+    
+    return [
+        {
+            "employee_id": e.get("employee_id"),
+            "emp_code": e.get("emp_code"),
+            "name": f"{e.get('first_name', '')} {e.get('last_name', '')}".strip()
+        }
+        for e in employees
+    ]
 
 
 @router.put("/{asset_id}/assign")
