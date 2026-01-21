@@ -389,12 +389,103 @@ const AssetsPage = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="my-assets" className="space-y-4">
+      <Tabs defaultValue={isAdmin ? "assignments" : "my-assets"} className="space-y-4">
         <TabsList className="bg-white border">
           <TabsTrigger value="my-assets" data-testid="tab-my-assets">My Assets</TabsTrigger>
           <TabsTrigger value="requests" data-testid="tab-requests">My Requests</TabsTrigger>
-          {isAdmin && <TabsTrigger value="all" data-testid="tab-all">All Assets</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="assignments" data-testid="tab-assignments">Employee Assignments</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="all" data-testid="tab-all">Asset Inventory</TabsTrigger>}
         </TabsList>
+
+        {/* Employee Asset Assignments (from bulk import) - Admin Only */}
+        {isAdmin && (
+          <TabsContent value="assignments">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Package className="w-5 h-5 text-primary" />
+                      Employee Asset Assignments
+                    </CardTitle>
+                    <CardDescription>Assets assigned to employees (from bulk import)</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                      <Input
+                        placeholder="Search by name, code, SDPL..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 w-64"
+                        data-testid="search-employee-assets"
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={fetchData}>
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {employeeAssets.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead>Emp Code</TableHead>
+                        <TableHead>Employee Name</TableHead>
+                        <TableHead>SDPL Number</TableHead>
+                        <TableHead>Tag</TableHead>
+                        <TableHead className="text-center">Mobile/Charger</TableHead>
+                        <TableHead className="text-center">Laptop</TableHead>
+                        <TableHead className="text-center">System</TableHead>
+                        <TableHead className="text-center">Printer</TableHead>
+                        <TableHead>SIM/Mobile No</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {employeeAssets.map((asset) => (
+                        <TableRow key={asset.asset_record_id || asset.emp_code} data-testid={`emp-asset-${asset.emp_code}`}>
+                          <TableCell className="font-medium">{asset.emp_code}</TableCell>
+                          <TableCell>{asset.employee_name || '-'}</TableCell>
+                          <TableCell>{asset.sdpl_number || '-'}</TableCell>
+                          <TableCell>{asset.tag || '-'}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={asset.mobile_charger ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                              {asset.mobile_charger ? 'Yes' : 'No'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={asset.laptop ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                              {asset.laptop ? 'Yes' : 'No'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={asset.system ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                              {asset.system ? 'Yes' : 'No'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={asset.printer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                              {asset.printer ? 'Yes' : 'No'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{asset.sim_mobile_no || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-12">
+                    <Package className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 mb-2">No employee asset assignments found</p>
+                    <p className="text-sm text-slate-400">Import assets via Bulk Import → Assets template</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* My Assets */}
         <TabsContent value="my-assets">
