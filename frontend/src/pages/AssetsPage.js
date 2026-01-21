@@ -550,13 +550,141 @@ const AssetsPage = () => {
         </div>
       </div>
 
-      <Tabs defaultValue={isAdmin ? "assignments" : "my-assets"} className="space-y-4">
+      <Tabs defaultValue={isAdmin ? "inventory" : "my-assets"} className="space-y-4">
         <TabsList className="bg-white border">
           <TabsTrigger value="my-assets" data-testid="tab-my-assets">My Assets</TabsTrigger>
           <TabsTrigger value="requests" data-testid="tab-requests">My Requests</TabsTrigger>
-          {isAdmin && <TabsTrigger value="assignments" data-testid="tab-assignments">Employee Assignments</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="all" data-testid="tab-all">Asset Inventory</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="inventory" data-testid="tab-inventory">Asset Inventory</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="assignments" data-testid="tab-assignments">Employee Summary</TabsTrigger>}
         </TabsList>
+
+        {/* Asset Inventory - Admin Only */}
+        {isAdmin && (
+          <TabsContent value="inventory">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Package className="w-5 h-5 text-primary" />
+                      Asset Inventory
+                    </CardTitle>
+                    <CardDescription>All assets in the system</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="mobile">Mobile</SelectItem>
+                        <SelectItem value="laptop">Laptop</SelectItem>
+                        <SelectItem value="system">Desktop</SelectItem>
+                        <SelectItem value="printer">Printer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="assigned">Assigned</SelectItem>
+                        <SelectItem value="available">Available</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                      <Input
+                        placeholder="Search assets..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 w-52"
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={fetchData}>
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {assets.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead>Asset Tag</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Assigned To</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assets.map((asset) => (
+                        <TableRow key={asset.asset_id} data-testid={`asset-${asset.asset_id}`}>
+                          <TableCell className="font-mono text-sm">{asset.asset_tag}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize gap-1">
+                              {asset.asset_type === 'laptop' && <Laptop className="w-3 h-3" />}
+                              {asset.asset_type === 'system' && <Monitor className="w-3 h-3" />}
+                              {asset.asset_type === 'mobile' && <Smartphone className="w-3 h-3" />}
+                              {asset.asset_type === 'printer' && <Printer className="w-3 h-3" />}
+                              {asset.asset_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-48 truncate" title={asset.description}>
+                            {asset.description}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={asset.status === 'assigned' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}>
+                              {asset.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {asset.assigned_to_name || asset.emp_code || '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleEditAsset(asset)} title="Edit">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              {asset.status === 'assigned' ? (
+                                <>
+                                  <Button size="sm" variant="ghost" onClick={() => handleReassignAsset(asset)} title="Reassign">
+                                    <ArrowRightLeft className="w-4 h-4" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => handleUnassignAsset(asset.asset_id)} title="Unassign">
+                                    <RotateCcw className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button size="sm" variant="ghost" onClick={() => handleReassignAsset(asset)} title="Assign">
+                                  <UserPlus className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteAsset(asset.asset_id)} title="Delete">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-12">
+                    <Package className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 mb-2">No assets found</p>
+                    <p className="text-sm text-slate-400">Import assets via Bulk Import or add manually</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* Employee Asset Assignments (from bulk import) - Admin Only */}
         {isAdmin && (
