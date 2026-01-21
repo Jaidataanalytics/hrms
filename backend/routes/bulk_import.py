@@ -1827,7 +1827,7 @@ async def download_assets_template(request: Request):
 
 @router.post("/assets")
 async def import_assets(request: Request, file: UploadFile = File(...)):
-    """Bulk import employee assets from Excel"""
+    """Bulk import employee assets from Excel - Creates individual assets and links to employees"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "it_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -1841,12 +1841,22 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
             wb = openpyxl.load_workbook(io.BytesIO(content))
             ws = wb.active
             
-            # Find header row
-            header_row = 1
-            headers = [str(cell.value or "").strip().replace('*', '') for cell in ws[1]]
+            # Get headers from row 1 or 2 (handle merged headers)
+            headers = []
+            for cell in ws[1]:
+                val = str(cell.value or "").strip()
+                headers.append(val)
+            
+            # If row 2 has sub-headers, use those for asset columns
+            row2_headers = [str(cell.value or "").strip() for cell in ws[2]]
+            if any(h.lower() in ['mobile & charger', 'laptop', 'system', 'printer'] for h in row2_headers):
+                headers = row2_headers
+                start_row = 3
+            else:
+                start_row = 2
             
             rows = []
-            for row in ws.iter_rows(min_row=2, values_only=True):
+            for row in ws.iter_rows(min_row=start_row, values_only=True):
                 if not any(row):
                     continue
                 rows.append(dict(zip(headers, row)))
@@ -1854,91 +1864,165 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
             decoded = content.decode('utf-8-sig')
             reader = csv.DictReader(io.StringIO(decoded))
             rows = list(reader)
+            start_row = 2
         else:
             raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
         
-        imported = 0
+        assets_created = 0
+        assets_updated = 0
+        employees_processed = 0
         errors = []
         
-        for idx, row in enumerate(rows, start=2):
+        def get_field(row, *names):
+            """Flexibly get field value by checking multiple possible column names"""
+            for name in names:
+                for key in row.keys():
+                    if key and name.lower() in key.lower():
+                        val = row.get(key)
+                        if val is not None:
+                            return str(val).strip()
+            return None
+        
+        def parse_number_tags(tag_string):
+            """Parse NUMBER TAG column to extract individual tags with their asset types"""
+            if not tag_string or tag_string.upper() == "NO":
+                return {}
+            
+            tags = {}
+            # Split by comma and process each tag
+            parts = [p.strip() for p in str(tag_string).split(',') if p.strip()]
+            
+            for part in parts:
+                part_upper = part.upper()
+                # Identify asset type from tag
+                if '(PRINTER)' in part_upper:
+                    tag = part.replace('(PRINTER)', '').replace('(printer)', '').strip()
+                    tags['printer'] = tag
+                elif '(DESKTOP)' in part_upper:
+                    tag = part.replace('(DESKTOP)', '').replace('(desktop)', '').strip()
+                    tags['system'] = tag
+                elif '(LAPTOP)' in part_upper:
+                    tag = part.replace('(LAPTOP)', '').replace('(laptop)', '').strip()
+                    tags['laptop'] = tag
+                elif '(SCANNER)' in part_upper:
+                    tag = part.replace('(SCANNER)', '').replace('(scanner)', '').strip()
+                    tags['scanner'] = tag
+                elif '(MOBILE)' in part_upper or '(CHARGER)' in part_upper:
+                    tag = part.replace('(MOBILE)', '').replace('(mobile)', '').replace('(CHARGER)', '').replace('(charger)', '').strip()
+                    tags['mobile'] = tag
+            
+            return tags
+        
+        def is_valid_asset(value):
+            """Check if value represents a valid asset (not NO or empty)"""
+            if not value:
+                return False
+            val_str = str(value).strip().upper()
+            return val_str not in ['NO', 'N', 'NA', 'N/A', '-', '']
+        
+        for idx, row in enumerate(rows, start=start_row):
             try:
-                # Parse fields flexibly
-                def get_field(row, *names):
-                    for name in names:
-                        for key in row.keys():
-                            if key and name.lower() in key.lower():
-                                return row.get(key)
-                    return None
-                
-                emp_code = get_field(row, "empl.code", "emp_code", "emp code", "employee code")
-                emp_code = str(emp_code).strip() if emp_code else None
+                # Get employee info
+                emp_code = get_field(row, "empl.code", "emp_code", "emp code", "employee code", "s.no")
+                emp_name = get_field(row, "name", "employee name")
                 
                 if not emp_code:
                     errors.append({"row": idx, "error": "Missing Employee Code"})
                     continue
                 
-                # Find employee
-                employee = await db.employees.find_one({"emp_code": emp_code}, {"_id": 0})
-                if not employee:
-                    errors.append({"row": idx, "error": f"Employee {emp_code} not found"})
-                    continue
+                # Try to find employee in database
+                employee = await db.employees.find_one(
+                    {"$or": [{"emp_code": emp_code}, {"employee_id": emp_code}]}, 
+                    {"_id": 0}
+                )
                 
-                # Parse asset fields
-                def parse_bool_or_value(val):
-                    if val is None:
-                        return None
-                    val_str = str(val).strip().lower()
-                    if val_str in ['yes', 'y', 'true', '1']:
-                        return True
-                    elif val_str in ['no', 'n', 'false', '0', '']:
-                        return False
-                    return str(val).strip()  # Return as string if not boolean
+                employee_id = employee["employee_id"] if employee else None
+                employee_name = emp_name or (f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip() if employee else emp_code)
                 
-                # Create/update asset record for this employee
-                asset_doc = {
-                    "asset_record_id": f"ast_{uuid.uuid4().hex[:12]}",
-                    "employee_id": employee["employee_id"],
+                # Get asset values from columns
+                mobile_charger = get_field(row, "mobile & charger", "mobile", "charger")
+                laptop = get_field(row, "laptop")
+                system = get_field(row, "system", "desktop")
+                printer = get_field(row, "printer")
+                sim_mobile_no = get_field(row, "sim", "mobile no", "sim(mobile")
+                number_tag = get_field(row, "number tag", "tag", "number")
+                
+                # Parse tags to match with assets
+                asset_tags = parse_number_tags(number_tag)
+                
+                # Store employee summary with SIM number
+                emp_summary = {
                     "emp_code": emp_code,
-                    "employee_name": get_field(row, "name") or f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
-                    "sdpl_number": str(get_field(row, "assets of sdpl", "sdpl number", "sdpl") or ""),
-                    "tag": str(get_field(row, "tag") or ""),
-                    "mobile_charger": parse_bool_or_value(get_field(row, "mobile", "mobile & charger")),
-                    "laptop": parse_bool_or_value(get_field(row, "laptop")),
-                    "system": parse_bool_or_value(get_field(row, "system")),
-                    "printer": parse_bool_or_value(get_field(row, "printer")),
-                    "sim_mobile_no": str(get_field(row, "sim", "mobile no", "sim(mobile") or ""),
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "created_by": user["user_id"]
+                    "employee_id": employee_id,
+                    "employee_name": employee_name,
+                    "sim_mobile_no": sim_mobile_no or "",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_by": user["user_id"]
                 }
                 
-                # Check if record exists for this employee, update or insert
-                existing = await db.employee_assets.find_one({"emp_code": emp_code})
-                if existing:
-                    await db.employee_assets.update_one(
-                        {"emp_code": emp_code},
-                        {"$set": {
-                            "sdpl_number": asset_doc["sdpl_number"],
-                            "tag": asset_doc["tag"],
-                            "mobile_charger": asset_doc["mobile_charger"],
-                            "laptop": asset_doc["laptop"],
-                            "system": asset_doc["system"],
-                            "printer": asset_doc["printer"],
-                            "sim_mobile_no": asset_doc["sim_mobile_no"],
+                await db.employee_assets.update_one(
+                    {"emp_code": emp_code},
+                    {"$set": emp_summary, "$setOnInsert": {"created_at": datetime.now(timezone.utc).isoformat()}},
+                    upsert=True
+                )
+                
+                # Create/update individual assets
+                asset_types = [
+                    ("mobile", mobile_charger, asset_tags.get("mobile", "")),
+                    ("laptop", laptop, asset_tags.get("laptop", "")),
+                    ("system", system, asset_tags.get("system", "")),
+                    ("printer", printer, asset_tags.get("printer", "")),
+                ]
+                
+                # Also handle scanner if present in tags
+                if "scanner" in asset_tags:
+                    scanner_desc = get_field(row, "scanner") or "Scanner"
+                    asset_types.append(("scanner", scanner_desc, asset_tags.get("scanner", "")))
+                
+                for asset_type, description, asset_tag in asset_types:
+                    if is_valid_asset(description):
+                        # Generate tag if not provided
+                        if not asset_tag:
+                            asset_tag = f"AUTO/{emp_code}/{asset_type.upper()}/{uuid.uuid4().hex[:6]}"
+                        
+                        asset_doc = {
+                            "asset_type": asset_type,
+                            "description": description,
+                            "asset_tag": asset_tag,
+                            "status": "assigned",
+                            "assigned_to": employee_id,
+                            "assigned_to_name": employee_name,
+                            "emp_code": emp_code,
                             "updated_at": datetime.now(timezone.utc).isoformat(),
                             "updated_by": user["user_id"]
-                        }}
-                    )
-                else:
-                    await db.employee_assets.insert_one(asset_doc)
+                        }
+                        
+                        # Check if asset with this tag exists
+                        existing = await db.assets.find_one({"asset_tag": asset_tag})
+                        if existing:
+                            await db.assets.update_one(
+                                {"asset_tag": asset_tag},
+                                {"$set": asset_doc}
+                            )
+                            assets_updated += 1
+                        else:
+                            asset_doc["asset_id"] = f"ast_{uuid.uuid4().hex[:12]}"
+                            asset_doc["created_at"] = datetime.now(timezone.utc).isoformat()
+                            asset_doc["created_by"] = user["user_id"]
+                            asset_doc["is_active"] = True
+                            await db.assets.insert_one(asset_doc)
+                            assets_created += 1
                 
-                imported += 1
+                employees_processed += 1
                 
             except Exception as e:
                 errors.append({"row": idx, "error": str(e)})
         
         return {
             "message": "Assets import completed",
-            "imported": imported,
+            "employees_processed": employees_processed,
+            "assets_created": assets_created,
+            "assets_updated": assets_updated,
             "errors": errors,
             "total_rows": len(rows)
         }
