@@ -55,6 +55,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 const AssetsPage = () => {
   const { user } = useAuth();
   const [assets, setAssets] = useState([]);
+  const [employeeAssets, setEmployeeAssets] = useState([]);
   const [myAssets, setMyAssets] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,7 @@ const AssetsPage = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('assignments');
 
   const [assetForm, setAssetForm] = useState({
     name: '', asset_tag: '', category: 'laptop', brand: '', model: '',
@@ -74,7 +76,7 @@ const AssetsPage = () => {
   });
   const [selectedAsset, setSelectedAsset] = useState(null);
 
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'it_admin';
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'it_admin' || user?.role === 'hr_executive';
 
   const fetchAssetDetails = async (assetId) => {
     try {
@@ -92,7 +94,7 @@ const AssetsPage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [filterCategory, filterStatus]);
+  }, [filterCategory, filterStatus, searchTerm]);
 
   const fetchData = async () => {
     try {
@@ -106,6 +108,11 @@ const AssetsPage = () => {
         if (filterCategory !== 'all') url += `category=${filterCategory}&`;
         if (filterStatus !== 'all') url += `status=${filterStatus}&`;
         promises.push(fetch(url, { credentials: 'include' }));
+        
+        // Fetch employee asset assignments (from bulk import)
+        let empAssetsUrl = `${API_URL}/assets/employee-assignments?`;
+        if (searchTerm) empAssetsUrl += `search=${encodeURIComponent(searchTerm)}&`;
+        promises.push(fetch(empAssetsUrl, { credentials: 'include' }));
       }
 
       const responses = await Promise.all(promises);
@@ -113,6 +120,10 @@ const AssetsPage = () => {
       if (responses[0].ok) setMyAssets(await responses[0].json());
       if (responses[1].ok) setRequests(await responses[1].json());
       if (isAdmin && responses[2]?.ok) setAssets(await responses[2].json());
+      if (isAdmin && responses[3]?.ok) {
+        const empData = await responses[3].json();
+        setEmployeeAssets(empData.records || []);
+      }
     } catch (error) {
       console.error('Error fetching assets:', error);
     } finally {
