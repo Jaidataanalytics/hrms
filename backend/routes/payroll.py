@@ -1519,6 +1519,91 @@ async def update_leave_type_payroll_rules(data: List[dict], request: Request):
     return {"message": "Leave type payroll rules updated", "leave_rules": leave_rules}
 
 
+# ==================== LEAVE POLICY RULES ====================
+
+@router.get("/leave-policy-rules")
+async def get_leave_policy_rules(request: Request):
+    """Get leave policy rules (quotas, carry forward, Sunday rules)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    
+    # Default leave policy rules
+    default_rules = {
+        "financial_year_start": "04-01",
+        "annual_quotas": {
+            "CL": 6,
+            "SL": 6,
+            "EL": 12,
+        },
+        "carry_forward": {
+            "CL": False,
+            "SL": False,
+            "EL": True,
+            "max_el_accumulation": 30,
+        },
+        "sunday_leave_rules": {
+            "enabled": True,
+            "weekly_threshold": 2,
+            "monthly_threshold": 6,
+            "auto_apply": True,
+        },
+    }
+    
+    if config and config.get("leave_policy_rules"):
+        return config["leave_policy_rules"]
+    
+    return default_rules
+
+
+@router.put("/leave-policy-rules")
+async def update_leave_policy_rules(data: dict, request: Request):
+    """Update leave policy rules"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+    
+    if not config:
+        config = get_default_payroll_config()
+    
+    # Update leave policy rules
+    config["leave_policy_rules"] = {
+        "financial_year_start": data.get("financial_year_start", "04-01"),
+        "annual_quotas": data.get("annual_quotas", {"CL": 6, "SL": 6, "EL": 12}),
+        "carry_forward": data.get("carry_forward", {"CL": False, "SL": False, "EL": True, "max_el_accumulation": 30}),
+        "sunday_leave_rules": data.get("sunday_leave_rules", {
+            "enabled": True,
+            "weekly_threshold": 2,
+            "monthly_threshold": 6,
+            "auto_apply": True,
+        }),
+    }
+    
+    config["updated_at"] = datetime.now(timezone.utc).isoformat()
+    config["updated_by"] = user.get("user_id")
+    
+    # Save
+    if config.get("config_id") and config["config_id"] != "default":
+        await db.payroll_config.update_one(
+            {"config_id": config["config_id"]},
+            {"$set": {
+                "leave_policy_rules": config["leave_policy_rules"],
+                "updated_at": config["updated_at"]
+            }}
+        )
+    else:
+        config["config_id"] = f"cfg_{uuid.uuid4().hex[:12]}"
+        config["is_active"] = True
+        await db.payroll_config.insert_one(config)
+        config.pop('_id', None)
+    
+    return {"message": "Leave policy rules updated", "leave_policy_rules": config["leave_policy_rules"]}
+
+
 # ==================== CUSTOM DEDUCTION RULES ====================
 
 @router.get("/custom-rules")
