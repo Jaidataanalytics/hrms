@@ -131,17 +131,28 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
      - Late employees with in/out times
      - Absent employees list
    - Backend endpoint: `GET /api/attendance/calendar-data`
-10. ✅ **Bulk Import Assets Now Visible (Jan 21, 2026)**:
-    - Fixed: Asset data imported through bulk import now shows on Assets page
-    - New "Employee Assignments" tab added (default tab for admins)
-    - Shows: Emp Code, Employee Name, SDPL Number, Tag, Mobile/Charger, Laptop, System, Printer, SIM/Mobile No
-    - Search functionality for filtering by name, code, SDPL
-    - Backend endpoint: `GET /api/assets/employee-assignments`
+10. ✅ **Asset Management Overhaul (Jan 21, 2026)**:
+    - Complete rewrite of asset import to create individual assets from bulk import
+    - NUMBER TAG parsing to match tags with asset types (PRINTER, LAPTOP, DESKTOP, etc.)
+    - New "Asset Inventory" tab showing all assets with filters (type, status, search)
+    - "Employee Summary" tab showing employees with their assigned assets count
+    - Asset operations: Edit, Delete, Reassign, Unassign
+    - SIM/Mobile No stored with employee, not as asset field
+    - Backend endpoints: `GET/POST/PUT/DELETE /api/assets/*`, `/api/assets/{id}/reassign`, `/api/assets/{id}/unassign`
+11. ✅ **Leave Policy Rules Configuration (Jan 21, 2026)**:
+    - Configurable annual leave quotas: CL (6), SL (6), EL (12)
+    - Carry forward rules: CL/SL lapse, EL carries forward (max 30)
+    - Sunday Leave Penalty Rules:
+      - If >2 leaves in a week → 1 Sunday marked as leave
+      - If >6 leaves in a month → 1 Sunday marked as leave
+      - Auto-apply with HR warning
+    - All thresholds configurable via Payroll Rules → Leave Policy Rules
+    - Backend endpoints: `GET/PUT /api/payroll/leave-policy-rules`
 
 ## Upcoming Tasks
 1. 🔴 **P1: Deploy to Production** - Production is critically outdated
 2. 🟠 **P1: Add Missing Employees** - 100+ unmatched employee codes (F-prefix, C-prefix) from biometric
-3. 🟡 **P2: Build Payroll Rules UI** - Admin interface for EPF/ESI percentages
+3. 🟡 **P2: Test Asset Bulk Import** - Re-import assets using the new correct mapping
 4. 🟡 **P2: Validate end-to-end payroll calculation**
 
 ## Future Tasks
@@ -150,3 +161,4 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 3. Mobile application
 4. Export employee salaries to spreadsheet
 5. Meeting Management & Task Tracking
+
