@@ -101,7 +101,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - **Employee:** employee@shardahr.com / Employee@123
 - **HR:** hr@shardahr.com / NewHRPass@123
 
-## Recent Changes (Jan 20, 2026)
+## Recent Changes (Jan 20-21, 2026)
 1. ✅ Biometric API Integration - Auto-sync every 3 hours
 2. ✅ Smart IN/OUT detection based on time (before noon = IN, after noon = OUT)
 3. ✅ **Late marking threshold changed from 09:45 to 10:00 AM**
@@ -131,6 +131,12 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
      - Late employees with in/out times
      - Absent employees list
    - Backend endpoint: `GET /api/attendance/calendar-data`
+10. ✅ **Bulk Import Assets Now Visible (Jan 21, 2026)**:
+    - Fixed: Asset data imported through bulk import now shows on Assets page
+    - New "Employee Assignments" tab added (default tab for admins)
+    - Shows: Emp Code, Employee Name, SDPL Number, Tag, Mobile/Charger, Laptop, System, Printer, SIM/Mobile No
+    - Search functionality for filtering by name, code, SDPL
+    - Backend endpoint: `GET /api/assets/employee-assignments`
 
 ## Upcoming Tasks
 1. 🔴 **P1: Deploy to Production** - Production is critically outdated
