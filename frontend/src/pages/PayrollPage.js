@@ -619,6 +619,25 @@ const PayrollPage = () => {
     }
   };
 
+  const handleSaveLeavePolicyRules = async () => {
+    try {
+      const response = await fetch(`${API_URL}/payroll/leave-policy-rules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify(leavePolicyRules)
+      });
+
+      if (response.ok) {
+        toast.success('Leave policy rules saved');
+      } else {
+        toast.error('Failed to save leave policy rules');
+      }
+    } catch (error) {
+      toast.error('Failed to save leave policy rules');
+    }
+  };
+
   const handleAddCustomRule = async () => {
     if (!customRuleForm.name) {
       toast.error('Please enter a rule name');
