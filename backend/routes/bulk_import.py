@@ -1983,13 +1983,13 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
                 employee_id = employee["employee_id"] if employee else None
                 employee_name = emp_name or (f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip() if employee else emp_code)
                 
-                # Get asset values from columns - use normalized field names
-                mobile_charger = get_field(row, "mobile_charger", "mobile & charger", "mobile", "charger")
-                laptop = get_field(row, "laptop")
-                system = get_field(row, "system", "desktop")
-                printer = get_field(row, "printer")
-                sim_mobile_no = get_field(row, "sim", "sim_mobile_no", "mobile no", "sim(mobile")
-                number_tag = get_field(row, "number_tag", "number tag", "tag")
+                # Get asset values using normalized keys
+                mobile_charger = get_val(row, 'mobile_charger')
+                laptop = get_val(row, 'laptop')
+                system = get_val(row, 'system')
+                printer = get_val(row, 'printer')
+                sim_mobile_no = get_val(row, 'sim')
+                number_tag = get_val(row, 'number_tag')
                 
                 # Parse tags to match with assets
                 asset_tags = parse_number_tags(number_tag)
@@ -1999,7 +1999,7 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
                     "emp_code": emp_code,
                     "employee_id": employee_id,
                     "employee_name": employee_name,
-                    "sim_mobile_no": sim_mobile_no or "",
+                    "sim_mobile_no": str(sim_mobile_no) if sim_mobile_no else "",
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                     "updated_by": user["user_id"]
                 }
@@ -2020,7 +2020,7 @@ async def import_assets(request: Request, file: UploadFile = File(...)):
                 
                 # Also handle scanner if present in tags
                 if "scanner" in asset_tags:
-                    scanner_desc = get_field(row, "scanner") or "Scanner"
+                    scanner_desc = get_val(row, 'scanner') or "Scanner"
                     asset_types.append(("scanner", scanner_desc, asset_tags.get("scanner", "")))
                 
                 for asset_type, description, asset_tag in asset_types:
