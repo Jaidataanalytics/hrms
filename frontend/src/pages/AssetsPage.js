@@ -686,7 +686,7 @@ const AssetsPage = () => {
           </TabsContent>
         )}
 
-        {/* Employee Asset Assignments (from bulk import) - Admin Only */}
+        {/* Employee Asset Summary - Admin Only */}
         {isAdmin && (
           <TabsContent value="assignments">
             <Card>
@@ -695,15 +695,15 @@ const AssetsPage = () => {
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Package className="w-5 h-5 text-primary" />
-                      Employee Asset Assignments
+                      Employee Asset Summary
                     </CardTitle>
-                    <CardDescription>Assets assigned to employees (from bulk import)</CardDescription>
+                    <CardDescription>Overview of assets assigned to each employee</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                       <Input
-                        placeholder="Search by name, code, SDPL..."
+                        placeholder="Search by name or code..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-9 w-64"
@@ -723,43 +723,58 @@ const AssetsPage = () => {
                       <TableRow className="bg-slate-50">
                         <TableHead>Emp Code</TableHead>
                         <TableHead>Employee Name</TableHead>
-                        <TableHead>SDPL Number</TableHead>
-                        <TableHead>Tag</TableHead>
-                        <TableHead className="text-center">Mobile/Charger</TableHead>
-                        <TableHead className="text-center">Laptop</TableHead>
-                        <TableHead className="text-center">System</TableHead>
-                        <TableHead className="text-center">Printer</TableHead>
                         <TableHead>SIM/Mobile No</TableHead>
+                        <TableHead>Assets Count</TableHead>
+                        <TableHead>Assigned Assets</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {employeeAssets.map((asset) => (
-                        <TableRow key={asset.asset_record_id || asset.emp_code} data-testid={`emp-asset-${asset.emp_code}`}>
-                          <TableCell className="font-medium">{asset.emp_code}</TableCell>
-                          <TableCell>{asset.employee_name || '-'}</TableCell>
-                          <TableCell>{asset.sdpl_number || '-'}</TableCell>
-                          <TableCell>{asset.tag || '-'}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={asset.mobile_charger ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-                              {asset.mobile_charger ? 'Yes' : 'No'}
-                            </Badge>
+                      {employeeAssets.map((emp) => (
+                        <TableRow key={emp.emp_code} data-testid={`emp-summary-${emp.emp_code}`}>
+                          <TableCell className="font-medium">{emp.emp_code}</TableCell>
+                          <TableCell>{emp.employee_name || '-'}</TableCell>
+                          <TableCell>
+                            {emp.sim_mobile_no ? (
+                              <span className="flex items-center gap-1 text-sm">
+                                <Phone className="w-3 h-3" />
+                                {emp.sim_mobile_no}
+                              </span>
+                            ) : '-'}
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={asset.laptop ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-                              {asset.laptop ? 'Yes' : 'No'}
-                            </Badge>
+                          <TableCell>
+                            <Badge variant="outline">{emp.assets_count || 0}</Badge>
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={asset.system ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-                              {asset.system ? 'Yes' : 'No'}
-                            </Badge>
+                          <TableCell className="max-w-72">
+                            <div className="flex flex-wrap gap-1">
+                              {emp.assigned_assets?.slice(0, 4).map((asset, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs capitalize">
+                                  {asset.asset_type === 'laptop' && <Laptop className="w-3 h-3 mr-1" />}
+                                  {asset.asset_type === 'system' && <Monitor className="w-3 h-3 mr-1" />}
+                                  {asset.asset_type === 'mobile' && <Smartphone className="w-3 h-3 mr-1" />}
+                                  {asset.asset_type === 'printer' && <Printer className="w-3 h-3 mr-1" />}
+                                  {asset.asset_type}
+                                </Badge>
+                              ))}
+                              {emp.assigned_assets?.length > 4 && (
+                                <Badge variant="outline" className="text-xs">+{emp.assigned_assets.length - 4} more</Badge>
+                              )}
+                              {(!emp.assigned_assets || emp.assigned_assets.length === 0) && (
+                                <span className="text-slate-400 text-sm">No assets</span>
+                              )}
+                            </div>
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={asset.printer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-                              {asset.printer ? 'Yes' : 'No'}
-                            </Badge>
+                          <TableCell className="text-right">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-red-500"
+                              onClick={() => handleDeleteEmployeeAssignment(emp.emp_code)} 
+                              title="Delete & Unassign All"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </TableCell>
-                          <TableCell>{asset.sim_mobile_no || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -817,7 +832,7 @@ const AssetsPage = () => {
                   <Package className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                   <p className="text-slate-500">No assets assigned to you</p>
                 </div>
-              )}
+              )}}
             </CardContent>
           </Card>
         </TabsContent>
