@@ -254,7 +254,10 @@ class TestPayrollNewFeatures:
         """Test DELETE /api/payroll/one-time-deductions/{id} removes deduction"""
         # First create a deduction
         emp_response = self.session.get(f"{BASE_URL}/api/employees?limit=1")
-        employees = emp_response.json().get("employees", [])
+        employees = emp_response.json()
+        # Handle both list and dict response formats
+        if isinstance(employees, dict):
+            employees = employees.get("employees", [])
         
         if not employees:
             pytest.skip("No employees found")
