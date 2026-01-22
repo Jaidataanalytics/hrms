@@ -3176,6 +3176,227 @@ const PayrollPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Add SEWA Advance Dialog */}
+      <Dialog open={showAddSewaAdvance} onOpenChange={setShowAddSewaAdvance}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add SEWA Advance</DialogTitle>
+            <DialogDescription>Configure a SEWA advance for an employee with monthly deductions</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Employee *</Label>
+              <Select
+                value={sewaAdvanceForm.employee_id}
+                onValueChange={(v) => setSewaAdvanceForm({...sewaAdvanceForm, employee_id: v})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                      {emp.first_name} {emp.last_name} ({emp.emp_code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Total Amount to Recover *</Label>
+              <Input
+                type="number"
+                value={sewaAdvanceForm.total_amount}
+                onChange={(e) => setSewaAdvanceForm({...sewaAdvanceForm, total_amount: parseFloat(e.target.value) || 0})}
+                placeholder="e.g., 42000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Monthly Deduction Amount *</Label>
+              <Input
+                type="number"
+                value={sewaAdvanceForm.monthly_amount}
+                onChange={(e) => setSewaAdvanceForm({...sewaAdvanceForm, monthly_amount: parseFloat(e.target.value) || 0})}
+                placeholder="e.g., 3500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Duration (Months)</Label>
+              <Input
+                type="number"
+                value={sewaAdvanceForm.duration_months || Math.ceil(sewaAdvanceForm.total_amount / (sewaAdvanceForm.monthly_amount || 1))}
+                onChange={(e) => setSewaAdvanceForm({...sewaAdvanceForm, duration_months: parseInt(e.target.value) || 0})}
+                placeholder="Auto-calculated"
+              />
+              <p className="text-xs text-slate-500">Estimated: {Math.ceil(sewaAdvanceForm.total_amount / (sewaAdvanceForm.monthly_amount || 1))} months</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Input
+                value={sewaAdvanceForm.reason}
+                onChange={(e) => setSewaAdvanceForm({...sewaAdvanceForm, reason: e.target.value})}
+                placeholder="e.g., SEWA service advance"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSewaAdvance(false)}>Cancel</Button>
+            <Button onClick={handleAddSewaAdvance}>Create SEWA Advance</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add One-time Deduction Dialog */}
+      <Dialog open={showAddOneTimeDeduction} onOpenChange={setShowAddOneTimeDeduction}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add One-time Deduction</DialogTitle>
+            <DialogDescription>Add a deduction for {getMonthName(selectedMonth)} {selectedYear}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Employee *</Label>
+              <Select
+                value={oneTimeDeductionForm.employee_id}
+                onValueChange={(v) => setOneTimeDeductionForm({...oneTimeDeductionForm, employee_id: v})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                      {emp.first_name} {emp.last_name} ({emp.emp_code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select
+                value={oneTimeDeductionForm.category}
+                onValueChange={(v) => setOneTimeDeductionForm({...oneTimeDeductionForm, category: v})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="loan_emi">Loan EMI</SelectItem>
+                  <SelectItem value="advance_recovery">Advance Recovery</SelectItem>
+                  <SelectItem value="penalty">Penalty</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Amount *</Label>
+              <Input
+                type="number"
+                value={oneTimeDeductionForm.amount}
+                onChange={(e) => setOneTimeDeductionForm({...oneTimeDeductionForm, amount: parseFloat(e.target.value) || 0})}
+                placeholder="e.g., 5000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Input
+                value={oneTimeDeductionForm.reason}
+                onChange={(e) => setOneTimeDeductionForm({...oneTimeDeductionForm, reason: e.target.value})}
+                placeholder="e.g., Salary advance recovery"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddOneTimeDeduction(false)}>Cancel</Button>
+            <Button onClick={handleAddOneTimeDeduction}>Add Deduction</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Payslip Dialog */}
+      <Dialog open={editPayslipOpen} onOpenChange={setEditPayslipOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Payslip</DialogTitle>
+            <DialogDescription>
+              {editingPayslip && `Editing payslip for ${editingPayslip.employee_name || editingPayslip.emp_code}`}
+            </DialogDescription>
+          </DialogHeader>
+          {editingPayslip && (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Adjust attendance values below. The salary will be recalculated automatically.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Office Days</Label>
+                  <Input
+                    type="number"
+                    value={payslipEditForm.attendance?.office_days || 0}
+                    onChange={(e) => setPayslipEditForm({
+                      ...payslipEditForm,
+                      attendance: {...payslipEditForm.attendance, office_days: parseFloat(e.target.value) || 0}
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sundays + Holidays</Label>
+                  <Input
+                    type="number"
+                    value={payslipEditForm.attendance?.sundays_holidays || 0}
+                    onChange={(e) => setPayslipEditForm({
+                      ...payslipEditForm,
+                      attendance: {...payslipEditForm.attendance, sundays_holidays: parseFloat(e.target.value) || 0}
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Leave Days</Label>
+                  <Input
+                    type="number"
+                    value={payslipEditForm.attendance?.leave_days || 0}
+                    onChange={(e) => setPayslipEditForm({
+                      ...payslipEditForm,
+                      attendance: {...payslipEditForm.attendance, leave_days: parseFloat(e.target.value) || 0}
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>WFH Days</Label>
+                  <Input
+                    type="number"
+                    value={payslipEditForm.attendance?.wfh_days || 0}
+                    onChange={(e) => setPayslipEditForm({
+                      ...payslipEditForm,
+                      attendance: {...payslipEditForm.attendance, wfh_days: parseFloat(e.target.value) || 0}
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Late Count</Label>
+                  <Input
+                    type="number"
+                    value={payslipEditForm.attendance?.late_count || 0}
+                    onChange={(e) => setPayslipEditForm({
+                      ...payslipEditForm,
+                      attendance: {...payslipEditForm.attendance, late_count: parseInt(e.target.value) || 0}
+                    })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                Note: Changes will only apply if the payroll is not locked.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPayslipOpen(false)}>Cancel</Button>
+            <Button onClick={handleSavePayslipEdit}>Recalculate & Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
