@@ -152,19 +152,22 @@ const PayrollPage = () => {
     if (isHR) {
       fetchAllEmployeesPay();
       fetchSalaryChangeRequests();
+      fetchSewaAdvances();
+      fetchOneTimeDeductions();
     }
   }, [selectedMonth, selectedYear]);
 
   const fetchData = async () => {
     try {
       const authHeaders = getAuthHeaders();
-      const [runsRes, payslipsRes, rulesRes, leaveRulesRes, customRulesRes, leavePolicyRes] = await Promise.all([
+      const [runsRes, payslipsRes, rulesRes, leaveRulesRes, customRulesRes, leavePolicyRes, employeesRes] = await Promise.all([
         isHR ? fetch(`${API_URL}/payroll/runs`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
         fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include', headers: authHeaders }),
         isHR ? fetch(`${API_URL}/payroll/rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
         isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
         isHR ? fetch(`${API_URL}/payroll/custom-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
         isHR ? fetch(`${API_URL}/payroll/leave-policy-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
       ]);
 
       if (runsRes.ok) setPayrollRuns(await runsRes.json());
@@ -173,10 +176,178 @@ const PayrollPage = () => {
       if (leaveRulesRes.ok) setLeaveTypeRules(await leaveRulesRes.json());
       if (customRulesRes.ok) setCustomRules(await customRulesRes.json());
       if (leavePolicyRes.ok) setLeavePolicyRules(await leavePolicyRes.json());
+      if (employeesRes.ok) {
+        const empData = await employeesRes.json();
+        setEmployees(empData.employees || empData || []);
+      }
     } catch (error) {
       console.error('Error fetching payroll data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSewaAdvances = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/sewa-advances`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        setSewaAdvances(await response.json());
+      }
+    } catch (error) {
+      console.error('Error fetching SEWA advances:', error);
+    }
+  };
+
+  const fetchOneTimeDeductions = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/payroll/one-time-deductions?month=${selectedMonth}&year=${selectedYear}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        setOneTimeDeductions(await response.json());
+      }
+    } catch (error) {
+      console.error('Error fetching one-time deductions:', error);
+    }
+  };
+
+  const handleAddSewaAdvance = async () => {
+    if (!sewaAdvanceForm.employee_id || sewaAdvanceForm.total_amount <= 0 || sewaAdvanceForm.monthly_amount <= 0) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/payroll/sewa-advances`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...sewaAdvanceForm,
+          start_month: selectedMonth,
+          start_year: selectedYear
+        })
+      });
+      if (response.ok) {
+        toast.success('SEWA Advance created');
+        setShowAddSewaAdvance(false);
+        setSewaAdvanceForm({ employee_id: '', total_amount: 0, monthly_amount: 0, duration_months: 0, reason: '' });
+        fetchSewaAdvances();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to create SEWA advance');
+      }
+    } catch (error) {
+      toast.error('Failed to create SEWA advance');
+    }
+  };
+
+  const handleDeleteSewaAdvance = async (advanceId) => {
+    if (!window.confirm('Cancel this SEWA advance?')) return;
+    try {
+      const response = await fetch(`${API_URL}/payroll/sewa-advances/${advanceId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      if (response.ok) {
+        toast.success('SEWA advance cancelled');
+        fetchSewaAdvances();
+      }
+    } catch (error) {
+      toast.error('Failed to cancel SEWA advance');
+    }
+  };
+
+  const handleAddOneTimeDeduction = async () => {
+    if (!oneTimeDeductionForm.employee_id || oneTimeDeductionForm.amount <= 0) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/payroll/one-time-deductions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...oneTimeDeductionForm,
+          month: selectedMonth,
+          year: selectedYear
+        })
+      });
+      if (response.ok) {
+        toast.success('Deduction added');
+        setShowAddOneTimeDeduction(false);
+        setOneTimeDeductionForm({ employee_id: '', amount: 0, reason: '', category: 'other' });
+        fetchOneTimeDeductions();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to add deduction');
+      }
+    } catch (error) {
+      toast.error('Failed to add deduction');
+    }
+  };
+
+  const handleDeleteOneTimeDeduction = async (deductionId) => {
+    if (!window.confirm('Remove this deduction?')) return;
+    try {
+      const response = await fetch(`${API_URL}/payroll/one-time-deductions/${deductionId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      if (response.ok) {
+        toast.success('Deduction removed');
+        fetchOneTimeDeductions();
+      }
+    } catch (error) {
+      toast.error('Failed to remove deduction');
+    }
+  };
+
+  const handleEditPayslip = async (payslip) => {
+    setEditingPayslip(payslip);
+    setPayslipEditForm({
+      attendance: payslip.attendance || {
+        office_days: payslip.present_days || 0,
+        sundays_holidays: 0,
+        leave_days: payslip.lwp_days || 0,
+        wfh_days: 0,
+        late_count: 0
+      }
+    });
+    setEditPayslipOpen(true);
+  };
+
+  const handleSavePayslipEdit = async () => {
+    if (!editingPayslip) return;
+    try {
+      const response = await fetch(`${API_URL}/payroll/payslips/${editingPayslip.payslip_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          recalculate: true,
+          attendance: payslipEditForm.attendance
+        })
+      });
+      if (response.ok) {
+        toast.success('Payslip updated');
+        setEditPayslipOpen(false);
+        // Refresh payroll details
+        if (selectedPayrollRun) {
+          fetchPayrollDetails(selectedPayrollRun.payroll_id);
+        }
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to update payslip');
+      }
+    } catch (error) {
+      toast.error('Failed to update payslip');
     }
   };
 
