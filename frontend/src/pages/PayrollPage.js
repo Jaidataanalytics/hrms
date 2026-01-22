@@ -3138,6 +3138,7 @@ const PayrollPage = () => {
                       <TableHead className="text-right">Gross</TableHead>
                       <TableHead className="text-right">Deductions</TableHead>
                       <TableHead className="text-right">Net Pay</TableHead>
+                      <TableHead className="text-right w-16">Edit</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
