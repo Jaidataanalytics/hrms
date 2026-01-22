@@ -153,7 +153,10 @@ class TestPayrollNewFeatures:
         """Test DELETE /api/payroll/sewa-advances/{id} cancels advance"""
         # First create an advance
         emp_response = self.session.get(f"{BASE_URL}/api/employees?limit=50")
-        employees = emp_response.json().get("employees", [])
+        employees = emp_response.json()
+        # Handle both list and dict response formats
+        if isinstance(employees, dict):
+            employees = employees.get("employees", [])
         
         # Get existing advances
         advances_response = self.session.get(f"{BASE_URL}/api/payroll/sewa-advances")
