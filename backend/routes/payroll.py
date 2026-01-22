@@ -2400,7 +2400,7 @@ async def import_salaries_from_template(file: UploadFile = File(...), request: R
                     val = ws.cell(row=row_num, column=col_map[key] + 1).value
                     try:
                         return float(val) if val else default
-                    except:
+                    except (ValueError, TypeError):
                         return default
                 
                 basic = get_val("basic", 0)
