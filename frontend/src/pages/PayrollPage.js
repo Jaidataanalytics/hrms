@@ -1389,6 +1389,170 @@ const PayrollPage = () => {
           </TabsContent>
         )}
 
+        {/* SEWA Advances Tab */}
+        {isHR && (
+          <TabsContent value="sewa-advances">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-primary" />
+                      SEWA Advance Management
+                    </CardTitle>
+                    <CardDescription>Manage employee SEWA advances with automatic monthly deductions</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowAddSewaAdvance(true)} data-testid="add-sewa-advance-btn">
+                    <Plus className="w-4 h-4 mr-1" /> Add SEWA Advance
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {sewaAdvances.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Total Amount</TableHead>
+                        <TableHead>Monthly Deduction</TableHead>
+                        <TableHead>Paid</TableHead>
+                        <TableHead>Remaining</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sewaAdvances.map((adv) => (
+                        <TableRow key={adv.advance_id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{adv.employee_name}</p>
+                              <p className="text-xs text-slate-500">{adv.emp_code}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatCurrency(adv.total_amount)}</TableCell>
+                          <TableCell>{formatCurrency(adv.monthly_amount)}</TableCell>
+                          <TableCell className="text-emerald-600">{formatCurrency(adv.total_paid)}</TableCell>
+                          <TableCell className="text-amber-600">{formatCurrency(adv.remaining_amount)}</TableCell>
+                          <TableCell>
+                            <Badge className={adv.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}>
+                              {adv.status || (adv.is_active ? 'Active' : 'Completed')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {adv.is_active && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteSewaAdvance(adv.advance_id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-12">
+                    <CreditCard className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500">No SEWA advances configured</p>
+                    <p className="text-xs text-slate-400 mt-1">Add advances for employees who need to repay SEWA</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* One-time Deductions Tab */}
+        {isHR && (
+          <TabsContent value="deductions">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center flex-wrap gap-4">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-primary" />
+                      One-time Deductions for {getMonthName(selectedMonth)} {selectedYear}
+                    </CardTitle>
+                    <CardDescription>Add loan EMIs, advance recoveries, or other deductions for specific employees</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                      <SelectTrigger className="w-36">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...Array(12)].map((_, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>{getMonthName(i + 1)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={() => setShowAddOneTimeDeduction(true)} data-testid="add-deduction-btn">
+                      <Plus className="w-4 h-4 mr-1" /> Add Deduction
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {oneTimeDeductions.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {oneTimeDeductions.map((ded) => (
+                        <TableRow key={ded.deduction_id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{ded.employee_name}</p>
+                              <p className="text-xs text-slate-500">{ded.emp_code}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {ded.category === 'loan_emi' ? 'Loan EMI' : 
+                               ded.category === 'advance_recovery' ? 'Advance Recovery' :
+                               ded.category === 'penalty' ? 'Penalty' : 'Other'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-red-600 font-medium">{formatCurrency(ded.amount)}</TableCell>
+                          <TableCell>{ded.reason || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteOneTimeDeduction(ded.deduction_id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-12">
+                    <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500">No one-time deductions for this month</p>
+                    <p className="text-xs text-slate-400 mt-1">Add deductions like loan EMIs or advance recoveries</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
         {/* My Payslips */}
         <TabsContent value="my-payslips">
           <Card>
