@@ -597,7 +597,7 @@ async def get_my_payslips(request: Request):
 
 
 @router.get("/employee/{employee_id}")
-async def get_employee_salary(employee_id: str, request: Request):
+async def get_employee_salary_details_v2(employee_id: str, request: Request):
     """Get salary structure for an employee"""
     user = await get_current_user(request)
     
