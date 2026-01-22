@@ -315,7 +315,7 @@ async def process_payroll(payroll_id: str, request: Request):
                     sundays_holidays += 1
                 elif date_str in holiday_dates:
                     sundays_holidays += 1
-            except:
+            except Exception:
                 pass
         
         # Build attendance data
