@@ -79,10 +79,13 @@ class TestPayrollNewFeatures:
             pytest.skip("Could not get employees")
         
         employees = emp_response.json()
-        if not employees.get("employees"):
+        # Handle both list and dict response formats
+        if isinstance(employees, dict):
+            employees = employees.get("employees", [])
+        if not employees:
             pytest.skip("No employees found")
         
-        employee_id = employees["employees"][0]["employee_id"]
+        employee_id = employees[0]["employee_id"]
         
         response = self.session.post(
             f"{BASE_URL}/api/payroll/sewa-advances",
