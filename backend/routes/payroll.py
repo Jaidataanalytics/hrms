@@ -1824,3 +1824,644 @@ async def toggle_custom_rule(rule_id: str, request: Request):
     )
     
     return {"message": f"Rule {'enabled' if new_status else 'disabled'}", "is_active": new_status}
+
+
+
+# ==================== SEWA ADVANCE MANAGEMENT ====================
+
+@router.get("/sewa-advances")
+async def list_sewa_advances(
+    request: Request,
+    status: Optional[str] = None,
+    employee_id: Optional[str] = None
+):
+    """List all SEWA advances"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    if employee_id:
+        query["employee_id"] = employee_id
+    
+    advances = await db.sewa_advances.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Enrich with employee details
+    for adv in advances:
+        employee = await db.employees.find_one(
+            {"employee_id": adv.get("employee_id")}, {"_id": 0}
+        )
+        if employee:
+            adv["employee_name"] = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+            adv["emp_code"] = employee.get("emp_code", "")
+    
+    return advances
+
+
+@router.post("/sewa-advances")
+async def create_sewa_advance(data: dict, request: Request):
+    """
+    Create a SEWA advance for an employee
+    
+    Required fields:
+    - employee_id: Employee to assign advance to
+    - total_amount: Total amount to be recovered
+    - monthly_amount: Amount to deduct each month
+    - duration_months: Expected duration (for reference)
+    """
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="Employee ID is required")
+    
+    # Check if employee exists
+    employee = await db.employees.find_one({"employee_id": employee_id})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Check for existing active advance
+    existing = await db.sewa_advances.find_one({
+        "employee_id": employee_id,
+        "is_active": True
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Employee already has an active SEWA advance")
+    
+    total_amount = float(data.get("total_amount", 0))
+    monthly_amount = float(data.get("monthly_amount", 0))
+    
+    if total_amount <= 0 or monthly_amount <= 0:
+        raise HTTPException(status_code=400, detail="Total amount and monthly amount must be greater than 0")
+    
+    advance = {
+        "advance_id": f"sewa_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "emp_code": employee.get("emp_code", ""),
+        "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+        "total_amount": total_amount,
+        "monthly_amount": monthly_amount,
+        "duration_months": int(data.get("duration_months", 0)) or int(total_amount / monthly_amount),
+        "total_paid": 0,
+        "remaining_amount": total_amount,
+        "start_month": int(data.get("start_month", datetime.now().month)),
+        "start_year": int(data.get("start_year", datetime.now().year)),
+        "reason": data.get("reason", "SEWA Advance"),
+        "status": "active",
+        "is_active": True,
+        "created_by": user.get("user_id"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.sewa_advances.insert_one(advance)
+    advance.pop("_id", None)
+    return advance
+
+
+@router.put("/sewa-advances/{advance_id}")
+async def update_sewa_advance(advance_id: str, data: dict, request: Request):
+    """Update a SEWA advance"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    advance = await db.sewa_advances.find_one({"advance_id": advance_id})
+    if not advance:
+        raise HTTPException(status_code=404, detail="SEWA advance not found")
+    
+    update_data = {}
+    
+    if "monthly_amount" in data:
+        update_data["monthly_amount"] = float(data["monthly_amount"])
+    if "total_amount" in data:
+        update_data["total_amount"] = float(data["total_amount"])
+        update_data["remaining_amount"] = float(data["total_amount"]) - float(advance.get("total_paid", 0))
+    if "reason" in data:
+        update_data["reason"] = data["reason"]
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = user.get("user_id")
+    
+    await db.sewa_advances.update_one(
+        {"advance_id": advance_id},
+        {"$set": update_data}
+    )
+    
+    return await db.sewa_advances.find_one({"advance_id": advance_id}, {"_id": 0})
+
+
+@router.delete("/sewa-advances/{advance_id}")
+async def delete_sewa_advance(advance_id: str, request: Request):
+    """Deactivate a SEWA advance"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.sewa_advances.update_one(
+        {"advance_id": advance_id},
+        {"$set": {
+            "is_active": False,
+            "status": "cancelled",
+            "cancelled_at": datetime.now(timezone.utc).isoformat(),
+            "cancelled_by": user.get("user_id")
+        }}
+    )
+    
+    return {"message": "SEWA advance cancelled"}
+
+
+@router.post("/sewa-advances/{advance_id}/complete")
+async def complete_sewa_advance(advance_id: str, request: Request):
+    """Mark a SEWA advance as completed"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.sewa_advances.update_one(
+        {"advance_id": advance_id},
+        {"$set": {
+            "is_active": False,
+            "status": "completed",
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_by": user.get("user_id")
+        }}
+    )
+    
+    return {"message": "SEWA advance marked as completed"}
+
+
+# ==================== ONE-TIME DEDUCTIONS ====================
+
+@router.get("/one-time-deductions")
+async def list_one_time_deductions(
+    request: Request,
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    employee_id: Optional[str] = None
+):
+    """List one-time deductions"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = {"is_active": True}
+    if month:
+        query["month"] = month
+    if year:
+        query["year"] = year
+    if employee_id:
+        query["employee_id"] = employee_id
+    
+    deductions = await db.one_time_deductions.find(query, {"_id": 0}).to_list(500)
+    
+    # Enrich with employee details
+    for ded in deductions:
+        employee = await db.employees.find_one(
+            {"employee_id": ded.get("employee_id")}, {"_id": 0}
+        )
+        if employee:
+            ded["employee_name"] = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+            ded["emp_code"] = employee.get("emp_code", "")
+    
+    return deductions
+
+
+@router.post("/one-time-deductions")
+async def create_one_time_deduction(data: dict, request: Request):
+    """Create a one-time deduction for an employee (e.g., loan EMI, advance recovery)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="Employee ID is required")
+    
+    # Check if employee exists
+    employee = await db.employees.find_one({"employee_id": employee_id})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    deduction = {
+        "deduction_id": f"otd_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "emp_code": employee.get("emp_code", ""),
+        "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+        "amount": float(data.get("amount", 0)),
+        "month": int(data.get("month", datetime.now().month)),
+        "year": int(data.get("year", datetime.now().year)),
+        "reason": data.get("reason", "One-time deduction"),
+        "category": data.get("category", "other"),  # loan_emi, advance_recovery, penalty, other
+        "is_active": True,
+        "created_by": user.get("user_id"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.one_time_deductions.insert_one(deduction)
+    deduction.pop("_id", None)
+    return deduction
+
+
+@router.delete("/one-time-deductions/{deduction_id}")
+async def delete_one_time_deduction(deduction_id: str, request: Request):
+    """Delete a one-time deduction"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.one_time_deductions.update_one(
+        {"deduction_id": deduction_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    return {"message": "Deduction removed"}
+
+
+# ==================== PAYSLIP EDITING (Before Lock) ====================
+
+@router.put("/payslips/{payslip_id}")
+async def update_payslip(payslip_id: str, data: dict, request: Request):
+    """
+    Update a payslip before payroll is locked
+    
+    HR can edit:
+    - Attendance inputs (office_days, wfh_days, leave_days, etc.) and recalculate
+    - Or directly edit individual values (gross_salary, deductions, net_salary)
+    """
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    payslip = await db.payslips.find_one({"payslip_id": payslip_id})
+    if not payslip:
+        raise HTTPException(status_code=404, detail="Payslip not found")
+    
+    # Check if payroll is locked
+    payroll = await db.payroll_runs.find_one({"payroll_id": payslip.get("payroll_id")})
+    if payroll and payroll.get("status") == "locked":
+        raise HTTPException(status_code=400, detail="Cannot edit payslip - payroll is locked")
+    
+    update_data = {}
+    recalculate = data.get("recalculate", False)
+    
+    if recalculate:
+        # Update attendance and recalculate
+        attendance = data.get("attendance", {})
+        if attendance:
+            # Get employee salary structure
+            employee_id = payslip.get("employee_id")
+            emp_salary = await db.employee_salaries.find_one(
+                {"employee_id": employee_id, "is_active": True}, {"_id": 0}
+            )
+            
+            if not emp_salary:
+                raise HTTPException(status_code=400, detail="No salary structure found for employee")
+            
+            # Get payroll config
+            payroll_rules = await db.payroll_rules.find_one({"is_active": True}, {"_id": 0})
+            config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
+            
+            payroll_config = {
+                "epf_employee_percentage": float((payroll_rules or {}).get("epf_employee_percentage", 12.0)),
+                "epf_wage_ceiling": float((config or {}).get("pf_wage_ceiling", 15000)),
+                "esi_employee_percentage": float((payroll_rules or {}).get("esi_employee_percentage", 0.75)),
+                "esi_wage_ceiling": float((config or {}).get("esi_wage_ceiling", 21000)),
+                "sewa_percentage": float((payroll_rules or {}).get("sewa_percentage", 2.0)),
+                "wfh_pay_percentage": float((payroll_rules or {}).get("wfh_pay_percentage", 50.0)),
+                "late_deduction_enabled": (payroll_rules or {}).get("late_deduction_enabled", True),
+                "late_count_threshold": int((payroll_rules or {}).get("late_count_threshold", 2)),
+            }
+            
+            # Get SEWA advance
+            sewa_advance = await db.sewa_advances.find_one(
+                {"employee_id": employee_id, "is_active": True}, {"_id": 0}
+            )
+            
+            # Recalculate
+            month = payslip.get("month")
+            year = payslip.get("year")
+            
+            from routes.payroll_v2 import process_employee_salary
+            
+            new_payslip_data = process_employee_salary(
+                employee_salary=emp_salary,
+                attendance_data=attendance,
+                payroll_config=payroll_config,
+                month=month,
+                year=year,
+                sewa_advance_info=sewa_advance
+            )
+            
+            # Update all calculated fields
+            update_data = {
+                "attendance": new_payslip_data["attendance"],
+                "earnings": new_payslip_data["earnings"],
+                "deductions": new_payslip_data["deductions"],
+                "gross_salary": new_payslip_data["gross_salary"],
+                "total_deductions": new_payslip_data["total_deductions"],
+                "net_salary": new_payslip_data["net_payable"],
+                "paid_days": new_payslip_data["attendance"]["total_earned_days"],
+                "basic": new_payslip_data["earnings"]["basic_da_earned"],
+                "hra": new_payslip_data["earnings"]["hra_earned"],
+                "pf_employee": new_payslip_data["deductions"]["epf"],
+                "esi_employee": new_payslip_data["deductions"]["esi"],
+                "sewa": new_payslip_data["deductions"]["sewa"],
+                "sewa_advance": new_payslip_data["deductions"]["sewa_advance"],
+            }
+    else:
+        # Direct edit mode - update individual fields
+        editable_fields = [
+            "gross_salary", "total_deductions", "net_salary",
+            "basic", "hra", "special_allowance",
+            "pf_employee", "esi_employee", "sewa", "sewa_advance", "other_deduction",
+            "office_days", "wfh_days", "leave_days", "late_count"
+        ]
+        
+        for field in editable_fields:
+            if field in data:
+                update_data[field] = data[field]
+        
+        # Also allow updating nested attendance/earnings/deductions
+        if "attendance" in data:
+            update_data["attendance"] = data["attendance"]
+        if "earnings" in data:
+            update_data["earnings"] = data["earnings"]
+        if "deductions" in data:
+            update_data["deductions"] = data["deductions"]
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = user.get("user_id")
+    update_data["is_manually_edited"] = True
+    
+    await db.payslips.update_one(
+        {"payslip_id": payslip_id},
+        {"$set": update_data}
+    )
+    
+    updated_payslip = await db.payslips.find_one({"payslip_id": payslip_id}, {"_id": 0})
+    return updated_payslip
+
+
+# ==================== PAYROLL EXPORT (Template Format) ====================
+
+@router.get("/runs/{payroll_id}/export")
+async def export_payroll_to_excel(payroll_id: str, request: Request):
+    """
+    Export payroll to Excel in the same format as the salary structure template
+    """
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    payroll = await db.payroll_runs.find_one({"payroll_id": payroll_id}, {"_id": 0})
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll run not found")
+    
+    if payroll.get("status") not in ["processed", "locked"]:
+        raise HTTPException(status_code=400, detail="Payroll must be processed before export")
+    
+    month, year = payroll["month"], payroll["year"]
+    
+    # Get all payslips
+    payslips = await db.payslips.find(
+        {"payroll_id": payroll_id}, {"_id": 0}
+    ).to_list(1000)
+    
+    if not payslips:
+        raise HTTPException(status_code=404, detail="No payslips found for this payroll")
+    
+    # Generate export data in template format
+    export_data = generate_payroll_export_data(payslips, month, year)
+    
+    # Create Excel file
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Salary Structure"
+        
+        # Define headers (matching template)
+        headers = [
+            "Emp Code", "Name of Employees", "BASIC", "DA", "HRA", "Conveyance",
+            "GRADE PAY", "OTHER ALLOW", "Med./Spl. Allow", "Total Salary (FIXED)",
+            "Work from office", "Sunday + Holiday Leave Days", "Leave Days",
+            "Work from Home @50%", "Late Deduction", "Basic+DA (Earned)",
+            "HRA (Earned)", "Conveyance (Earned)", "GRADE PAY (Earned)",
+            "OTHER ALLOW (Earned)", "Med./Spl. Allow (Earned)", "Total Earned Days",
+            "Total Salary Earned", "EPF Employees", "ESI Employees", "SEWA",
+            "Sewa Advance", "Other Deduction", "Total Deduction", "NET PAYABLE"
+        ]
+        
+        # Write headers
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', wrap_text=True)
+            cell.border = thin_border
+        
+        # Write data rows
+        for row_num, row_data in enumerate(export_data, 2):
+            for col, header in enumerate(headers, 1):
+                value = row_data.get(header, 0)
+                cell = ws.cell(row=row_num, column=col, value=value)
+                cell.border = thin_border
+                
+                # Format numbers
+                if col >= 3:  # Numeric columns
+                    cell.number_format = '#,##0.00'
+        
+        # Add totals row
+        total_row = len(export_data) + 2
+        ws.cell(row=total_row, column=1, value="TOTALS")
+        ws.cell(row=total_row, column=2, value=f"{len(export_data)} Employees")
+        
+        # Sum columns for totals
+        sum_cols = [3, 4, 5, 6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29, 30]
+        for col in sum_cols:
+            total = sum(row.get(headers[col-1], 0) or 0 for row in export_data)
+            cell = ws.cell(row=total_row, column=col, value=total)
+            cell.font = Font(bold=True)
+            cell.number_format = '#,##0.00'
+        
+        # Auto-size columns
+        for col in range(1, len(headers) + 1):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 15
+        
+        # Save to bytes
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        # Generate filename
+        month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        filename = f"Payroll_{month_names[month-1]}_{year}.xlsx"
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl library not available for Excel export")
+
+
+# ==================== SALARY BULK IMPORT (Template Format) ====================
+
+@router.post("/import-salaries")
+async def import_salaries_from_template(file: UploadFile = File(...), request: Request = None):
+    """
+    Import salary structures from the salary structure Excel template
+    
+    Expected columns: Emp Code, BASIC, DA, HRA, Conveyance, GRADE PAY, OTHER ALLOW, Med./Spl. Allow
+    """
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    try:
+        import openpyxl
+        
+        contents = await file.read()
+        wb = openpyxl.load_workbook(io.BytesIO(contents))
+        ws = wb.active
+        
+        # Get headers from first row
+        headers = []
+        for col in range(1, ws.max_column + 1):
+            val = ws.cell(row=1, column=col).value
+            headers.append(str(val).strip() if val else "")
+        
+        # Map column indices
+        col_map = {}
+        expected_cols = {
+            "emp code": "emp_code",
+            "name of employees": "name",
+            "basic": "basic",
+            "da": "da",
+            "hra": "hra",
+            "conveyance": "conveyance",
+            "grade pay": "grade_pay",
+            "other allow": "other_allowance",
+            "med./spl. allow": "medical_allowance",
+            "total salary (fixed)": "total_fixed"
+        }
+        
+        for idx, header in enumerate(headers):
+            header_lower = header.lower().strip()
+            for key, mapped in expected_cols.items():
+                if key in header_lower:
+                    col_map[mapped] = idx
+                    break
+        
+        if "emp_code" not in col_map:
+            raise HTTPException(status_code=400, detail="Emp Code column not found in file")
+        
+        imported = 0
+        errors = []
+        
+        for row_num in range(2, ws.max_row + 1):
+            try:
+                emp_code = ws.cell(row=row_num, column=col_map["emp_code"] + 1).value
+                if not emp_code:
+                    continue
+                
+                emp_code = str(emp_code).strip()
+                
+                # Find employee by emp_code
+                employee = await db.employees.find_one({"emp_code": emp_code})
+                if not employee:
+                    errors.append(f"Row {row_num}: Employee {emp_code} not found")
+                    continue
+                
+                # Get values
+                def get_val(key, default=0):
+                    if key not in col_map:
+                        return default
+                    val = ws.cell(row=row_num, column=col_map[key] + 1).value
+                    try:
+                        return float(val) if val else default
+                    except:
+                        return default
+                
+                basic = get_val("basic", 0)
+                da = get_val("da", 0)
+                hra = get_val("hra", 0)
+                conveyance = get_val("conveyance", 0)
+                grade_pay = get_val("grade_pay", 0)
+                other_allowance = get_val("other_allowance", 0)
+                medical_allowance = get_val("medical_allowance", 0)
+                
+                total_fixed = basic + da + hra + conveyance + grade_pay + other_allowance + medical_allowance
+                
+                # Create/update salary structure
+                salary_data = {
+                    "salary_id": f"sal_{uuid.uuid4().hex[:12]}",
+                    "employee_id": employee.get("employee_id"),
+                    "emp_code": emp_code,
+                    "employee_name": get_val("name", "") or f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+                    "fixed_components": {
+                        "basic": basic,
+                        "da": da,
+                        "hra": hra,
+                        "conveyance": conveyance,
+                        "grade_pay": grade_pay,
+                        "other_allowance": other_allowance,
+                        "medical_allowance": medical_allowance
+                    },
+                    "total_fixed": total_fixed,
+                    "deduction_config": {
+                        "epf_applicable": True,
+                        "esi_applicable": total_fixed <= 21000,
+                        "sewa_applicable": True,
+                        "sewa_percentage": 2.0
+                    },
+                    "fixed_deductions": {
+                        "sewa_advance": 0,
+                        "other_deduction": 0
+                    },
+                    "is_active": True,
+                    "imported_at": datetime.now(timezone.utc).isoformat(),
+                    "imported_by": user.get("user_id")
+                }
+                
+                # Deactivate old salary
+                await db.employee_salaries.update_many(
+                    {"employee_id": employee.get("employee_id"), "is_active": True},
+                    {"$set": {"is_active": False}}
+                )
+                
+                # Insert new salary
+                await db.employee_salaries.insert_one(salary_data)
+                imported += 1
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+        
+        return {
+            "message": f"Imported {imported} salary structures",
+            "imported": imported,
+            "errors": errors[:20] if errors else []  # Limit errors shown
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
