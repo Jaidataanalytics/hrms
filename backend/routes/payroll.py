@@ -175,7 +175,17 @@ async def create_payroll_run(month: int, year: int, request: Request):
 
 @router.post("/runs/{payroll_id}/process")
 async def process_payroll(payroll_id: str, request: Request):
-    """Process payroll - calculate all payslips"""
+    """
+    Process payroll - calculate all payslips using the new salary structure template logic
+    
+    New calculation logic:
+    - Uses calendar days (28-31) not fixed 26 days
+    - Pro-rates each salary component individually
+    - Applies WFH at configurable percentage (default 50%)
+    - Calculates EPF, ESI, SEWA based on formulas
+    - Handles SEWA Advance for applicable employees
+    - Applies late deduction rules
+    """
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -188,29 +198,29 @@ async def process_payroll(payroll_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Payroll is locked")
     
     month, year = payroll["month"], payroll["year"]
+    total_days = get_calendar_days_in_month(year, month)
+    month_str = f"{year}-{str(month).zfill(2)}"
     
-    # Get payroll config
+    # Get payroll config with defaults
     config = await db.payroll_config.find_one({"is_active": True}, {"_id": 0})
-    if not config:
-        config = {
-            "pf_employee_rate": 12.0,
-            "pf_employer_rate": 12.0,
-            "pf_wage_ceiling": 15000,
-            "esi_employee_rate": 0.75,
-            "esi_employer_rate": 3.25,
-            "esi_wage_ceiling": 21000,
-            "pt_slabs": [
-                {"min": 0, "max": 10000, "amount": 0},
-                {"min": 10001, "max": 15000, "amount": 150},
-                {"min": 15001, "max": 999999999, "amount": 200}
-            ]
-        }
+    payroll_rules = await db.payroll_rules.find_one({"is_active": True}, {"_id": 0})
+    
+    # Merge config and rules
+    payroll_config = {
+        "epf_employee_percentage": float((payroll_rules or {}).get("epf_employee_percentage", 12.0)),
+        "epf_wage_ceiling": float((config or {}).get("pf_wage_ceiling", 15000)),
+        "esi_employee_percentage": float((payroll_rules or {}).get("esi_employee_percentage", 0.75)),
+        "esi_wage_ceiling": float((config or {}).get("esi_wage_ceiling", 21000)),
+        "sewa_percentage": float((payroll_rules or {}).get("sewa_percentage", 2.0)),
+        "wfh_pay_percentage": float((payroll_rules or {}).get("wfh_pay_percentage", 50.0)),
+        "late_deduction_enabled": (payroll_rules or {}).get("late_deduction_enabled", True),
+        "late_count_threshold": int((payroll_rules or {}).get("late_count_threshold", 2)),
+    }
     
     # Get salary data from BOTH collections and merge
-    # This ensures all employees with salary data are processed
     salary_data_map = {}
     
-    # First, get from employee_salaries (has gross field)
+    # First, get from employee_salaries (has fixed_components)
     emp_salaries = await db.employee_salaries.find(
         {"is_active": True}, {"_id": 0}
     ).to_list(1000)
@@ -219,8 +229,7 @@ async def process_payroll(payroll_id: str, request: Request):
         if emp_id:
             salary_data_map[emp_id] = sal
     
-    # Then, get from salary_structures (has ctc field)
-    # Only add if not already in employee_salaries
+    # Then, get from salary_structures (fallback)
     sal_structures = await db.salary_structures.find(
         {"is_active": True}, {"_id": 0}
     ).to_list(1000)
@@ -229,6 +238,29 @@ async def process_payroll(payroll_id: str, request: Request):
         if emp_id and emp_id not in salary_data_map:
             salary_data_map[emp_id] = sal
     
+    # Get all active SEWA advances
+    sewa_advances = await db.sewa_advances.find(
+        {"is_active": True}, {"_id": 0}
+    ).to_list(1000)
+    sewa_advance_map = {sa.get("employee_id"): sa for sa in sewa_advances}
+    
+    # Get one-time deductions for this month
+    one_time_deductions = await db.one_time_deductions.find(
+        {"month": month, "year": year, "is_active": True}, {"_id": 0}
+    ).to_list(1000)
+    ot_deductions_map = {}
+    for otd in one_time_deductions:
+        emp_id = otd.get("employee_id")
+        if emp_id not in ot_deductions_map:
+            ot_deductions_map[emp_id] = []
+        ot_deductions_map[emp_id].append(otd)
+    
+    # Get holidays for the month
+    holidays = await db.holidays.find({
+        "date": {"$regex": f"^{month_str}"}
+    }, {"_id": 0}).to_list(31)
+    holiday_dates = set(h.get("date") for h in holidays)
+    
     employees_with_salary = list(salary_data_map.values())
     
     total_gross = 0
@@ -236,7 +268,7 @@ async def process_payroll(payroll_id: str, request: Request):
     total_net = 0
     total_pf = 0
     total_esi = 0
-    total_pt = 0
+    total_sewa = 0
     payslips_created = 0
     
     for emp_salary in employees_with_salary:
@@ -250,96 +282,116 @@ async def process_payroll(payroll_id: str, request: Request):
             continue
         
         # Get attendance for the month
-        month_str = f"{year}-{str(month).zfill(2)}"
         attendance = await db.attendance.find(
             {"employee_id": employee_id, "date": {"$regex": f"^{month_str}"}}
-        ).to_list(31)
+        ).to_list(50)
         
-        working_days = 26  # Default working days
-        present_days = len([a for a in attendance if a.get("status") in ["present", "wfh", "tour"]])
+        # Calculate attendance breakdown
+        office_days = 0
+        wfh_days = 0
+        leave_days = 0
+        late_count = 0
         
-        # Get leave deductions
-        lwp_days = 0
-        leaves = await db.leave_requests.find({
-            "employee_id": employee_id,
-            "status": "approved",
-            "from_date": {"$regex": f"^{month_str}"}
-        }).to_list(10)
+        for att in attendance:
+            status = att.get("status", "").lower()
+            if status in ["present", "tour"]:
+                office_days += 1
+            elif status == "wfh":
+                wfh_days += 1
+            elif status in ["leave", "absent"]:
+                leave_days += 1
+            
+            if att.get("is_late"):
+                late_count += 1
         
-        for leave in leaves:
-            leave_type = await db.leave_types.find_one({"leave_type_id": leave["leave_type_id"]}, {"_id": 0})
-            if leave_type and leave_type.get("code") == "LWP":
-                lwp_days += leave.get("days", 0)
+        # Calculate Sundays and holidays in the month
+        sundays_holidays = 0
+        for day in range(1, total_days + 1):
+            date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
+            try:
+                from datetime import date as dt_date
+                d = dt_date(year, month, day)
+                if d.weekday() == 6:  # Sunday
+                    sundays_holidays += 1
+                elif date_str in holiday_dates:
+                    sundays_holidays += 1
+            except:
+                pass
         
-        paid_days = working_days - lwp_days
+        # Build attendance data
+        attendance_data = {
+            "office_days": office_days,
+            "sundays_holidays": sundays_holidays,
+            "leave_days": leave_days,
+            "wfh_days": wfh_days,
+            "late_count": late_count
+        }
         
-        # Calculate salary - handle multiple data structures
-        # Priority: total_fixed > gross > ctc/12
-        gross = emp_salary.get("total_fixed") or emp_salary.get("gross") or (emp_salary.get("ctc", 0) / 12)
+        # Get SEWA advance if applicable
+        sewa_advance_info = sewa_advance_map.get(employee_id)
         
-        if not gross or gross <= 0:
-            continue  # Skip employees with no valid salary
+        # Get one-time deductions
+        emp_ot_deductions = ot_deductions_map.get(employee_id, [])
         
-        # Get basic salary - handle different structures
-        if emp_salary.get("fixed_components"):
-            basic = emp_salary["fixed_components"].get("basic", gross * 0.4)
-        elif emp_salary.get("components"):
-            basic = emp_salary["components"][0].get("amount", gross * 0.5) if emp_salary["components"] else gross * 0.5
-        else:
-            basic = emp_salary.get("basic", gross * 0.4)
+        # Process salary using new calculation
+        try:
+            payslip_data = process_employee_salary(
+                employee_salary=emp_salary,
+                attendance_data=attendance_data,
+                payroll_config=payroll_config,
+                month=month,
+                year=year,
+                sewa_advance_info=sewa_advance_info,
+                one_time_deductions=emp_ot_deductions
+            )
+        except Exception as e:
+            print(f"Error processing salary for {employee_id}: {e}")
+            continue
         
-        # Pro-rate for attendance
-        daily_rate = gross / working_days
-        prorated_gross = daily_rate * paid_days
-        prorated_basic = (basic / working_days) * paid_days
+        # Skip if no valid salary
+        if payslip_data.get("gross_salary", 0) <= 0:
+            continue
         
-        # Calculate PF (on basic, max 15000)
-        pf_basic = min(prorated_basic, config.get("pf_wage_ceiling", 15000))
-        pf_employee = round(pf_basic * config.get("pf_employee_rate", 12) / 100, 0)
-        pf_employer = round(pf_basic * config.get("pf_employer_rate", 12) / 100, 0)
+        emp_name = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
         
-        # Calculate ESI (if gross < ceiling)
-        esi_employee = 0
-        esi_employer = 0
-        if prorated_gross <= config.get("esi_wage_ceiling", 21000):
-            esi_employee = round(prorated_gross * config.get("esi_employee_rate", 0.75) / 100, 0)
-            esi_employer = round(prorated_gross * config.get("esi_employer_rate", 3.25) / 100, 0)
-        
-        # Calculate PT
-        pt = 0
-        for slab in config.get("pt_slabs", []):
-            if slab["min"] <= prorated_gross <= slab["max"]:
-                pt = slab["amount"]
-                break
-        
-        # Calculate deductions
-        total_ded = pf_employee + esi_employee + pt
-        net = prorated_gross - total_ded
-        
-        # Create payslip
+        # Create payslip document
         payslip = {
             "payslip_id": f"ps_{uuid.uuid4().hex[:12]}",
             "payroll_id": payroll_id,
             "employee_id": employee_id,
+            "emp_code": employee.get("emp_code", ""),
+            "employee_name": emp_name,
+            "department": employee.get("department_name") or employee.get("department", ""),
+            "designation": employee.get("designation") or employee.get("job_title", ""),
             "month": month,
             "year": year,
-            "working_days": working_days,
-            "present_days": present_days,
-            "lwp_days": lwp_days,
-            "paid_days": paid_days,
-            "basic": round(prorated_basic, 0),
-            "hra": round(prorated_basic * 0.4, 0),
-            "special_allowance": round(prorated_gross - prorated_basic - prorated_basic * 0.4, 0),
-            "gross_salary": round(prorated_gross, 0),
-            "pf_employee": pf_employee,
-            "pf_employer": pf_employer,
-            "esi_employee": esi_employee,
-            "esi_employer": esi_employer,
-            "professional_tax": pt,
-            "total_deductions": round(total_ded, 0),
-            "net_salary": round(net, 0),
+            
+            # New structure - full breakdown
+            "fixed_components": payslip_data["fixed_components"],
+            "attendance": payslip_data["attendance"],
+            "earnings": payslip_data["earnings"],
+            "deductions": payslip_data["deductions"],
+            
+            # Summary fields (for backwards compatibility)
+            "working_days": total_days,
+            "present_days": office_days + wfh_days,
+            "lwp_days": leave_days,
+            "paid_days": payslip_data["attendance"]["total_earned_days"],
+            "basic": payslip_data["earnings"]["basic_da_earned"],
+            "hra": payslip_data["earnings"]["hra_earned"],
+            "special_allowance": payslip_data["earnings"]["other_allowance_earned"] + payslip_data["earnings"]["medical_allowance_earned"],
+            "gross_salary": payslip_data["gross_salary"],
+            "pf_employee": payslip_data["deductions"]["epf"],
+            "esi_employee": payslip_data["deductions"]["esi"],
+            "sewa": payslip_data["deductions"]["sewa"],
+            "sewa_advance": payslip_data["deductions"]["sewa_advance"],
+            "other_deduction": payslip_data["deductions"]["other_deduction"],
+            "total_deductions": payslip_data["total_deductions"],
+            "net_salary": payslip_data["net_payable"],
+            
             "status": "draft",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "config_used": payslip_data["config_used"]
         }
         
         # Upsert payslip
@@ -349,12 +401,37 @@ async def process_payroll(payroll_id: str, request: Request):
             upsert=True
         )
         
-        total_gross += prorated_gross
-        total_deductions += total_ded
-        total_net += net
-        total_pf += pf_employee
-        total_esi += esi_employee
-        total_pt += pt
+        # Update SEWA advance tracking if applicable
+        if sewa_advance_info and sewa_advance_info.get("is_active"):
+            sewa_amount = payslip_data["deductions"]["sewa_advance"]
+            new_paid = float(sewa_advance_info.get("total_paid", 0)) + sewa_amount
+            new_remaining = float(sewa_advance_info.get("total_amount", 0)) - new_paid
+            
+            update_data = {
+                "total_paid": new_paid,
+                "remaining_amount": max(0, new_remaining),
+                "last_deduction_month": month,
+                "last_deduction_year": year,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Auto-complete if fully paid
+            if new_remaining <= 0:
+                update_data["is_active"] = False
+                update_data["status"] = "completed"
+                update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+            
+            await db.sewa_advances.update_one(
+                {"employee_id": employee_id, "is_active": True},
+                {"$set": update_data}
+            )
+        
+        total_gross += payslip_data["gross_salary"]
+        total_deductions += payslip_data["total_deductions"]
+        total_net += payslip_data["net_payable"]
+        total_pf += payslip_data["deductions"]["epf"]
+        total_esi += payslip_data["deductions"]["esi"]
+        total_sewa += payslip_data["deductions"]["sewa"] + payslip_data["deductions"]["sewa_advance"]
         payslips_created += 1
     
     # Update payroll run
@@ -368,7 +445,8 @@ async def process_payroll(payroll_id: str, request: Request):
             "total_net": round(total_net, 0),
             "total_pf": round(total_pf, 0),
             "total_esi": round(total_esi, 0),
-            "total_pt": round(total_pt, 0),
+            "total_sewa": round(total_sewa, 0),
+            "calendar_days": total_days,
             "processed_by": user["user_id"],
             "processed_at": datetime.now(timezone.utc).isoformat()
         }}
