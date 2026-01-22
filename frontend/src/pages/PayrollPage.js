@@ -120,6 +120,26 @@ const PayrollPage = () => {
   const [selectedPayrollRun, setSelectedPayrollRun] = useState(null);
   const [payrollDetails, setPayrollDetails] = useState(null);
   const [loadingPayrollDetails, setLoadingPayrollDetails] = useState(false);
+  
+  // SEWA Advance Management state
+  const [sewaAdvances, setSewaAdvances] = useState([]);
+  const [showAddSewaAdvance, setShowAddSewaAdvance] = useState(false);
+  const [sewaAdvanceForm, setSewaAdvanceForm] = useState({
+    employee_id: '', total_amount: 0, monthly_amount: 0, duration_months: 0, reason: ''
+  });
+  const [employees, setEmployees] = useState([]);
+  
+  // One-time Deductions state
+  const [oneTimeDeductions, setOneTimeDeductions] = useState([]);
+  const [showAddOneTimeDeduction, setShowAddOneTimeDeduction] = useState(false);
+  const [oneTimeDeductionForm, setOneTimeDeductionForm] = useState({
+    employee_id: '', amount: 0, reason: '', category: 'other'
+  });
+  
+  // Payslip Edit state
+  const [editPayslipOpen, setEditPayslipOpen] = useState(false);
+  const [editingPayslip, setEditingPayslip] = useState(null);
+  const [payslipEditForm, setPayslipEditForm] = useState({});
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'finance' || user?.role === 'hr_executive';
   const canApproveSalary = user?.role === 'super_admin' || user?.role === 'finance';
