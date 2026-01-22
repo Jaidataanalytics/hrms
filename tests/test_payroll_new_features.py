@@ -101,7 +101,10 @@ class TestPayrollNewFeatures:
         if emp_response.status_code != 200:
             pytest.skip("Could not get employees")
         
-        employees = emp_response.json().get("employees", [])
+        employees = emp_response.json()
+        # Handle both list and dict response formats
+        if isinstance(employees, dict):
+            employees = employees.get("employees", [])
         if not employees:
             pytest.skip("No employees found")
         
