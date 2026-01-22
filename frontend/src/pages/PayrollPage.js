@@ -1014,6 +1014,8 @@ const PayrollPage = () => {
           {isHR && <TabsTrigger value="runs" data-testid="tab-runs">Payroll Runs</TabsTrigger>}
           {isHR && <TabsTrigger value="employees-pay" data-testid="tab-employees-pay">All Employees</TabsTrigger>}
           {isHR && <TabsTrigger value="salary-structures" data-testid="tab-salary-structures">Salary Structures</TabsTrigger>}
+          {isHR && <TabsTrigger value="sewa-advances" data-testid="tab-sewa-advances">SEWA Advances</TabsTrigger>}
+          {isHR && <TabsTrigger value="deductions" data-testid="tab-deductions">One-time Deductions</TabsTrigger>}
           <TabsTrigger value="my-payslips" data-testid="tab-my-payslips">My Payslips</TabsTrigger>
           {isHR && <TabsTrigger value="rules" data-testid="tab-rules">Payroll Rules</TabsTrigger>}
           {isHR && <TabsTrigger value="config" data-testid="tab-config">Statutory Config</TabsTrigger>}
