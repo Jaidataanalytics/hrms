@@ -513,57 +513,90 @@ const PayrollPage = () => {
     try {
       const XLSX = await import('xlsx');
       
-      // Prepare data for export
-      const exportData = payrollDetails.payslips.map((slip, index) => ({
-        'S.No': index + 1,
-        'Emp Code': slip.emp_code || slip.employee_id,
-        'Employee Name': slip.employee_name || '-',
-        'Department': slip.department || '-',
-        'Designation': slip.designation || '-',
-        'Working Days': slip.working_days || 26,
-        'Present Days': slip.present_days || 0,
-        'Paid Days': slip.paid_days || 0,
-        'LWP Days': slip.lwp_days || 0,
-        'Basic': slip.basic || 0,
-        'HRA': slip.hra || 0,
-        'Special Allowance': slip.special_allowance || 0,
-        'Gross Salary': slip.gross_salary || 0,
-        'PF (Employee)': slip.pf_employee || 0,
-        'ESI (Employee)': slip.esi_employee || 0,
-        'Professional Tax': slip.professional_tax || 0,
-        'Total Deductions': slip.total_deductions || 0,
-        'Net Salary': slip.net_salary || 0,
-      }));
-
-      // Add summary row
-      exportData.push({});
-      exportData.push({
-        'S.No': '',
-        'Emp Code': 'TOTALS',
-        'Employee Name': `${payrollDetails.summary?.total_employees || 0} Employees`,
-        'Department': '',
-        'Designation': '',
-        'Working Days': '',
-        'Present Days': '',
-        'Paid Days': '',
-        'LWP Days': '',
-        'Basic': '',
-        'HRA': '',
-        'Special Allowance': '',
-        'Gross Salary': payrollDetails.summary?.total_gross || 0,
-        'PF (Employee)': payrollDetails.summary?.total_pf || 0,
-        'ESI (Employee)': payrollDetails.summary?.total_esi || 0,
-        'Professional Tax': payrollDetails.summary?.total_pt || 0,
-        'Total Deductions': payrollDetails.summary?.total_deductions || 0,
-        'Net Salary': payrollDetails.summary?.total_net || 0,
+      // Prepare data for export in salary structure template format
+      const exportData = payrollDetails.payslips.map((slip) => {
+        const fc = slip.fixed_components || {};
+        const att = slip.attendance || {};
+        const earn = slip.earnings || {};
+        const ded = slip.deductions || {};
+        
+        return {
+          'Emp Code': slip.emp_code || slip.employee_id,
+          'Name of Employees': slip.employee_name || '-',
+          'BASIC': fc.basic || slip.basic || 0,
+          'DA': fc.da || 0,
+          'HRA': fc.hra || slip.hra || 0,
+          'Conveyance': fc.conveyance || 0,
+          'GRADE PAY': fc.grade_pay || 0,
+          'OTHER ALLOW': fc.other_allowance || 0,
+          'Med./Spl. Allow': fc.medical_allowance || 0,
+          'Total Salary (FIXED)': fc.total_fixed || (slip.basic + slip.hra + (slip.special_allowance || 0)),
+          'Work from office': att.office_days || slip.present_days || 0,
+          'Sunday + Holiday Leave Days': att.sundays_holidays || 0,
+          'Leave Days': att.leave_days || slip.lwp_days || 0,
+          'Work from Home @50%': att.wfh_days || 0,
+          'Late Deduction': earn.late_deduction || 0,
+          'Basic+DA (Earned)': earn.basic_da_earned || slip.basic || 0,
+          'HRA (Earned)': earn.hra_earned || slip.hra || 0,
+          'Conveyance (Earned)': earn.conveyance_earned || 0,
+          'GRADE PAY (Earned)': earn.grade_pay_earned || 0,
+          'OTHER ALLOW (Earned)': earn.other_allowance_earned || 0,
+          'Med./Spl. Allow (Earned)': earn.medical_allowance_earned || slip.special_allowance || 0,
+          'Total Earned Days': att.total_earned_days || slip.paid_days || 0,
+          'Total Salary Earned': slip.gross_salary || 0,
+          'EPF Employees': ded.epf || slip.pf_employee || 0,
+          'ESI Employees': ded.esi || slip.esi_employee || 0,
+          'SEWA': ded.sewa || slip.sewa || 0,
+          'Sewa Advance': ded.sewa_advance || slip.sewa_advance || 0,
+          'Other Deduction': ded.other_deduction || slip.other_deduction || 0,
+          'Total Deduction': slip.total_deductions || 0,
+          'NET PAYABLE': slip.net_salary || 0,
+        };
       });
+
+      // Add totals row
+      const totals = {
+        'Emp Code': 'TOTALS',
+        'Name of Employees': `${payrollDetails.summary?.total_employees || exportData.length} Employees`,
+        'BASIC': exportData.reduce((sum, r) => sum + (r['BASIC'] || 0), 0),
+        'DA': exportData.reduce((sum, r) => sum + (r['DA'] || 0), 0),
+        'HRA': exportData.reduce((sum, r) => sum + (r['HRA'] || 0), 0),
+        'Conveyance': exportData.reduce((sum, r) => sum + (r['Conveyance'] || 0), 0),
+        'GRADE PAY': exportData.reduce((sum, r) => sum + (r['GRADE PAY'] || 0), 0),
+        'OTHER ALLOW': exportData.reduce((sum, r) => sum + (r['OTHER ALLOW'] || 0), 0),
+        'Med./Spl. Allow': exportData.reduce((sum, r) => sum + (r['Med./Spl. Allow'] || 0), 0),
+        'Total Salary (FIXED)': exportData.reduce((sum, r) => sum + (r['Total Salary (FIXED)'] || 0), 0),
+        'Work from office': '',
+        'Sunday + Holiday Leave Days': '',
+        'Leave Days': '',
+        'Work from Home @50%': '',
+        'Late Deduction': exportData.reduce((sum, r) => sum + (r['Late Deduction'] || 0), 0),
+        'Basic+DA (Earned)': exportData.reduce((sum, r) => sum + (r['Basic+DA (Earned)'] || 0), 0),
+        'HRA (Earned)': exportData.reduce((sum, r) => sum + (r['HRA (Earned)'] || 0), 0),
+        'Conveyance (Earned)': exportData.reduce((sum, r) => sum + (r['Conveyance (Earned)'] || 0), 0),
+        'GRADE PAY (Earned)': exportData.reduce((sum, r) => sum + (r['GRADE PAY (Earned)'] || 0), 0),
+        'OTHER ALLOW (Earned)': exportData.reduce((sum, r) => sum + (r['OTHER ALLOW (Earned)'] || 0), 0),
+        'Med./Spl. Allow (Earned)': exportData.reduce((sum, r) => sum + (r['Med./Spl. Allow (Earned)'] || 0), 0),
+        'Total Earned Days': '',
+        'Total Salary Earned': payrollDetails.summary?.total_gross || exportData.reduce((sum, r) => sum + (r['Total Salary Earned'] || 0), 0),
+        'EPF Employees': payrollDetails.summary?.total_pf || exportData.reduce((sum, r) => sum + (r['EPF Employees'] || 0), 0),
+        'ESI Employees': payrollDetails.summary?.total_esi || exportData.reduce((sum, r) => sum + (r['ESI Employees'] || 0), 0),
+        'SEWA': exportData.reduce((sum, r) => sum + (r['SEWA'] || 0), 0),
+        'Sewa Advance': exportData.reduce((sum, r) => sum + (r['Sewa Advance'] || 0), 0),
+        'Other Deduction': exportData.reduce((sum, r) => sum + (r['Other Deduction'] || 0), 0),
+        'Total Deduction': payrollDetails.summary?.total_deductions || exportData.reduce((sum, r) => sum + (r['Total Deduction'] || 0), 0),
+        'NET PAYABLE': payrollDetails.summary?.total_net || exportData.reduce((sum, r) => sum + (r['NET PAYABLE'] || 0), 0),
+      };
+      
+      exportData.push({});
+      exportData.push(totals);
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Payroll');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Salary Structure');
 
       // Auto-size columns
-      const maxWidth = 20;
+      const maxWidth = 18;
       const cols = Object.keys(exportData[0] || {}).map(() => ({ wch: maxWidth }));
       worksheet['!cols'] = cols;
 
