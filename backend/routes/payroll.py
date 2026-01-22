@@ -1,10 +1,20 @@
 """Payroll API Routes"""
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from datetime import datetime, timezone
+from calendar import monthrange
 import uuid
+import io
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+
+# Import payroll calculation helpers
+from routes.payroll_v2 import (
+    process_employee_salary,
+    get_calendar_days_in_month,
+    generate_payroll_export_data
+)
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 
