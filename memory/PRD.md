@@ -27,64 +27,93 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
   - Perfect Attendance list
   - Most Hours Worked (Top 10)
   - All Employee Statistics table
-- **Late Marking:** Arrival after 09:45 is marked as LATE
+- **Late Marking:** Arrival after 10:00 AM is marked as LATE (updated from 09:45)
 - **Biometric API Integration:** Auto-sync every 3 hours from external biometric device
 - **Time-based IN/OUT:** Before 12:00 = IN punch, After 12:00 = OUT punch
+- **Calendar View:** Daily attendance stats with drill-down to employee lists
 
 ### 3. Leave Management
 - Leave balance management
 - **Duplicate Prevention:** Uses upsert during import
+- **Configurable Leave Policy Rules:** Annual quotas, carry forward, Sunday penalty rules
 
-### 4. Payroll Management (Enhanced)
-**Salary Structure:**
-- Fixed Components: BASIC, DA, HRA, Conveyance, GRADE PAY, OTHER ALLOWANCE, Medical/Special Allowance
-- Deduction Config: EPF, ESI, SEWA (toggles)
-- Fixed Deductions: SEWA Advance, Other Deduction
+### 4. Payroll Management (OVERHAULED - Jan 22, 2026)
 
-**Employee Salary Edit:**
-- HR can edit any employee's salary
-- Approval workflow for non-super_admin
-- Salary change history tracking
+**New Salary Structure Template Format:**
 
-### 5. Insurance Module
+| Column | Component | Description |
+|--------|-----------|-------------|
+| C | BASIC | Base salary |
+| D | DA | Dearness Allowance |
+| E | HRA | House Rent Allowance |
+| F | Conveyance | Transport allowance |
+| G | GRADE PAY | Grade pay (usually 0) |
+| H | OTHER ALLOW | Other allowances |
+| I | Med./Spl. Allow | Medical/Special Allowance |
+| J | Total Fixed | Sum of all above |
+
+**New Calculation Logic:**
+- Uses **calendar days** (28-31) instead of fixed 26 days
+- **Pro-rates** each component: Earned = Fixed × (Earned Days / Total Days)
+- **WFH counted at 50%** (configurable)
+- **Late deduction**: 2 lates in a week = half day deduction
+- **EPF**: 12% of Basic (capped at ₹15,000 ceiling)
+- **ESI**: 0.75% of Gross (only if Gross ≤ ₹21,000)
+- **SEWA**: 2% of Basic
+- **Professional Tax (PT)**: EXCLUDED (not applicable)
+
+**SEWA Advance Management (NEW):**
+- Add employees who need to pay SEWA advance
+- Set: Total amount, Monthly deduction, Duration
+- Automatic tracking of paid vs remaining
+- Auto-completes when fully paid
+
+**One-time Deductions (NEW):**
+- Add per-employee per-month deductions
+- Categories: Loan EMI, Advance Recovery, Penalty, Other
+- Applied during payroll processing
+
+**Payslip Editing (NEW):**
+- HR can edit individual payslips before payroll is locked
+- Edit attendance inputs (office days, WFH, leave, late count)
+- System recalculates salary automatically
+- Edit button in payroll details modal
+
+**Export to Excel:**
+- Exports in **same format as salary structure template**
+- All columns: Emp Code, Name, Fixed components, Attendance, Earned components, Deductions, NET PAYABLE
+- Includes totals row
+
+**API Endpoints:**
+- `POST /api/payroll/sewa-advances` - Create SEWA advance
+- `GET /api/payroll/sewa-advances` - List SEWA advances
+- `DELETE /api/payroll/sewa-advances/{id}` - Cancel SEWA advance
+- `POST /api/payroll/one-time-deductions` - Create one-time deduction
+- `GET /api/payroll/one-time-deductions` - List deductions (filtered by month/year)
+- `PUT /api/payroll/payslips/{id}` - Edit payslip (with recalculate option)
+- `POST /api/payroll/import-salaries` - Bulk import from template
+
+### 5. Asset Management (Enhanced)
+- Asset Inventory with individual asset tracking
+- Employee Assignment view
+- NUMBER TAG parsing for bulk import
+- Edit, Delete, Reassign, Unassign operations
+
+### 6. Insurance Module
 - Employee Insurance Tab (ESIC, PMJJBY, Accidental)
 - Business Insurance Tab
 
-### 6. Global Search & Employee 360 View
+### 7. Global Search & Employee 360 View
 - Global search bar (Cmd+K) - HR/Admin only
 - Comprehensive employee profile page
 
-### 7. Biometric API Integration (Jan 2026)
-**Features:**
-- **Automatic sync on startup** - Checks if data exists, runs historical sync if not
-- Scheduled sync every 3 hours via APScheduler
+### 8. Biometric API Integration
+- Automatic sync on startup
+- Scheduled sync every 3 hours
 - Manual sync trigger for HR/Admin
 - Historical sync (up to 1 year) for super_admin
-- Sync status dashboard and logs
-- Smart IN/OUT detection based on time
-
-**How it works:**
-1. On app startup, checks if biometric attendance data exists
-2. If NO data → automatically runs 1-year historical sync
-3. If data exists → runs regular 2-day sync
-4. Scheduler runs every 3 hours for ongoing updates
-
-**This fixes the production sync issue** - deployed version will now auto-sync on first startup.
-
-**API Endpoints:**
-- `POST /api/biometric/sync` - Manual sync (admin only)
-- `POST /api/biometric/sync/historical` - Historical sync (super_admin only)
-- `POST /api/biometric/sync/refresh-all` - Clear and re-sync all attendance
-- `POST /api/biometric/sync/recalculate-late` - Recalculate late status for all records
-- `GET /api/biometric/sync/status` - Get sync logs and stats
-- `GET /api/biometric/sync/unmatched-codes` - List unmatched employee codes
-- `GET /api/attendance/summary` - Get attendance summary and analytics for date range
 
 ## Authentication & Security
-
-### First Login Password Change
-- All new employees imported with `must_change_password: true`
-- On first login, user must change password before accessing dashboard
 
 ### Role-Based Access Control
 | Feature | Admin/HR | Employee |
@@ -94,71 +123,48 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 | Global Search | ✅ Available | ❌ Hidden |
 | Salary Edit | ✅ Can edit | ❌ View only |
 | Biometric Sync | ✅ Manual trigger | ❌ No access |
-| Attendance Summary | ✅ Full analytics | ❌ My attendance only |
+| SEWA Advances | ✅ Full access | ❌ No access |
+| One-time Deductions | ✅ Full access | ❌ No access |
+| Payslip Edit | ✅ Before lock | ❌ No access |
 
 ## Test Credentials
 - **Admin:** admin@shardahr.com / Admin@123
 - **Employee:** employee@shardahr.com / Employee@123
 - **HR:** hr@shardahr.com / NewHRPass@123
 
-## Recent Changes (Jan 20-21, 2026)
-1. ✅ Biometric API Integration - Auto-sync every 3 hours
-2. ✅ Smart IN/OUT detection based on time (before noon = IN, after noon = OUT)
-3. ✅ **Late marking threshold changed from 09:45 to 10:00 AM**
-4. ✅ Date range filters for attendance (Current Month, Last Month, Last 3 Months, Custom)
-5. ✅ Attendance Summary & Analytics tab with rankings
-6. ✅ **Role-Based Attendance Views (Jan 20, 2026)**:
-   - Admin/HR: Full "Attendance Analytics" dashboard with tabs (Overview, Patterns, Employee Insights, Department), metrics, rankings, Export button, All Employees filter
-   - Employee: Simplified "My Attendance" view with personal stats only (Present Days, Absent Days, Late, WFH, Leave)
-   - Employee blocked from `/api/attendance/summary` endpoint (403)
-   - Dashboard text updated to "Your attendance will be synced from the biometric system"
-7. ✅ Manual punch-in/out buttons removed from dashboard (biometric sync handles attendance)
-8. ✅ **Payroll Details View & Export (Jan 20, 2026)**:
-   - Click on processed payroll to view full details in a modal
-   - Summary cards: Total Gross, Total Deductions, Total Net Pay, PF+ESI+PT
-   - Detailed table with all employee payslips (Emp Code, Name, Department, Days, Gross, Deductions, Net Pay)
-   - Export to Excel button exports complete payroll data with summary row
-   - Backend endpoint: `GET /api/payroll/runs/{payroll_id}`
-9. ✅ **Attendance Calendar View (Jan 20, 2026)**:
-   - New Calendar tab as the default/first tab in Attendance Analytics
-   - Calendar grid showing each day with:
-     - 🟢 Green indicator: Present employee count
-     - 🟡 Amber indicator: Late employee count
-     - 🔴 Red indicator: Absent employee count
-   - Sundays greyed out, Holidays show holiday name
-   - Click on any date to see detailed breakdown in right panel:
-     - Present employees with in/out times
-     - Late employees with in/out times
-     - Absent employees list
-   - Backend endpoint: `GET /api/attendance/calendar-data`
-10. ✅ **Asset Management Overhaul (Jan 21, 2026)**:
-    - Complete rewrite of asset import to create individual assets from bulk import
-    - NUMBER TAG parsing to match tags with asset types (PRINTER, LAPTOP, DESKTOP, etc.)
-    - New "Asset Inventory" tab showing all assets with filters (type, status, search)
-    - "Employee Summary" tab showing employees with their assigned assets count
-    - Asset operations: Edit, Delete, Reassign, Unassign
-    - SIM/Mobile No stored with employee, not as asset field
-    - Backend endpoints: `GET/POST/PUT/DELETE /api/assets/*`, `/api/assets/{id}/reassign`, `/api/assets/{id}/unassign`
-11. ✅ **Leave Policy Rules Configuration (Jan 21, 2026)**:
-    - Configurable annual leave quotas: CL (6), SL (6), EL (12)
-    - Carry forward rules: CL/SL lapse, EL carries forward (max 30)
-    - Sunday Leave Penalty Rules:
-      - If >2 leaves in a week → 1 Sunday marked as leave
-      - If >6 leaves in a month → 1 Sunday marked as leave
-      - Auto-apply with HR warning
-    - All thresholds configurable via Payroll Rules → Leave Policy Rules
-    - Backend endpoints: `GET/PUT /api/payroll/leave-policy-rules`
+## Recent Changes (Jan 22, 2026)
+1. ✅ **Payroll Calculation Overhaul**:
+   - New calculation logic using calendar days and pro-rated components
+   - WFH at 50%, late deduction (2 lates = 0.5 day), PT excluded
+   - Backend: `/app/backend/routes/payroll_v2.py` for calculation helpers
+   
+2. ✅ **SEWA Advance Management**:
+   - New tab in Payroll page for managing employee SEWA advances
+   - Track total amount, monthly deduction, paid vs remaining
+   - Auto-complete when fully paid
+   
+3. ✅ **One-time Deductions**:
+   - New tab for per-employee per-month deductions
+   - Categories: Loan EMI, Advance Recovery, Penalty, Other
+   
+4. ✅ **Payslip Editing Before Lock**:
+   - Edit button on each payslip in payroll details modal
+   - Update attendance inputs and recalculate salary
+   
+5. ✅ **Export in Template Format**:
+   - Excel export matches salary structure template
+   - All columns: Fixed, Attendance, Earned, Deductions, Net
 
 ## Upcoming Tasks
-1. 🔴 **P1: Deploy to Production** - Production is critically outdated
-2. 🟠 **P1: Add Missing Employees** - 100+ unmatched employee codes (F-prefix, C-prefix) from biometric
-3. 🟡 **P2: Test Asset Bulk Import** - Re-import assets using the new correct mapping
-4. 🟡 **P2: Validate end-to-end payroll calculation**
+1. 🔴 **P0: Test Payroll Processing** - Run payroll with new calculation to verify numbers
+2. 🔴 **P1: Deploy to Production** - Production is critically outdated (3+ forks behind)
+3. 🟠 **P1: Add Missing Employees** - 100+ unmatched employee codes from biometric
+4. 🟡 **P2: Bulk Salary Import** - Test importing from salary structure template
 
 ## Future Tasks
-1. AI-powered shift scheduling
-2. AI-powered performance recommendations
-3. Mobile application
-4. Export employee salaries to spreadsheet
-5. Meeting Management & Task Tracking
-
+1. Employee payslip PDF download
+2. HR spreadsheet download of all salaries
+3. Meeting Management & Task Tracking
+4. AI-powered Shift Scheduling
+5. AI-powered Performance Recommendations
+6. Mobile application (limited scope)
