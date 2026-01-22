@@ -3172,7 +3172,7 @@ const PayrollPage = () => {
                     ))}
                     {(!payrollDetails.payslips || payrollDetails.payslips.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={9} className="text-center py-8 text-slate-500">
                           No payslips found for this payroll run
                         </TableCell>
                       </TableRow>
