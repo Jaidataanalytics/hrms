@@ -3155,6 +3155,18 @@ const PayrollPage = () => {
                         <TableCell className="text-right font-medium">{formatCurrency(slip.gross_salary)}</TableCell>
                         <TableCell className="text-right text-red-600">{formatCurrency(slip.total_deductions)}</TableCell>
                         <TableCell className="text-right font-semibold text-emerald-600">{formatCurrency(slip.net_salary)}</TableCell>
+                        <TableCell className="text-right">
+                          {payrollDetails.payroll?.status !== 'locked' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditPayslip(slip)}
+                              data-testid={`edit-payslip-${index}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                     {(!payrollDetails.payslips || payrollDetails.payslips.length === 0) && (
