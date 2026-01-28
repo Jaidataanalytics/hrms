@@ -291,6 +291,7 @@ async def process_payroll(payroll_id: str, request: Request):
         wfh_days = 0
         leave_days = 0
         late_count = 0
+        half_day_count = 0  # NEW: Count half-day attendance
         
         for att in attendance:
             status = att.get("status", "").lower()
@@ -300,21 +301,36 @@ async def process_payroll(payroll_id: str, request: Request):
                 wfh_days += 1
             elif status in ["leave", "absent"]:
                 leave_days += 1
+            elif status in ["half_day", "hd", "half-day"]:  # NEW: Half-day status
+                half_day_count += 1
             
             if att.get("is_late"):
                 late_count += 1
         
-        # Calculate Sundays and holidays in the month
+        # Calculate Sundays, holidays, and second Saturdays in the month
         sundays_holidays = 0
+        half_day_holidays = 0
+        second_saturday_count = 0
+        
+        from routes.payroll_v2 import is_second_saturday
+        
         for day in range(1, total_days + 1):
             date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
             try:
                 from datetime import date as dt_date
                 d = dt_date(year, month, day)
-                if d.weekday() == 6:  # Sunday
+                
+                # Check if it's a second Saturday (half-day work, half-day pay)
+                if is_second_saturday(year, month, day):
+                    second_saturday_count += 1
+                elif d.weekday() == 6:  # Sunday (full day off)
                     sundays_holidays += 1
                 elif date_str in holiday_dates:
-                    sundays_holidays += 1
+                    holiday = holiday_dates[date_str]
+                    if holiday.get("is_half_day"):
+                        half_day_holidays += 1  # Half-day holiday
+                    else:
+                        sundays_holidays += 1  # Full-day holiday
             except Exception:
                 pass
         
@@ -324,7 +340,9 @@ async def process_payroll(payroll_id: str, request: Request):
             "sundays_holidays": sundays_holidays,
             "leave_days": leave_days,
             "wfh_days": wfh_days,
-            "late_count": late_count
+            "late_count": late_count,
+            "half_day_count": half_day_count + half_day_holidays,  # Combine half-day attendance + half-day holidays
+            "second_saturday_count": second_saturday_count
         }
         
         # Get SEWA advance if applicable
