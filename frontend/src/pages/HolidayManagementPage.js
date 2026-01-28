@@ -411,6 +411,18 @@ const HolidayManagementPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="is_half_day"
+                checked={formData.is_half_day}
+                onChange={(e) => setFormData({ ...formData, is_half_day: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <Label htmlFor="is_half_day" className="text-sm font-normal">
+                Half-day holiday (employees work half day)
+              </Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>
