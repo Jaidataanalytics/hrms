@@ -253,6 +253,8 @@ def process_employee_salary(
             "sundays_holidays": sundays_holidays,
             "leave_days": leave_days,
             "wfh_days": wfh_days,
+            "half_day_count": half_day_count,
+            "second_saturday_count": second_saturday_count,
             "late_count": late_count,
             "total_earned_days": round(total_earned_days, 2),
             "total_days_in_month": total_days
