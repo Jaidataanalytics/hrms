@@ -607,7 +607,8 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs?month=${selectedMonth}&year=${selectedYear}`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
@@ -627,7 +628,8 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs/${payrollId}/process`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
