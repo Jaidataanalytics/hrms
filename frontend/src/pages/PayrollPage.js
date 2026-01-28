@@ -1605,11 +1605,10 @@ const PayrollPage = () => {
                   {myPayslips.map((slip) => (
                     <div
                       key={slip.payslip_id}
-                      className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                      onClick={() => setSelectedPayslip(slip)}
+                      className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
                       data-testid={`payslip-${slip.payslip_id}`}
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => setSelectedPayslip(slip)}>
                         <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                           <IndianRupee className="w-6 h-6 text-primary" />
                         </div>
@@ -1622,11 +1621,25 @@ const PayrollPage = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-slate-900">
-                          {formatCurrency(slip.net_salary)}
-                        </p>
-                        <p className="text-xs text-slate-500">Net Pay</p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-lg font-semibold text-slate-900">
+                            {formatCurrency(slip.net_salary)}
+                          </p>
+                          <p className="text-xs text-slate-500">Net Pay</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`${API_URL}/payroll/payslip/${slip.payslip_id}/pdf`, '_blank');
+                          }}
+                          data-testid={`download-payslip-${slip.payslip_id}`}
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          PDF
+                        </Button>
                       </div>
                     </div>
                   ))}
