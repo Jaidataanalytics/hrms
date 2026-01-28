@@ -2510,3 +2510,219 @@ async def import_salaries_from_template(file: UploadFile = File(...), request: R
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
+# ==================== PAYSLIP PDF DOWNLOAD ====================
+
+@router.get("/payslip/{payslip_id}/pdf")
+async def download_payslip_pdf(payslip_id: str, request: Request):
+    """Download payslip as PDF - employees can download their own, HR can download any"""
+    user = await get_current_user(request)
+    
+    # Find the payslip
+    payslip = await db.payslips.find_one({"payslip_id": payslip_id}, {"_id": 0})
+    if not payslip:
+        raise HTTPException(status_code=404, detail="Payslip not found")
+    
+    # Check access - employees can only download their own
+    if user.get("role") not in ["super_admin", "hr_admin", "finance", "hr_executive"]:
+        if payslip.get("employee_id") != user.get("employee_id"):
+            raise HTTPException(status_code=403, detail="Not authorized to download this payslip")
+    
+    # Generate PDF
+    pdf_buffer = await generate_payslip_pdf(payslip)
+    
+    filename = f"payslip_{payslip.get('emp_code', payslip.get('employee_id'))}_{payslip.get('month', '')}_{payslip.get('year', '')}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
+
+@router.get("/my-payslip/{month}/{year}/pdf")
+async def download_my_payslip_pdf(month: int, year: int, request: Request):
+    """Download current user's payslip for a specific month/year as PDF"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="No employee profile linked")
+    
+    # Find the payslip
+    payslip = await db.payslips.find_one({
+        "employee_id": employee_id,
+        "month": month,
+        "year": year
+    }, {"_id": 0})
+    
+    if not payslip:
+        raise HTTPException(status_code=404, detail="Payslip not found for this period")
+    
+    # Generate PDF
+    pdf_buffer = await generate_payslip_pdf(payslip)
+    
+    filename = f"payslip_{payslip.get('emp_code', employee_id)}_{month}_{year}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
+
+async def generate_payslip_pdf(payslip: dict) -> io.BytesIO:
+    """Generate a professional payslip PDF"""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1*cm, leftMargin=1*cm, topMargin=1*cm, bottomMargin=1*cm)
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, alignment=TA_CENTER, spaceAfter=6)
+    subtitle_style = ParagraphStyle('Subtitle', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER, spaceAfter=12)
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=12, spaceAfter=6, spaceBefore=12)
+    normal_style = styles['Normal']
+    
+    elements = []
+    
+    # Company Header
+    elements.append(Paragraph("SHARDA DIESELS", title_style))
+    elements.append(Paragraph("PAYSLIP", subtitle_style))
+    
+    # Month/Year
+    month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June', 
+                   'July', 'August', 'September', 'October', 'November', 'December']
+    month_name = month_names[payslip.get('month', 1)] if 1 <= payslip.get('month', 1) <= 12 else ''
+    elements.append(Paragraph(f"For the month of {month_name} {payslip.get('year', '')}", subtitle_style))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Employee Information Table
+    employee_info = [
+        ['Employee Code:', payslip.get('emp_code', '-'), 'Employee Name:', payslip.get('employee_name', '-')],
+        ['Department:', payslip.get('department', '-'), 'Designation:', payslip.get('designation', '-')],
+        ['Working Days:', str(payslip.get('working_days', 0)), 'Present Days:', str(payslip.get('present_days', payslip.get('paid_days', 0)))],
+        ['LWP Days:', str(payslip.get('lwp_days', 0)), 'Late Count:', str(payslip.get('attendance', {}).get('late_count', 0) if isinstance(payslip.get('attendance'), dict) else 0)],
+    ]
+    
+    emp_table = Table(employee_info, colWidths=[2.5*cm, 4*cm, 2.5*cm, 4*cm])
+    emp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.Color(0.9, 0.9, 0.95)),
+        ('BACKGROUND', (2, 0), (2, -1), colors.Color(0.9, 0.9, 0.95)),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(emp_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Format currency
+    def fmt_curr(val):
+        try:
+            return f"₹{float(val):,.2f}"
+        except:
+            return "₹0.00"
+    
+    # Get fixed components
+    fc = payslip.get('fixed_components', {})
+    earn = payslip.get('earnings', {})
+    ded = payslip.get('deductions', {})
+    
+    # Earnings and Deductions side by side
+    earnings_data = [['EARNINGS', 'Fixed', 'Earned']]
+    earnings_data.append(['Basic + DA', fmt_curr(fc.get('basic', 0) + fc.get('da', 0)), fmt_curr(earn.get('basic_da_earned', payslip.get('basic', 0)))])
+    earnings_data.append(['HRA', fmt_curr(fc.get('hra', 0)), fmt_curr(earn.get('hra_earned', payslip.get('hra', 0)))])
+    earnings_data.append(['Conveyance', fmt_curr(fc.get('conveyance', 0)), fmt_curr(earn.get('conveyance_earned', 0))])
+    earnings_data.append(['Grade Pay', fmt_curr(fc.get('grade_pay', 0)), fmt_curr(earn.get('grade_pay_earned', 0))])
+    earnings_data.append(['Other Allowance', fmt_curr(fc.get('other_allowance', 0)), fmt_curr(earn.get('other_allowance_earned', 0))])
+    earnings_data.append(['Medical Allowance', fmt_curr(fc.get('medical_allowance', 0)), fmt_curr(earn.get('medical_allowance_earned', payslip.get('special_allowance', 0)))])
+    earnings_data.append(['Total Fixed', fmt_curr(fc.get('total_fixed', 0)), ''])
+    earnings_data.append(['Late Deduction', '', fmt_curr(-1 * (earn.get('late_deduction', 0) or 0))])
+    earnings_data.append(['GROSS SALARY', '', fmt_curr(payslip.get('gross_salary', 0))])
+    
+    deductions_data = [['DEDUCTIONS', 'Amount']]
+    deductions_data.append(['EPF (Employee)', fmt_curr(ded.get('epf', payslip.get('pf_employee', 0)))])
+    deductions_data.append(['ESI (Employee)', fmt_curr(ded.get('esi', payslip.get('esi_employee', 0)))])
+    deductions_data.append(['SEWA', fmt_curr(ded.get('sewa', payslip.get('sewa', 0)))])
+    deductions_data.append(['SEWA Advance', fmt_curr(ded.get('sewa_advance', payslip.get('sewa_advance', 0)))])
+    deductions_data.append(['Other Deduction', fmt_curr(ded.get('other_deduction', payslip.get('other_deduction', 0)))])
+    deductions_data.append(['', ''])
+    deductions_data.append(['', ''])
+    deductions_data.append(['', ''])
+    deductions_data.append(['TOTAL DEDUCTIONS', fmt_curr(payslip.get('total_deductions', 0))])
+    
+    earn_table = Table(earnings_data, colWidths=[4.5*cm, 2.8*cm, 2.8*cm])
+    earn_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.2, 0.4, 0.6)),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.Color(0.85, 0.95, 0.85)),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    ded_table = Table(deductions_data, colWidths=[4.5*cm, 2.8*cm])
+    ded_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.6, 0.2, 0.2)),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.Color(0.95, 0.85, 0.85)),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    # Side by side tables
+    combined_table = Table([[earn_table, ded_table]], colWidths=[10.2*cm, 7.5*cm])
+    combined_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(combined_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Net Payable
+    net_data = [
+        ['NET PAYABLE', fmt_curr(payslip.get('net_salary', 0))]
+    ]
+    net_table = Table(net_data, colWidths=[10*cm, 7*cm])
+    net_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.1, 0.3, 0.5)),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 14),
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('PADDING', (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(net_table)
+    elements.append(Spacer(1, 0.5*inch))
+    
+    # Footer
+    footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, alignment=TA_CENTER, textColor=colors.grey)
+    elements.append(Paragraph("This is a computer-generated payslip and does not require a signature.", footer_style))
+    elements.append(Paragraph(f"Generated on {datetime.now().strftime('%d-%b-%Y %H:%M')}", footer_style))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
