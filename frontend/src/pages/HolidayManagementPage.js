@@ -111,7 +111,7 @@ const HolidayManagementPage = () => {
       if (response.ok) {
         toast.success('Holiday added successfully');
         setShowAddDialog(false);
-        setFormData({ date: '', name: '', type: 'public' });
+        setFormData({ date: '', name: '', type: 'public', is_half_day: false });
         fetchHolidays();
       } else {
         const error = await response.json();
