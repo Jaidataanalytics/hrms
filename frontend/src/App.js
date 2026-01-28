@@ -30,6 +30,7 @@ import ReportBuilderPage from "./pages/ReportBuilderPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import TrainingPage from "./pages/TrainingPage";
 import TravelPage from "./pages/TravelPage";
+import TourManagementPage from "./pages/TourManagementPage";
 import DataManagementPage from "./pages/DataManagementPage";
 import BiometricPage from "./pages/BiometricPage";
 import InsurancePage from "./pages/InsurancePage";
