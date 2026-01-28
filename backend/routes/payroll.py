@@ -255,11 +255,11 @@ async def process_payroll(payroll_id: str, request: Request):
             ot_deductions_map[emp_id] = []
         ot_deductions_map[emp_id].append(otd)
     
-    # Get holidays for the month
+    # Get holidays for the month (including half-day flag)
     holidays = await db.holidays.find({
         "date": {"$regex": f"^{month_str}"}
     }, {"_id": 0}).to_list(31)
-    holiday_dates = set(h.get("date") for h in holidays)
+    holiday_dates = {h.get("date"): h for h in holidays}  # Store full holiday object
     
     employees_with_salary = list(salary_data_map.values())
     
