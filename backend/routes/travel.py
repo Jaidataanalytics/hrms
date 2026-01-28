@@ -1,12 +1,12 @@
-"""Travel Management API Routes"""
+"""Travel & Tour Management API Routes"""
 from fastapi import APIRouter, HTTPException, Request
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as dt_date
 import uuid
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
-router = APIRouter(prefix="/travel", tags=["Travel Management"])
+router = APIRouter(prefix="/travel", tags=["Travel & Tour Management"])
 
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
@@ -18,15 +18,16 @@ async def get_current_user(request: Request) -> dict:
     return await auth_get_user(request)
 
 
-# ==================== TRAVEL REQUESTS ====================
+# ==================== TOUR/TRAVEL REQUESTS ====================
 
 @router.get("/requests")
 async def list_travel_requests(
     request: Request,
     status: Optional[str] = None,
-    employee_id: Optional[str] = None
+    employee_id: Optional[str] = None,
+    request_type: Optional[str] = None  # tour, single_day, all
 ):
-    """List travel requests"""
+    """List travel/tour requests"""
     user = await get_current_user(request)
     
     query = {}
@@ -38,41 +39,73 @@ async def list_travel_requests(
     if status and status != "all":
         query["status"] = status
     
+    if request_type and request_type != "all":
+        query["request_type"] = request_type
+    
     requests = await db.travel_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
     
-    # Enrich with employee names
+    # Enrich with employee names and linked data
     for req in requests:
         if req.get("employee_id"):
             emp = await db.employees.find_one({"employee_id": req["employee_id"]}, {"_id": 0})
             if emp:
                 req["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+                req["emp_code"] = emp.get("emp_code")
+        
+        # Get linked expenses count
+        expense_count = await db.expenses.count_documents({"travel_request_id": req.get("request_id")})
+        req["expense_count"] = expense_count
+        
+        # Get remote check-ins for this tour
+        checkins = await db.remote_checkins.find(
+            {"tour_request_id": req.get("request_id")}, {"_id": 0}
+        ).to_list(50)
+        req["remote_checkins"] = checkins
     
     return requests
 
 
 @router.post("/requests")
 async def create_travel_request(data: dict, request: Request):
-    """Create travel request"""
+    """Create travel/tour request (multi-day tour or single-day remote punch)"""
     user = await get_current_user(request)
     
-    data["request_id"] = f"tvl_{uuid.uuid4().hex[:12]}"
-    data["employee_id"] = user.get("employee_id")
-    data["status"] = "pending"
-    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    request_type = data.get("request_type", "tour")  # tour or single_day
     
-    # Calculate estimated cost
-    days = 1
-    if data.get("start_date") and data.get("end_date"):
-        from datetime import datetime as dt
-        start = dt.fromisoformat(data["start_date"])
-        end = dt.fromisoformat(data["end_date"])
-        days = (end - start).days + 1
+    travel_data = {
+        "request_id": f"tour_{uuid.uuid4().hex[:12]}",
+        "employee_id": user.get("employee_id"),
+        "employee_name": user.get("name"),
+        "request_type": request_type,
+        "status": "pending",
+        
+        # Common fields
+        "purpose": data.get("purpose"),
+        "location": data.get("location"),
+        "remarks": data.get("remarks"),
+        
+        # Tour specific
+        "start_date": data.get("start_date"),
+        "end_date": data.get("end_date") or data.get("start_date"),  # Same date for single_day
+        "client_name": data.get("client_name"),
+        "transport_mode": data.get("transport_mode"),
+        
+        # Timeline
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
     
-    data["trip_days"] = days
+    # Calculate trip days
+    if travel_data["start_date"] and travel_data["end_date"]:
+        start = datetime.fromisoformat(travel_data["start_date"])
+        end = datetime.fromisoformat(travel_data["end_date"])
+        travel_data["trip_days"] = (end - start).days + 1
+    else:
+        travel_data["trip_days"] = 1
     
-    await db.travel_requests.insert_one(data)
-    data.pop('_id', None)
-    return data
+    await db.travel_requests.insert_one(travel_data)
+    travel_data.pop('_id', None)
+    return travel_data
 
 
 @router.get("/requests/{request_id}")
