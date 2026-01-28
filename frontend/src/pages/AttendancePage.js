@@ -423,8 +423,14 @@ const AttendancePage = () => {
                         <TableRow key={idx}>
                           <TableCell>{new Date(att.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
                           <TableCell>
-                            <Badge className={att.status === 'present' ? 'bg-emerald-100 text-emerald-700' : att.status === 'wfh' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}>
-                              {att.status}
+                            <Badge className={
+                              att.status === 'present' ? 'bg-emerald-100 text-emerald-700' : 
+                              att.status === 'wfh' ? 'bg-blue-100 text-blue-700' : 
+                              att.status === 'half_day' || att.status === 'HD' ? 'bg-amber-100 text-amber-700' :
+                              att.status === 'leave' ? 'bg-purple-100 text-purple-700' :
+                              'bg-slate-100 text-slate-700'
+                            }>
+                              {att.status === 'half_day' || att.status === 'HD' ? 'Half Day' : att.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="font-mono">{att.first_in || '-'}</TableCell>
