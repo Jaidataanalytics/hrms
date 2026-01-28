@@ -131,7 +131,7 @@ const DashboardLayout = () => {
     { name: 'Onboarding', path: '/dashboard/onboarding', icon: UserMinus },
     { name: 'Contract Labour', path: '/dashboard/labour', icon: HardHat },
     { name: 'Training', path: '/dashboard/training', icon: GraduationCap },
-    { name: 'Travel', path: '/dashboard/travel', icon: Plane },
+    { name: 'Tour Management', path: '/dashboard/tour-management', icon: Plane },
     { name: 'Insurance', path: '/dashboard/insurance', icon: Shield },
     { name: 'Reports', path: '/dashboard/reports', icon: BarChart3 },
     { name: 'Report Builder', path: '/dashboard/report-builder', icon: PieChart },
