@@ -281,6 +281,122 @@ const AttendancePage = () => {
     }
   };
 
+  // HR Attendance Editing Functions
+  const fetchAttendanceRecords = async (date) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/attendance/daily?date=${date}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setAttendanceRecords(data);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance records:', error);
+    }
+  };
+
+  const handleEditRecord = (record) => {
+    setEditingRecord(record);
+    setEditForm({
+      status: record.status || 'present',
+      first_in: record.first_in || '',
+      last_out: record.last_out || '',
+      remarks: record.remarks || '',
+      edit_reason: ''
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRecord || !editForm.edit_reason) {
+      toast.error('Please provide a reason for the edit');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/attendance/${editingRecord.attendance_id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          credentials: 'include',
+          body: JSON.stringify(editForm)
+        }
+      );
+
+      if (response.ok) {
+        toast.success('Attendance record updated');
+        setEditDialogOpen(false);
+        setEditingRecord(null);
+        fetchAttendanceRecords(editRecordsDate);
+        fetchCalendarData();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to update record');
+      }
+    } catch (error) {
+      toast.error('Failed to update attendance record');
+    }
+  };
+
+  const handleAddManualAttendance = async () => {
+    if (!manualForm.employee_id || !manualForm.date) {
+      toast.error('Please select an employee and date');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/attendance/manual`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          credentials: 'include',
+          body: JSON.stringify(manualForm)
+        }
+      );
+
+      if (response.ok) {
+        toast.success('Manual attendance added');
+        setAddManualDialogOpen(false);
+        setManualForm({
+          employee_id: '',
+          date: '',
+          status: 'present',
+          first_in: '',
+          last_out: '',
+          remarks: '',
+          edit_reason: 'Manual entry by HR'
+        });
+        fetchAttendanceRecords(editRecordsDate);
+        fetchCalendarData();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to add attendance');
+      }
+    } catch (error) {
+      toast.error('Failed to add manual attendance');
+    }
+  };
+
+  const fetchEditHistory = async (attendanceId) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/attendance/${attendanceId}/history`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setEditHistory(data.edit_history || []);
+        setHistoryDialogOpen(true);
+      }
+    } catch (error) {
+      toast.error('Failed to fetch edit history');
+    }
+  };
+
   const exportToExcel = () => {
     if (!summary) {
       toast.error('No data to export');
