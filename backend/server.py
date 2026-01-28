@@ -1918,6 +1918,150 @@ async def get_attendance_calendar_data(
     }
 
 
+# ==================== HR ATTENDANCE EDITING ====================
+
+@api_router.put("/attendance/{attendance_id}")
+async def edit_attendance_record(
+    attendance_id: str,
+    data: dict,
+    request: Request
+):
+    """HR can edit any attendance record with audit trail"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Find the record
+    record = await db.attendance.find_one({"attendance_id": attendance_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+    
+    # Build audit entry
+    audit_entry = {
+        "edited_by": user.get("user_id"),
+        "edited_by_name": user.get("name"),
+        "edited_at": datetime.now(timezone.utc).isoformat(),
+        "previous_values": {},
+        "new_values": {},
+        "reason": data.get("edit_reason", "")
+    }
+    
+    # Fields that can be edited
+    editable_fields = ["status", "first_in", "last_out", "remarks", "is_late", "late_minutes", "total_hours"]
+    update_data = {}
+    
+    for field in editable_fields:
+        if field in data:
+            audit_entry["previous_values"][field] = record.get(field)
+            audit_entry["new_values"][field] = data[field]
+            update_data[field] = data[field]
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    # Get existing edit history or create new
+    edit_history = record.get("edit_history", [])
+    edit_history.append(audit_entry)
+    
+    update_data["edit_history"] = edit_history
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["is_manually_edited"] = True
+    
+    await db.attendance.update_one(
+        {"attendance_id": attendance_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Attendance record updated", "attendance_id": attendance_id}
+
+
+@api_router.post("/attendance/manual")
+async def add_manual_attendance(
+    data: dict,
+    request: Request
+):
+    """HR can add manual attendance entry for any employee/date"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employee_id = data.get("employee_id")
+    date = data.get("date")
+    
+    if not employee_id or not date:
+        raise HTTPException(status_code=400, detail="Employee ID and date are required")
+    
+    # Check if record already exists
+    existing = await db.attendance.find_one({"employee_id": employee_id, "date": date})
+    if existing:
+        raise HTTPException(status_code=400, detail="Attendance record already exists for this date. Use edit instead.")
+    
+    # Verify employee exists
+    employee = await db.employees.find_one({"employee_id": employee_id})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    attendance = {
+        "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "date": date,
+        "first_in": data.get("first_in"),
+        "last_out": data.get("last_out"),
+        "punches": [],
+        "total_hours": data.get("total_hours"),
+        "status": data.get("status", "present"),
+        "is_late": data.get("is_late", False),
+        "late_minutes": data.get("late_minutes", 0),
+        "overtime_hours": 0,
+        "remarks": data.get("remarks"),
+        "source": "manual",
+        "is_manually_edited": True,
+        "created_by": user.get("user_id"),
+        "created_by_name": user.get("name"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "edit_history": [{
+            "edited_by": user.get("user_id"),
+            "edited_by_name": user.get("name"),
+            "edited_at": datetime.now(timezone.utc).isoformat(),
+            "action": "created",
+            "reason": data.get("edit_reason", "Manual entry by HR")
+        }]
+    }
+    
+    await db.attendance.insert_one(attendance)
+    attendance.pop("_id", None)
+    
+    return {"message": "Attendance record created", "attendance": attendance}
+
+
+@api_router.get("/attendance/{attendance_id}/history")
+async def get_attendance_edit_history(
+    attendance_id: str,
+    request: Request
+):
+    """Get edit history for an attendance record (HR only)"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    record = await db.attendance.find_one({"attendance_id": attendance_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+    
+    return {
+        "attendance_id": attendance_id,
+        "employee_id": record.get("employee_id"),
+        "date": record.get("date"),
+        "current_status": record.get("status"),
+        "is_manually_edited": record.get("is_manually_edited", False),
+        "edit_history": record.get("edit_history", [])
+    }
+
+
 # ==================== HOLIDAY MANAGEMENT ====================
 
 @api_router.get("/holidays")
