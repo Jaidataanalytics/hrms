@@ -474,6 +474,33 @@ async def lock_payroll(payroll_id: str, request: Request):
     return {"message": "Payroll locked successfully"}
 
 
+@router.delete("/runs/{payroll_id}")
+async def delete_payroll_run(payroll_id: str, request: Request):
+    """Delete a payroll run and all associated payslips (processed or locked)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check if payroll exists
+    payroll = await db.payroll_runs.find_one({"payroll_id": payroll_id})
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll run not found")
+    
+    # Delete all associated payslips
+    delete_result = await db.payslips.delete_many({"payroll_id": payroll_id})
+    payslips_deleted = delete_result.deleted_count
+    
+    # Delete the payroll run
+    await db.payroll_runs.delete_one({"payroll_id": payroll_id})
+    
+    return {
+        "message": f"Payroll run deleted successfully",
+        "payslips_deleted": payslips_deleted,
+        "month": payroll.get("month"),
+        "year": payroll.get("year")
+    }
+
+
 @router.get("/runs/{payroll_id}")
 async def get_payroll_run_details(payroll_id: str, request: Request):
     """Get detailed payroll run with all payslips"""
