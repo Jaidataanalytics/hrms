@@ -505,7 +505,7 @@ const TourManagementPage = () => {
             {/* Today's Check-ins */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Today's Check-ins</CardTitle>
+                <CardTitle className="text-lg">Today&apos;s Check-ins</CardTitle>
                 <CardDescription>Your remote check-in history for today</CardDescription>
               </CardHeader>
               <CardContent>
