@@ -1996,6 +1996,8 @@ async def update_holiday(
         update_data["type"] = data["type"]
     if "date" in data:
         update_data["date"] = data["date"]
+    if "is_half_day" in data:
+        update_data["is_half_day"] = data["is_half_day"]
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
