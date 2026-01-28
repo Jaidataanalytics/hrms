@@ -56,7 +56,8 @@ const HolidayManagementPage = () => {
   const [formData, setFormData] = useState({
     date: '',
     name: '',
-    type: 'public'
+    type: 'public',
+    is_half_day: false
   });
 
   const isAuthorized = user?.role === 'super_admin' || user?.role === 'hr_admin';
