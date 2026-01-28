@@ -116,11 +116,17 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 |---------|----------|----------|
 | Employees Page | ✅ | ❌ |
 | Organization Attendance | ✅ | ❌ |
+| Edit Attendance Records | ✅ | ❌ |
 | Survey Management | ✅ | ❌ (view assigned only) |
 | Anonymous Suggestion Submitter | ✅ super_admin only | ❌ |
 | SEWA Advances | ✅ | ❌ |
 | Payslip Edit | ✅ Before lock | ❌ |
 | Delete Payroll | ✅ | ❌ |
+| Tour Approvals | ✅ | ❌ |
+| Field Employee Management | ✅ | ❌ |
+| Remote Check-in | ✅ (if eligible) | ✅ (if eligible) |
+| Download Own Payslip PDF | ✅ | ✅ |
+| Download Any Payslip PDF | ✅ | ❌ |
 
 ## Test Credentials
 - **Admin:** admin@shardahr.com / Admin@123
