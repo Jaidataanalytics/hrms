@@ -512,7 +512,7 @@ async def delete_payroll_run(payroll_id: str, request: Request):
     await db.payroll_runs.delete_one({"payroll_id": payroll_id})
     
     return {
-        "message": f"Payroll run deleted successfully",
+        "message": "Payroll run deleted successfully",
         "payslips_deleted": payslips_deleted,
         "month": payroll.get("month"),
         "year": payroll.get("year")
