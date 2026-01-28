@@ -652,7 +652,8 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs/${payrollId}/lock`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
