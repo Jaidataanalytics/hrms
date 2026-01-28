@@ -187,7 +187,8 @@ const HolidayManagementPage = () => {
     setFormData({
       date: holiday.date,
       name: holiday.name,
-      type: holiday.type || 'public'
+      type: holiday.type || 'public',
+      is_half_day: holiday.is_half_day || false
     });
     setShowEditDialog(true);
   };
