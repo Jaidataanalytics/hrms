@@ -20,7 +20,7 @@ import AssetsPage from "./pages/AssetsPage";
 import ExpensesPage from "./pages/ExpensesPage";
 import BulkImportPage from "./pages/BulkImportPage";
 import MasterSetupPage from "./pages/MasterSetupPage";
-import GrievancePage from "./pages/GrievancePage";
+import HelpdeskPage from "./pages/HelpdeskPage";
 import RecruitmentPage from "./pages/RecruitmentPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ReportsPage from "./pages/ReportsPage";
