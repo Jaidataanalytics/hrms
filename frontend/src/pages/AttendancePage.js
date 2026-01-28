@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
 import { Calendar } from '../components/ui/calendar';
 import {
   Select,
@@ -20,6 +22,14 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import {
@@ -43,7 +53,11 @@ import {
   Building2,
   Minus,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Edit,
+  Plus,
+  History,
+  Save
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '../utils/api';
