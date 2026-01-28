@@ -1950,6 +1950,7 @@ async def create_holiday(
     date = data.get("date")
     name = data.get("name")
     holiday_type = data.get("type", "public")  # public, restricted, optional
+    is_half_day = data.get("is_half_day", False)  # NEW: Support for half-day holidays
     
     if not date or not name:
         raise HTTPException(status_code=400, detail="Date and name are required")
@@ -1965,6 +1966,7 @@ async def create_holiday(
         "date": date,
         "name": name,
         "type": holiday_type,
+        "is_half_day": is_half_day,
         "created_by": user.get("user_id"),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
