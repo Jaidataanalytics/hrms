@@ -331,7 +331,14 @@ const HolidayManagementPage = () => {
                         <TableCell>
                           {date.toLocaleDateString('en-IN', { weekday: 'long' })}
                         </TableCell>
-                        <TableCell>{holiday.name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {holiday.name}
+                            {holiday.is_half_day && (
+                              <Badge className="bg-amber-100 text-amber-700 text-xs">Half Day</Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge className={getTypeColor(holiday.type)}>
                             {holiday.type?.charAt(0).toUpperCase() + holiday.type?.slice(1)}
