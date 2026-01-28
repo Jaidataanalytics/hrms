@@ -175,10 +175,12 @@ def process_employee_salary(
     leave_days = float(attendance_data.get("leave_days", 0))
     wfh_days = float(attendance_data.get("wfh_days", 0))
     late_count = int(attendance_data.get("late_count", 0))
+    half_day_count = float(attendance_data.get("half_day_count", 0))  # NEW: Half-day attendance
+    second_saturday_count = float(attendance_data.get("second_saturday_count", 0))  # NEW: Second Saturdays (paid as half-day)
     
-    # Calculate earned days
+    # Calculate earned days (including half-days)
     total_earned_days = calculate_earned_days(
-        office_days, sundays_holidays, leave_days, wfh_days, wfh_percentage
+        office_days, sundays_holidays, leave_days, wfh_days, half_day_count + second_saturday_count, wfh_percentage
     )
     
     # Pro-rate each component
