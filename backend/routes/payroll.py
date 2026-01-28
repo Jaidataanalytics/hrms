@@ -2591,8 +2591,6 @@ async def generate_payslip_pdf(payslip: dict) -> io.BytesIO:
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, alignment=TA_CENTER, spaceAfter=6)
     subtitle_style = ParagraphStyle('Subtitle', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER, spaceAfter=12)
-    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=12, spaceAfter=6, spaceBefore=12)
-    normal_style = styles['Normal']
     
     elements = []
     
@@ -2633,7 +2631,7 @@ async def generate_payslip_pdf(payslip: dict) -> io.BytesIO:
     def fmt_curr(val):
         try:
             return f"₹{float(val):,.2f}"
-        except:
+        except (ValueError, TypeError):
             return "₹0.00"
     
     # Get fixed components
