@@ -1,83 +1,67 @@
 <analysis>**original_problem_statement:**
-The user's initial request was to continue development on an HR management system. The current and most critical task is to overhaul the entire payroll calculation system to match a complex salary structure defined in a user-provided Excel file (). This involves implementing formula-based salary components (e.g., Basic as a percentage of CTC) and making these rules configurable.
+The user initially requested a complete overhaul of the payroll calculation system to match a complex, formula-based structure from an Excel file. This was successfully implemented, along with features for payslip editing, SEWA advance management, and one-time deductions. Subsequently, the user requested and the agent delivered a major enhancement to the helpdesk system (adding anonymous suggestions and a full-featured survey module) and support for half-day holidays/attendance.
 
-Previous tasks completed in this and prior sessions include: biometric API integration, enhancing the attendance page with analytics and role-based views, creating a holiday management system, building an API monitoring page, implementing export-to-Excel features, fixing data sync issues for production, building a detailed asset management system with bulk import and CRUD operations, and adding configurable leave policy rules.
+The current primary task is to implement two new features requested by the user:
+1.  **HR Attendance Editing:** Allow HR to manually edit employee attendance records (e.g., change 'absent' to 'present') for past dates, with a full audit trail.
+2.  **Tour & Remote Punch-in System:** Merge the existing Travel page into a new Tour Request system. This system should handle tour approvals, allow eligible employees (those on approved tours or designated field employees) to punch in/out remotely via the app, and link tour records to attendance and travel expenses.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack HR management system with a FastAPI backend, React frontend, and MongoDB database. Key features include:
--   **Biometric & Attendance:** A scheduled service pulls attendance data from a third-party API. The frontend features a comprehensive  with role-based analytics (for HR) and personal summaries (for employees), plus a calendar view showing daily statistics.
--   **Asset Management:** A complete asset management system. Assets can be bulk-imported from a complex Excel template, viewed in an inventory, and managed (edit, delete, reassign, unassign). The system correctly parses asset tags from the import file to link them to the right asset type.
--   **Payroll:** A payroll module that can process payroll runs. A recent feature allows HR to view the detailed breakdown of a processed payroll and export it to Excel. The system also has a UI for configuring payroll rules.
--   **Configurable Rules:** A Rules page allows HR to configure complex business logic, including newly added policies for annual leave quotas, carry-forward rules, and penalties for taking leave around Sundays.
+A comprehensive full-stack HR management system with a FastAPI backend and React frontend.
+-   **Payroll:** A robust, formula-based payroll calculation engine. HR can manage payroll runs, edit individual payslips before locking, manage special advances (SEWA) and one-time deductions, and delete processed/locked payrolls.
+-   **Attendance:** Fetches data from a biometric API, provides role-based analytics, and a calendar view. It now correctly calculates pay for half-day holidays and special company policies (e.g., second Saturdays).
+-   **Helpdesk & Surveys:** A new, multi-tabbed Helpdesk page featuring:
+    -   A complaints/ticketing system with priority levels.
+    -   An anonymous suggestions box (anonymous to HR, visible to super-admins).
+    -   A powerful survey module allowing HR to create custom surveys (polls, text, satisfaction) from templates, target specific audiences (all, individuals, departments), and configure settings like anonymity and deadlines.
+-   **Holiday Management:** UI and backend to manage company holidays, now with support for creating half-day holidays.
+-   **Asset Management:** Complete system for tracking company assets, including bulk import from Excel and full CRUD operations.
 
 **Last working item**:
--   **Last item agent was working:** The agent was analyzing the user's new, complex  file. The user wants the application's payroll calculation to be completely rewritten to match the formulas and components in this file. The agent performed an initial analysis, was corrected by the user, and then re-analyzed the file by downloading it to inspect the exact column structure and formulas. The agent is currently in the planning phase before implementation.
+-   **Last item agent was working:** Implementing the backend for the new **Tour Request and HR Attendance Editing** features. The agent created the necessary Pydantic models and API endpoints for HR to edit attendance records in . The agent then began refactoring  to convert it into a full tour management system, adding new models for tour requests and remote check-ins. The work is mid-flight.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
 -   **Which testing method agent to use?** both
-    -   **Backend:** A backend testing agent will be required to create extensive tests for the new payroll calculation logic, ensuring that for a given CTC, all earnings and deductions are calculated correctly according to the new formulaic structure.
-    -   **Frontend:** A frontend testing agent will need to verify that the payslip view (in the payroll details modal) correctly displays all the new salary components from the updated structure.
+    -   **Backend Testing Agent:** To test the new API endpoints for editing attendance, creating/approving tours, remote check-ins, and verifying the audit trail.
+    -   **Frontend Testing Agent:** To test the new UI for editing attendance on the  and the completely new Tour Management page.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Implement New Payroll Calculation based on Salary Structure Template (P0)**
-
-**Issues Detail:**
--   **Issue 1: Implement New Payroll Calculation based on Salary Structure Template (P0)**
-    -   **Attempted fixes:** The agent analyzed the user-provided Excel file twice. The first attempt was incomplete. After user feedback, the agent downloaded the file and inspected its raw structure to understand the column indexing and formulas, which is the current state.
-    -   **Next debug checklist:**
-        1.  Formulate a detailed implementation plan based on the full analysis of the .
-        2.  The plan must specify:
-            -   **Data Model:** How the new formula-based salary structure components for each employee will be stored (e.g., updating the  collection or creating a new  collection).
-            -   **Backend Logic:** How the payroll processing endpoint () will be rewritten to use these new formulas (e.g.,  as a % of CTC,  as a % of , statutory deductions, etc.).
-            -   **Configuration:** How these new components and their percentages/values will be made configurable through the existing Payroll Rules UI.
-        3.  Present this comprehensive plan to the user for approval via  before writing any code.
-    -   **Why fix this issue and what will be achieved with the fix?** This will align the application's core payroll calculation with the user's precise business logic, making the payroll feature accurate and usable.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on other issue:** None.
+There are no pending bugs. The focus is on the new feature implementation.
 
 **In progress Task List**:
--   **Task 1: Implement New Payroll Calculation Logic (P0)**
-    -   **Where to resume:** The agent should resume by creating a detailed plan based on the recent, more thorough analysis of the salary structure Excel file and proposing it to the user.
-    -   **What will be achieved with this?** The payroll calculation will be accurate according to the user's business requirements.
+-   **Task 1: Complete Tour Request & HR Attendance Editing System (P0)**
+    -   **Where to resume:** Continue implementing the backend logic in . The immediate next step is to update the tour approval endpoint to link with the attendance and expense systems. After completing the backend, the corresponding frontend pages ( and a new ) must be built.
+    -   **What will be achieved with this?** HR will gain the ability to correct attendance records. A new system will allow employees to request tours and check in remotely, streamlining attendance for field and traveling staff.
     -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** User approval of the new implementation plan.
+    -   **Blocked on something:** No
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P1: Deploy Code and Run Production Cleanup:** Critical task to sync the outdated production environment with the latest features.
-    -   **P2: Add Missing Employees to Database:** The API Manager page identified over 100 unmatched employee codes that need to be added for their attendance to be tracked.
+    -   **P1: Helpdesk Enhancements (Phase 2):**
+        -   Build a survey analytics dashboard to visualize results.
+        -   Implement Colleague Feedback (360-degree) surveys.
+    -   **P2: Helpdesk Enhancements (Phase 3):**
+        -   Add in-app notifications for new surveys/complaints.
+        -   Implement automatic deadline reminders for surveys.
 -   **Future Tasks:**
-    -   Allow employees to download their own payslip as a PDF.
-    -   Meeting Management & Task Tracking.
-    -   AI-powered Shift Scheduling.
-    -   AI-powered Performance Recommendations.
-    -   Develop a limited-scope mobile application.
+    -   Deploy the application to production to sync all the new features.
+    -   Add over 100 missing employees to the database.
+    -   Allow employees to download their own payslips as a PDF.
+    -   Meeting Management & Task Tracking module.
     -   Allow HR to download a spreadsheet of all employee salaries.
 
 **Completed work in this session**
--   **Asset Management Overhaul:**
-    -   Completely rewrote the asset bulk import logic to correctly parse a complex user-provided Excel template with merged headers and specific NUMBER TAG parsing. This now creates assets in the inventory and assigns them to employees correctly.
-    -   Fixed the Assets not showing bug by creating a proper asset inventory system ( collection) and a separate view for Employee Assignments.
-    -   Implemented full CRUD operations (Edit, Reassign, Unassign, Delete) for the asset inventory.
-    -   Fixed a frontend bug () that was preventing asset data from being displayed.
--   **Configurable Leave Policy Rules:**
-    -   Added a new backend endpoint and frontend UI to allow HR to configure advanced leave policies, including annual quotas, carry-forward rules, and penalties for taking leaves adjacent to Sundays.
--   **Attendance Calendar View & Late Threshold Update:**
-    -   Updated the late threshold to 10:00 AM in the backend logic.
-    -   Created a new Calendar view on the Attendance Analytics page, showing daily stats (Present, Absent, Late) and allowing a drill-down to see employee lists for any selected date.
--   **Payroll Details View & Export:**
-    -   Implemented a feature for HR to click on a processed payroll run to see a detailed breakdown of all payslips in a modal.
-    -   Added an Export to Excel button for the detailed payroll data.
--   **Finalized Role-Based Attendance Views:** Completed and tested the separate UI views for Admins (full analytics) and Employees (personal summary) on the .
+-   **Payroll Calculation Overhaul:** Successfully implemented a new payroll system based on a complex user-provided Excel template, including configurable formulas, payslip editing, SEWA advance management, and one-time deductions.
+-   **Payroll Deletion:** Added functionality for HR to delete processed and locked payroll runs.
+-   **Critical Payroll Bug Fix:** Resolved an issue causing payroll creation to fail due to missing authentication headers in API requests.
+-   **Helpdesk Overhaul (Phase 1):** Created a new  with tabs for Complaints, Anonymous Suggestions, and a comprehensive Survey system with various templates and targeting options.
+-   **Half-Day & Second Saturday Logic:** Enhanced the holiday system to support half-day holidays and updated the payroll calculation to correctly handle the company's second Saturday pay policy.
 
 **Earlier issues found/mentioned but not fixed**
--   ** endpoint returns 404:** This issue from a previous handoff remains unresolved. A workaround () exists, but the root cause was not investigated.
+-    endpoint returns 404: This issue from a previous handoff remains unresolved. A workaround () exists, but the root cause was not investigated.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Deployed version is outdated. This is a persistent and critical issue. All work exists only in the preview environment.
@@ -88,89 +72,77 @@ A full-stack HR management system with a FastAPI backend, React frontend, and Mo
 
 
 **Key Technical Concepts**
--   **Complex Excel Parsing:** Using  to parse a non-standard Excel file with merged headers and positional data by skipping initial rows and accessing columns by index. This was critical for the asset import.
--   **Dynamic Asset Tag Parsing:** Using regex and string manipulation within the import logic to parse complex asset tag strings (e.g., ) to correctly associate a tag with its corresponding asset type.
--   **Data Model Refactoring:** Separating asset management into a master  inventory collection and an  assignment collection for better scalability and data integrity.
--   **Configurable Business Logic:** Adding dedicated UI and API endpoints () to allow administrators to configure core business rules (like leave quotas and penalties) directly, without requiring code changes.
--   **Route Ordering:** Corrected a bug where a dynamic FastAPI route () was incorrectly matching a more specific static route () by reordering them in the router definition.
+-   **Modular Feature Development:** New complex features like payroll calculation () and the helpdesk () were built in separate, dedicated files for better organization.
+-   **Audit Trail Implementation:** A new database collection () was planned to create an immutable log of all manual changes to attendance records.
+-   **Stateful Business Logic:** The payroll system now incorporates complex business rules, such as special pay calculations for the second Saturday of the month.
+-   **Component-Driven UI:** The complex Create Survey dialog was built using Shadcn UI components, demonstrating a flexible and reusable approach to building forms.
 
 **key DB schema**
--   **assets**: (New Structure) . Represents the master inventory of all company assets.
--   **employee_assets**: (Modified) . A summary of which assets from the inventory are assigned to which employee.
--   **payroll_config**: (Modified) Contains a new  object for storing admin-configurable leave rules like .
+-   **New Collections:**
+    -   : Stores survey structure, questions, and configuration.
+    -   : Stores employee answers to surveys.
+    -   : For the anonymous suggestion box.
+    -   , : For special payroll adjustments.
+    -   : (Planned) To store the audit trail of HR-made attendance changes.
+-   **Modified Collections:**
+    -   : Added  flag.
+    -   : (Planned) To add  flag.
+    -   : Being refactored into a  model with new fields for remote check-ins and tour type.
 
 **All files of reference**
--   
--   
--   
--   
--   
--   
--   
--   
--   
+-   **/app/backend/routes/travel.py** (In Progress)
+-   **/app/backend/server.py** (Modified)
+-   **/app/frontend/src/pages/TravelPage.js** (To be replaced)
+-   **/app/frontend/src/pages/AttendancePage.js** (To be modified)
+-   **/app/backend/routes/helpdesk.py**
+-   **/app/frontend/src/pages/HelpdeskPage.js**
+-   **/app/backend/routes/payroll_v2.py**
+-   **/app/memory/PRD.md**
 
 **Areas that need refactoring**:
--   ****: This file has become extremely large and manages multiple tabs, states, and modals. It should be broken down into smaller, more manageable components (e.g., , , , ).
--   ****: The asset import function is now highly tailored to one specific Excel layout. While functional, it is brittle. Future improvements could involve a more generalized mapping solution.
+-   ** and ** are now deprecated by the new Helpdesk system and should be removed to avoid confusion.
+-   ** and ** are actively being refactored. The goal is to fully replace them with a clean, unified tour management system.
+-   **** has grown very large and complex. It should be broken down into smaller components for better maintainability.
 
 **key api endpoints**
--   : (Overhauled) The new, robust bulk import endpoint for assets that handles a complex Excel structure.
--   : (New) Fetches all assets for the master inventory view.
--   : (New) Updates an asset's details.
--   : (New) Deletes an asset from the inventory.
--   : (New) Reassigns an asset to a different employee.
--   : (New) Unassigns an asset, making it 'available'.
--   : (New) Returns aggregated daily attendance statistics for the new calendar view.
--   : (New) CRUD endpoints for managing the new configurable leave policy rules.
+-   : Create a survey.
+-   : Submit a suggestion.
+-   : Delete a payroll run.
+-   : (New) Allows HR to edit an attendance record.
+-   : (New) Allows eligible employees to punch in/out remotely.
 
 **Critical Info for New Agent**
--   Your immediate and primary task is to overhaul the payroll calculation logic based on the user's Excel file: .
--   Do not start coding immediately. First, formulate a comprehensive plan detailing the necessary changes to the data model, backend calculation logic, and frontend configuration UI.
--   You MUST present this plan to the user for confirmation before proceeding with implementation. This is a complex change, and user alignment is crucial.
--   The new calculation involves formula-based components (e.g.,  is a % of ), which the user wants to be configurable.
--   All previous work on Assets, Attendance Calendar, and Leave Rules is complete, tested, and can be considered stable.
+-   Your primary objective is to complete the **HR Attendance Editing and Tour Request System**.
+-   You must continue the work on the backend in , ensuring the tour approval logic correctly updates attendance and links to expenses.
+-   After the backend is complete, you will need to build the frontend. This involves adding editing controls to the  and creating a new  that merges and replaces the old .
+-   Remember to maintain an audit trail for all attendance changes made by HR, using the planned  collection.
 
 **documents and test reports created in this job**
 -   
 -   
--   
--   
--   
--    (Updated after each major feature completion)
+-    (Continuously updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks for Python scripts to update the late threshold in the production database manually. **Status: COMPLETED**
-2.  **User:** Asks if the Python script can be run in the browser console. **Status: COMPLETED** (Agent correctly explained No, and provided a JavaScript alternative).
-3.  **User:** Reports a bug: Assets imported via bulk import are not showing up on the assets page. **Status: COMPLETED** (Agent fixed this by creating a new Employee Assignments tab).
-4.  **User:** Requests CRUD operations for employee assignments (delete/edit) and provides a new, more complex asset file and an image explaining new leave rules. Asks for confirmation. **Status: COMPLETED**
-5.  **User:** Clarifies leave rule logic and provides a screenshot of the expected asset table structure, correcting the agent's initial mapping. **Status: COMPLETED**
-6.  **User:** Asks about how to handle un-assigning assets and confirms the agent's proposed data model for separating asset inventory from assignments. **Status: COMPLETED**
-7.  **User:** Confirms the agent's final proposed logic for parsing the NUMBER TAG column in the asset import file. **Status: COMPLETED**
-8.  **User:** Confirms the agent's proposed plan for Asset Management and Leave Rules looks correct. **Status: COMPLETED**
-9.  **User:** Reports an error () when trying to upload the new asset template. **Status: COMPLETED** (Agent fixed the complex import logic).
-10. **User:** Provides a new  and requests that payroll calculations be updated to match it. Asks the agent to confirm the plan first. **Status: IN PROGRESS**
+-   The last sequence of user messages involved a detailed back-and-forth to clarify and confirm the exact requirements for the HR attendance editing and new tour management system. The user has given their final approval on the proposed implementation plan, clearing the way for development.
 
 **Project Health Check:**
--   **Broken:** The deployed production application is significantly out of sync with the preview environment, lacking numerous critical features and bug fixes.
+-   **Broken:** The deployed production application is severely outdated and lacks numerous critical features and bug fixes developed in this environment.
 -   **Mocked:** None.
 
 **3rd Party Integrations**
--   **Custom Biometric API:** Integration to fetch attendance data from a third-party REST API.
--   **Emergent-managed Google Auth:** For social login (implemented in a previous session).
+-   Custom Biometric API (for attendance)
+-   Emergent-managed Google Auth
 
 **Testing status**
--   **Testing agent used after significant changes:** YES. The testing agent was used successfully to verify the Payroll Details View, Attendance Calendar, Asset Import Fix, and the full Asset Management/Leave Rules implementation.
--   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Testing agent used after significant changes:** YES. The agent validated the payroll overhaul and the first phase of the helpdesk overhaul.
 -   **Test files created:**
-    -   
     -   
     -   
 -   **Known regressions:** None in the preview environment.
 
 **Credentials to test flow:**
 -   **Admin/HR:**  / 
--   **Employee:**  /  (password was reset during testing).
+-   **Employee:**  / 
 
 **What agent forgot to execute**
--   The agent has not yet proposed the new plan for the payroll calculation overhaul, which was the user's last explicit instruction after the agent's final file analysis. The next action must be to create and send this plan for user approval.</analysis>
+-   The agent has been diligent in following user requests. No tasks appear to have been forgotten; the current focus is on completing the large, in-progress feature.</analysis>

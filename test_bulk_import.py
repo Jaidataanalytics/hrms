@@ -5,7 +5,7 @@ import sys
 
 def test_bulk_import_endpoints():
     """Test bulk import specific endpoints"""
-    base_url = "https://payformulas.preview.emergentagent.com/api"
+    base_url = "https://field-check-system.preview.emergentagent.com/api"
     
     # Login first
     login_response = requests.post(f"{base_url}/auth/login", json={

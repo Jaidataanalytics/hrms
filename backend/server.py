@@ -3361,10 +3361,10 @@ if cors_origins_env == '*' or cors_origins_env == '':
     # Default origins for development and production
     cors_origins = [
         "http://localhost:3000",
-        "https://payformulas.preview.emergentagent.com",
+        "https://field-check-system.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
-        "https://payformulas.preview.emergentagent.com",
+        "https://field-check-system.preview.emergentagent.com",
     ]
 else:
     cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
