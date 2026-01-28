@@ -295,3 +295,267 @@ async def get_travel_summary(request: Request):
         "completed": completed,
         "total_budget_this_month": total_budget
     }
+
+
+# ==================== GPS-BASED REMOTE CHECK-IN ====================
+
+@router.post("/remote-check-in")
+async def remote_check_in(data: dict, request: Request):
+    """
+    GPS-based remote check-in for employees on approved tours or field employees.
+    Records attendance with location data.
+    """
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="No employee profile linked")
+    
+    punch_type = data.get("punch_type", "IN")  # IN or OUT
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    location_name = data.get("location_name", "")
+    tour_request_id = data.get("tour_request_id")  # Optional - if checking in for a specific tour
+    
+    if latitude is None or longitude is None:
+        raise HTTPException(status_code=400, detail="GPS location is required for remote check-in")
+    
+    # Check eligibility: Either on approved tour or is a field employee
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    is_field_employee = employee.get("is_field_employee", False)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Check if employee has an approved tour covering today
+    active_tour = None
+    if tour_request_id:
+        active_tour = await db.travel_requests.find_one({
+            "request_id": tour_request_id,
+            "employee_id": employee_id,
+            "status": {"$in": ["approved", "ongoing"]},
+            "start_date": {"$lte": today},
+            "end_date": {"$gte": today}
+        }, {"_id": 0})
+    else:
+        # Find any active tour
+        active_tour = await db.travel_requests.find_one({
+            "employee_id": employee_id,
+            "status": {"$in": ["approved", "ongoing"]},
+            "start_date": {"$lte": today},
+            "end_date": {"$gte": today}
+        }, {"_id": 0})
+    
+    if not is_field_employee and not active_tour:
+        raise HTTPException(
+            status_code=403, 
+            detail="Remote check-in is only allowed for field employees or those on approved tours"
+        )
+    
+    now_time = datetime.now(timezone.utc).strftime("%H:%M")
+    
+    # Record the remote check-in
+    checkin_record = {
+        "checkin_id": f"rcheckin_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip(),
+        "punch_type": punch_type,
+        "date": today,
+        "time": now_time,
+        "location": {
+            "latitude": latitude,
+            "longitude": longitude,
+            "name": location_name
+        },
+        "tour_request_id": active_tour.get("request_id") if active_tour else None,
+        "is_field_employee_checkin": is_field_employee and not active_tour,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.remote_checkins.insert_one(checkin_record)
+    checkin_record.pop("_id", None)
+    
+    # Also update/create attendance record
+    existing_attendance = await db.attendance.find_one(
+        {"employee_id": employee_id, "date": today}
+    )
+    
+    punch = {
+        "type": punch_type,
+        "time": now_time,
+        "source": "tour" if active_tour else "remote",
+        "location": {"lat": latitude, "lng": longitude, "name": location_name}
+    }
+    
+    if existing_attendance:
+        # Update existing attendance
+        punches = existing_attendance.get("punches", [])
+        punches.append(punch)
+        
+        in_times = [p["time"] for p in punches if p["type"] == "IN"]
+        out_times = [p["time"] for p in punches if p["type"] == "OUT"]
+        
+        first_in = min(in_times) if in_times else None
+        last_out = max(out_times) if out_times else None
+        
+        total_hours = None
+        if first_in and last_out:
+            t1 = datetime.strptime(first_in, "%H:%M")
+            t2 = datetime.strptime(last_out, "%H:%M")
+            total_hours = round((t2 - t1).seconds / 3600, 2)
+        
+        await db.attendance.update_one(
+            {"employee_id": employee_id, "date": today},
+            {"$set": {
+                "punches": punches,
+                "first_in": first_in or existing_attendance.get("first_in"),
+                "last_out": last_out,
+                "total_hours": total_hours,
+                "status": "tour" if active_tour else existing_attendance.get("status", "present"),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    else:
+        # Create new attendance record
+        attendance_doc = {
+            "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
+            "employee_id": employee_id,
+            "date": today,
+            "first_in": now_time if punch_type == "IN" else None,
+            "last_out": now_time if punch_type == "OUT" else None,
+            "punches": [punch],
+            "total_hours": None,
+            "status": "tour" if active_tour else "present",
+            "is_late": False,
+            "late_minutes": 0,
+            "overtime_hours": 0,
+            "remarks": f"Remote check-in from {location_name or 'GPS location'}",
+            "source": "tour" if active_tour else "remote",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.attendance.insert_one(attendance_doc)
+    
+    # Update tour status to ongoing if this is the first check-in for the tour
+    if active_tour and active_tour.get("status") == "approved":
+        await db.travel_requests.update_one(
+            {"request_id": active_tour["request_id"]},
+            {"$set": {"status": "ongoing", "actual_start_date": today}}
+        )
+    
+    return {
+        "message": f"Remote {punch_type} recorded successfully",
+        "checkin": checkin_record,
+        "time": now_time,
+        "location": location_name or f"{latitude}, {longitude}"
+    }
+
+
+@router.get("/remote-check-ins")
+async def get_remote_checkins(
+    request: Request,
+    date: Optional[str] = None,
+    employee_id: Optional[str] = None,
+    tour_request_id: Optional[str] = None
+):
+    """Get remote check-in records"""
+    user = await get_current_user(request)
+    
+    query = {}
+    
+    # Access control
+    if user.get("role") not in ["super_admin", "hr_admin", "finance", "manager"]:
+        query["employee_id"] = user.get("employee_id")
+    elif employee_id and employee_id != "all":
+        query["employee_id"] = employee_id
+    
+    if date:
+        query["date"] = date
+    
+    if tour_request_id:
+        query["tour_request_id"] = tour_request_id
+    
+    checkins = await db.remote_checkins.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return checkins
+
+
+@router.get("/my-active-tour")
+async def get_my_active_tour(request: Request):
+    """Get current user's active tour if any"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        return {"has_active_tour": False, "tour": None, "is_field_employee": False}
+    
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Check if field employee
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    is_field_employee = employee.get("is_field_employee", False) if employee else False
+    
+    # Find active tour
+    active_tour = await db.travel_requests.find_one({
+        "employee_id": employee_id,
+        "status": {"$in": ["approved", "ongoing"]},
+        "start_date": {"$lte": today},
+        "end_date": {"$gte": today}
+    }, {"_id": 0})
+    
+    # Get today's check-ins
+    todays_checkins = await db.remote_checkins.find({
+        "employee_id": employee_id,
+        "date": today
+    }, {"_id": 0}).to_list(20)
+    
+    return {
+        "has_active_tour": active_tour is not None,
+        "tour": active_tour,
+        "is_field_employee": is_field_employee,
+        "can_remote_checkin": active_tour is not None or is_field_employee,
+        "todays_checkins": todays_checkins
+    }
+
+
+# ==================== FIELD EMPLOYEE MANAGEMENT ====================
+
+@router.get("/field-employees")
+async def get_field_employees(request: Request):
+    """Get list of employees marked as field employees"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employees = await db.employees.find(
+        {"is_field_employee": True, "is_active": True},
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
+    ).to_list(500)
+    
+    return employees
+
+
+@router.put("/field-employees/{employee_id}")
+async def toggle_field_employee(employee_id: str, data: dict, request: Request):
+    """Mark/unmark an employee as a field employee"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    is_field_employee = data.get("is_field_employee", False)
+    
+    result = await db.employees.update_one(
+        {"employee_id": employee_id},
+        {"$set": {"is_field_employee": is_field_employee}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    return {
+        "message": f"Employee {'marked' if is_field_employee else 'unmarked'} as field employee",
+        "employee_id": employee_id,
+        "is_field_employee": is_field_employee
+    }
