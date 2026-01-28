@@ -10,20 +10,38 @@ def get_calendar_days_in_month(year: int, month: int) -> int:
     return monthrange(year, month)[1]
 
 
+def is_second_saturday(year: int, month: int, day: int) -> bool:
+    """Check if a date is the second Saturday of the month"""
+    d = date(year, month, day)
+    if d.weekday() != 5:  # Not Saturday
+        return False
+    
+    # Count Saturdays in the month up to this date
+    saturday_count = 0
+    for check_day in range(1, day + 1):
+        check_date = date(year, month, check_day)
+        if check_date.weekday() == 5:
+            saturday_count += 1
+    
+    return saturday_count == 2
+
+
 def calculate_earned_days(
     office_days: float,
     sundays_holidays: float,
     leave_days: float,
     wfh_days: float,
+    half_day_count: float = 0,
     wfh_percentage: float = 50.0
 ) -> float:
     """
     Calculate total earned days for salary proration
     
-    Formula: Total Earned Days = Office Days + Sundays/Holidays + (WFH Days * WFH%)
+    Formula: Total Earned Days = Office Days + Sundays/Holidays + (WFH Days * WFH%) + (Half Days * 0.5)
     """
     wfh_earned = wfh_days * (wfh_percentage / 100.0)
-    return office_days + sundays_holidays + wfh_earned
+    half_day_earned = half_day_count * 0.5
+    return office_days + sundays_holidays + wfh_earned + half_day_earned
 
 
 def prorate_component(fixed_amount: float, earned_days: float, total_days: int) -> float:
