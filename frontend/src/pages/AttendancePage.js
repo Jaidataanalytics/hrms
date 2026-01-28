@@ -89,6 +89,32 @@ const AttendancePage = () => {
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [activeTab, setActiveTab] = useState('calendar');
 
+  // HR Attendance Editing state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editForm, setEditForm] = useState({
+    status: 'present',
+    first_in: '',
+    last_out: '',
+    remarks: '',
+    edit_reason: ''
+  });
+  const [editHistory, setEditHistory] = useState([]);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [addManualDialogOpen, setAddManualDialogOpen] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    employee_id: '',
+    date: '',
+    status: 'present',
+    first_in: '',
+    last_out: '',
+    remarks: '',
+    edit_reason: ''
+  });
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [editRecordsSearch, setEditRecordsSearch] = useState('');
+  const [editRecordsDate, setEditRecordsDate] = useState(new Date().toISOString().split('T')[0]);
+
   // Calculate dates based on preset
   const getDateRange = (preset) => {
     const today = new Date();
