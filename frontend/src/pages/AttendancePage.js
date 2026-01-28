@@ -682,6 +682,10 @@ const AttendancePage = () => {
                 <CalendarIcon className="w-4 h-4" />
                 Calendar
               </TabsTrigger>
+              <TabsTrigger value="edit-records" className="gap-2" data-testid="tab-edit-records">
+                <Edit className="w-4 h-4" />
+                Edit Records
+              </TabsTrigger>
               <TabsTrigger value="overview" className="gap-2">
                 <BarChart3 className="w-4 h-4" />
                 Overview
