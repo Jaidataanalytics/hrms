@@ -128,6 +128,24 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
+### Jan 28, 2026 - HR Attendance Editing, Tour Management & Payslip PDF Download
+1. ✅ **HR Attendance Editing** - Complete system for HR to edit attendance records
+   - Edit Records tab on Attendance page
+   - Load records by date with edit buttons
+   - Edit dialog with status, in/out time, remarks
+   - Audit trail for all changes
+   - Add Manual Entry dialog for new records
+2. ✅ **Tour Management System** - Replaced Travel page with comprehensive tour system
+   - My Tours tab - View own tour requests
+   - Remote Check-in tab - GPS-based punch in/out
+   - All Requests tab (HR) - Manage tour approvals
+   - Field Employees tab (HR) - Designate field employees
+   - Field employees can remote check-in without tour approval
+3. ✅ **Payslip PDF Download** - Employees can download their payslips as PDF
+   - PDF button on My Payslips tab
+   - Professional PDF with company header, earnings, deductions
+   - Endpoint: GET /api/payroll/payslip/{id}/pdf
+
 ### Jan 28, 2026 - Helpdesk Overhaul (Phase 1)
 1. ✅ **Complaints with Priority Levels** - Low, Medium, High, Critical badges
 2. ✅ **Anonymous Suggestions** - Anonymous to HR, visible to super_admin
@@ -164,12 +182,32 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 ## Future Tasks
 1. Deploy to Production (CRITICAL - 3+ forks behind)
 2. Add Missing Employees (100+ unmatched from biometric)
-3. Employee payslip PDF download
-4. Meeting Management & Task Tracking
-5. AI-powered Shift Scheduling
-6. Mobile application (limited scope)
+3. Meeting Management & Task Tracking
+4. AI-powered Shift Scheduling
+5. Mobile application (limited scope)
+6. HR Download all employee salaries as spreadsheet
 
 ## API Endpoints
+
+### HR Attendance Editing (NEW)
+- `GET /api/attendance/daily?date=YYYY-MM-DD` - Load attendance records for a date
+- `PUT /api/attendance/{id}` - Edit attendance record (with audit trail)
+- `GET /api/attendance/{id}/history` - Get edit history for a record
+- `POST /api/attendance/manual` - Add manual attendance entry
+
+### Tour Management (NEW)
+- `GET/POST /api/travel/requests` - List/create tour requests
+- `PUT /api/travel/requests/{id}/approve` - Approve tour request
+- `PUT /api/travel/requests/{id}/reject` - Reject tour request
+- `GET /api/travel/my-active-tour` - Check if user has active tour or is field employee
+- `POST /api/travel/remote-check-in` - GPS-based remote punch in/out
+- `GET /api/travel/remote-check-ins` - List remote check-ins
+- `GET /api/travel/field-employees` - List field employees (HR)
+- `PUT /api/travel/field-employees/{id}` - Toggle field employee status (HR)
+
+### Payslip PDF Download (NEW)
+- `GET /api/payroll/payslip/{id}/pdf` - Download payslip as PDF
+- `GET /api/payroll/my-payslip/{month}/{year}/pdf` - Download own payslip by month/year
 
 ### Helpdesk (NEW)
 - `GET/POST /api/helpdesk/suggestions` - List/create suggestions
