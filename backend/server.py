@@ -3181,6 +3181,7 @@ from routes.training import router as training_router
 from routes.travel import router as travel_router
 from routes.data_management import router as data_management_router, set_db as set_data_management_db
 from routes.biometric import router as biometric_router, set_db as set_biometric_db
+from routes.helpdesk import router as helpdesk_router
 from services.biometric_sync import set_db as set_biometric_sync_db
 
 # Set database for data management and biometric sync
@@ -3204,6 +3205,7 @@ api_router.include_router(training_router)
 api_router.include_router(travel_router)
 api_router.include_router(data_management_router)
 api_router.include_router(biometric_router)
+api_router.include_router(helpdesk_router)
 
 # CORS Configuration - when credentials are used, origins must be explicit
 cors_origins_env = os.environ.get('CORS_ORIGINS', '')
