@@ -121,7 +121,7 @@ function AppRouter() {
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="import" element={<BulkImportPage />} />
         <Route path="master-setup" element={<MasterSetupPage />} />
-        <Route path="helpdesk" element={<GrievancePage />} />
+        <Route path="helpdesk" element={<HelpdeskPage />} />
         <Route path="recruitment" element={<RecruitmentPage />} />
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="reports" element={<ReportsPage />} />
