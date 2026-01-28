@@ -668,6 +668,30 @@ const PayrollPage = () => {
     }
   };
 
+  const handleDeletePayroll = async (payrollId) => {
+    if (!window.confirm('Are you sure you want to delete this payroll run and all associated payslips? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/payroll/runs/${payrollId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Payroll deleted (${data.payslips_deleted} payslips removed)`);
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to delete payroll');
+      }
+    } catch (error) {
+      toast.error('Failed to delete payroll');
+    }
+  };
+
   const fetchPayrollDetails = async (payrollId) => {
     setLoadingPayrollDetails(true);
     try {
