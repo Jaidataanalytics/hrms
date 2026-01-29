@@ -126,7 +126,7 @@ function AppRouter() {
         <Route path="recruitment" element={<RecruitmentPage />} />
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="reports" element={<ReportsPage />} />
-        <Route path="labour" element={<LabourPage />} />
+        <Route path="labour" element={<ContractLabourPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="report-builder" element={<ReportBuilderPage />} />
         <Route path="user-management" element={<UserManagementPage />} />
