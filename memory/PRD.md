@@ -113,6 +113,50 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Global search bar (Cmd+K) - HR/Admin only
 - Comprehensive employee profile page
 
+### 9. Contract Labour Management (OVERHAULED - Jan 29, 2026)
+
+**Mini HR System for Contract Workers:**
+- Contractors Master List (add/edit/delete contractors)
+- Workers List with click-to-view details
+- **Worker Detail View with 4 Tabs:**
+  1. **Profile Tab**: Personal info, contractor assignment, daily wage, emergency contact
+  2. **Attendance Tab**: Calendar-based attendance marking (present/half-day/absent)
+  3. **Payroll Tab**: Monthly calculation (daily wage × days worked)
+  4. **Documents Tab**: Upload Aadhar, PAN, contracts, certificates
+
+**Data Model:**
+- Workers have: name, phone, address, aadhar_number, contractor_id, daily_wage, joining_date, contract_end_date
+- Contractors have: name, company_name, contact_person, phone, contract period
+- Attendance tracked via biometric (same as employees)
+- Documents stored with base64 encoding
+
+### 10. Tour Management & Remote Check-in (NEW - Jan 28, 2026)
+
+**Features:**
+- Tour request submission and approval workflow
+- GPS-based remote check-in for approved tours
+- Field employee designation (can check-in remotely without tour approval)
+- Remote check-in creates attendance record with location data
+
+**Tabs:**
+1. My Tours - View own tour requests
+2. Remote Check-in - GPS punch in/out
+3. All Requests (HR) - Approve/reject tours
+4. Field Employees (HR) - Manage field employee status
+
+### 11. SOP Management (NEW - Jan 29, 2026)
+
+**Standard Operating Procedures System:**
+- Create SOPs with Excel file upload
+- Link SOPs to departments and/or designations
+- Excel content parsed and shown as table preview
+- Download original Excel file
+- Draft/Published workflow
+
+**Employee Integration:**
+- "My SOPs" card on employee dashboard
+- Shows SOPs applicable to employee's designation/department
+
 ## Authentication & Security
 
 ### Role-Based Access Control
@@ -128,6 +172,8 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 | Delete Payroll | ✅ | ❌ |
 | Tour Approvals | ✅ | ❌ |
 | Field Employee Management | ✅ | ❌ |
+| SOP Management | ✅ | ❌ (view assigned only) |
+| Contract Labour | ✅ | ❌ |
 | Remote Check-in | ✅ (if eligible) | ✅ (if eligible) |
 | Download Own Payslip PDF | ✅ | ✅ |
 | Download Any Payslip PDF | ✅ | ❌ |
