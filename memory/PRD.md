@@ -184,6 +184,23 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
+### Jan 29, 2026 - Bug Fixes, Contract Labour Overhaul & SOP Management
+1. ✅ **Bug Fixes**
+   - Asset lookup now resolves employee_id to emp_code correctly
+   - Attendance lookup now searches by both employee_id and emp_code
+   - Edit Profile button now opens functional dialog with save capability
+2. ✅ **Contract Labour Overhaul** - Complete mini HR system
+   - Contractors master list management
+   - Workers list with detail view
+   - 4 tabs: Profile, Attendance (calendar), Payroll (daily wage calc), Documents
+   - Document upload (Aadhar, PAN, etc.)
+3. ✅ **SOP Management System** - New module
+   - Create SOPs with Excel file upload
+   - Link to departments and designations
+   - Table preview of Excel content
+   - Download capability
+   - "My SOPs" card on employee dashboard
+
 ### Jan 28, 2026 - HR Attendance Editing, Tour Management & Payslip PDF Download
 1. ✅ **HR Attendance Editing** - Complete system for HR to edit attendance records
    - Edit Records tab on Attendance page
