@@ -115,6 +115,24 @@ const AttendancePage = () => {
   const [editRecordsSearch, setEditRecordsSearch] = useState('');
   const [editRecordsDate, setEditRecordsDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Grid View state
+  const [gridData, setGridData] = useState(null);
+  const [gridLoading, setGridLoading] = useState(false);
+  const [gridDepartment, setGridDepartment] = useState('all');
+  const [gridSearch, setGridSearch] = useState('');
+  const [gridFromDate, setGridFromDate] = useState('');
+  const [gridToDate, setGridToDate] = useState('');
+  const [gridEditDialogOpen, setGridEditDialogOpen] = useState(false);
+  const [gridEditingCell, setGridEditingCell] = useState(null);
+  const [gridEditForm, setGridEditForm] = useState({
+    status: 'present',
+    first_in: '',
+    last_out: '',
+    remarks: '',
+    edit_reason: ''
+  });
+  const [departments, setDepartments] = useState([]);
+
   // Calculate dates based on preset
   const getDateRange = (preset) => {
     const today = new Date();
