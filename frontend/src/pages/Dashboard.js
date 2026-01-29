@@ -60,6 +60,11 @@ const Dashboard = () => {
         const ltData = await leaveTypesRes.json();
         setLeaveTypes(ltData);
       }
+
+      if (sopsRes.ok) {
+        const sopsData = await sopsRes.json();
+        setMySops(sopsData);
+      }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
