@@ -127,6 +127,8 @@ async def create_sop(request: Request):
     description = form.get("description", "")
     departments = form.getlist("departments") or []
     designations = form.getlist("designations") or []
+    main_responsible = form.getlist("main_responsible") or []
+    also_involved = form.getlist("also_involved") or []
     file = form.get("file")
     
     if not title:
@@ -138,6 +140,8 @@ async def create_sop(request: Request):
         "description": description,
         "departments": departments if isinstance(departments, list) else [departments] if departments else [],
         "designations": designations if isinstance(designations, list) else [designations] if designations else [],
+        "main_responsible": main_responsible if isinstance(main_responsible, list) else [main_responsible] if main_responsible else [],
+        "also_involved": also_involved if isinstance(also_involved, list) else [also_involved] if also_involved else [],
         "status": "draft",
         "version": 1,
         "is_active": True,
