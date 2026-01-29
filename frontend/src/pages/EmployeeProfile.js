@@ -83,6 +83,51 @@ const EmployeeProfile = () => {
     }
   };
 
+  const handleEditClick = () => {
+    setEditForm({
+      first_name: employee.first_name || '',
+      last_name: employee.last_name || '',
+      email: employee.email || '',
+      phone: employee.phone || '',
+      date_of_birth: employee.date_of_birth?.split(' ')[0] || employee.date_of_birth?.split('T')[0] || '',
+      gender: employee.gender || '',
+      address: employee.address || '',
+      city: employee.city || '',
+      state: employee.state || '',
+      pincode: employee.pincode || '',
+      department_id: employee.department_id || '',
+      designation_id: employee.designation_id || '',
+      emergency_contact_name: employee.emergency_contact_name || '',
+      emergency_contact_phone: employee.emergency_contact_phone || ''
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEmployee = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch(`${API_URL}/employees/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify(editForm)
+      });
+
+      if (response.ok) {
+        toast.success('Employee updated successfully');
+        setEditDialogOpen(false);
+        fetchEmployeeData();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to update employee');
+      }
+    } catch (error) {
+      toast.error('Failed to update employee');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getInitials = (firstName, lastName) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
