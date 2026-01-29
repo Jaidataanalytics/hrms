@@ -1,70 +1,83 @@
 <analysis>**original_problem_statement:**
-The user initially requested a complete overhaul of the payroll calculation system to match a complex, formula-based structure from an Excel file. This was successfully implemented, along with features for payslip editing, SEWA advance management, and one-time deductions. Subsequently, the user requested and the agent delivered a major enhancement to the helpdesk system (adding anonymous suggestions and a full-featured survey module) and support for half-day holidays/attendance.
+The user initially requested a complete overhaul of the payroll calculation system, helpdesk, and attendance logic. This session began with a request to add HR Attendance Editing and a Tour & Remote Punch-in system.
 
-The current primary task is to implement two new features requested by the user:
-1.  **HR Attendance Editing:** Allow HR to manually edit employee attendance records (e.g., change 'absent' to 'present') for past dates, with a full audit trail.
-2.  **Tour & Remote Punch-in System:** Merge the existing Travel page into a new Tour Request system. This system should handle tour approvals, allow eligible employees (those on approved tours or designated field employees) to punch in/out remotely via the app, and link tour records to attendance and travel expenses.
+During this session, the user added several new requirements, which have been implemented or are in progress:
+1.  **HR Attendance Editing & Tour System:** Allow HR to manually edit attendance with an audit trail. Merge the Travel page into a Tour Request system for approvals and GPS-based remote punch-ins. (COMPLETED)
+2.  **Employee Payslip Download:** Allow employees to download their own payslips as a PDF. (COMPLETED)
+3.  **Critical Bug Fixes:** (COMPLETED)
+    *   Fix asset information not showing correctly on the employee landing page.
+    *   Fix employee attendance data not appearing on their detail page.
+    *   Fix the non-functional Edit Profile button.
+4.  **Contract Labour Overhaul:** Rebuild the Contract Labour page into a comprehensive mini-HR system with tabs for worker profiles, payroll, attendance, and document management. (COMPLETED)
+5.  **SOP Management Page:** Create a new page for HR to manage Standard Operating Procedures (SOPs), upload them via Excel, and link them to employees. (COMPLETED)
+6.  **SOP Enhancements:** Differentiate between a main responsible employee and also involved employees for each SOP. (IN PROGRESS)
+7.  **Attendance Grid View:** A new request to change the attendance calendar view into a table/grid format, showing employees vs. dates, with inline editing capabilities and an export option. (NOT STARTED)
 
 **User's preferred language**: English
 
 **what currently exists?**
-A comprehensive full-stack HR management system with a FastAPI backend and React frontend.
--   **Payroll:** A robust, formula-based payroll calculation engine. HR can manage payroll runs, edit individual payslips before locking, manage special advances (SEWA) and one-time deductions, and delete processed/locked payrolls.
--   **Attendance:** Fetches data from a biometric API, provides role-based analytics, and a calendar view. It now correctly calculates pay for half-day holidays and special company policies (e.g., second Saturdays).
--   **Helpdesk & Surveys:** A new, multi-tabbed Helpdesk page featuring:
-    -   A complaints/ticketing system with priority levels.
-    -   An anonymous suggestions box (anonymous to HR, visible to super-admins).
-    -   A powerful survey module allowing HR to create custom surveys (polls, text, satisfaction) from templates, target specific audiences (all, individuals, departments), and configure settings like anonymity and deadlines.
--   **Holiday Management:** UI and backend to manage company holidays, now with support for creating half-day holidays.
--   **Asset Management:** Complete system for tracking company assets, including bulk import from Excel and full CRUD operations.
+A comprehensive full-stack HR management system. Recent additions include:
+-   **HR Attendance Editing:** A new Edit Records tab on the Attendance page allows HR to search for and edit attendance records for any employee and date range. Changes are audited.
+-   **Tour Management & Remote Punch-in:** The old Travel page has been replaced by a Tour Management page. It supports tour requests/approvals and a GPS-based remote check-in for authorized employees (those on tour or designated field staff).
+-   **Payslip PDF Download:** Employees can now download a PDF of their payslip from the My Payslips tab on the Payroll page.
+-   **Contract Labour Module:** A new, dedicated page () that serves as a mini-HR system for contract workers. It includes a master list of contractors and a detailed view for each worker with tabs for Profile, Attendance, Payroll, and Document uploads.
+-   **SOP Management Module:** A new page for creating, managing, and publishing SOPs. HR can upload SOPs via Excel, preview the content, and link them to departments, designations, or specific employees. Published SOPs appear on the relevant employees' dashboards.
+-   **Bug Fixes:** The critical bugs related to asset display, attendance data on the 360 page, and the non-functional edit profile button have all been resolved.
 
 **Last working item**:
--   **Last item agent was working:** Implementing the backend for the new **Tour Request and HR Attendance Editing** features. The agent created the necessary Pydantic models and API endpoints for HR to edit attendance records in . The agent then began refactoring  to convert it into a full tour management system, adding new models for tour requests and remote check-ins. The work is mid-flight.
+-   **Last item agent was working:** Implementing the SOP enhancements. The agent updated the backend models and API endpoints in  to support  and . The agent was in the process of modifying the frontend in  to include multi-select dropdowns for these new fields in the Create SOP dialog and updating the main SOP table to display this information.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
 -   **Which testing method agent to use?** both
-    -   **Backend Testing Agent:** To test the new API endpoints for editing attendance, creating/approving tours, remote check-ins, and verifying the audit trail.
-    -   **Frontend Testing Agent:** To test the new UI for editing attendance on the  and the completely new Tour Management page.
+    -   Backend: Test the  and  endpoints to ensure the new employee link fields are saved and that notifications are generated correctly.
+    -   Frontend: Test the Create/Edit SOP dialog to verify the new employee selection components work and that the main table displays the Main Responsible employee correctly.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-There are no pending bugs. The focus is on the new feature implementation.
+There are no pending bugs; all reported issues in this session have been fixed.
 
 **In progress Task List**:
--   **Task 1: Complete Tour Request & HR Attendance Editing System (P0)**
-    -   **Where to resume:** Continue implementing the backend logic in . The immediate next step is to update the tour approval endpoint to link with the attendance and expense systems. After completing the backend, the corresponding frontend pages ( and a new ) must be built.
-    -   **What will be achieved with this?** HR will gain the ability to correct attendance records. A new system will allow employees to request tours and check in remotely, streamlining attendance for field and traveling staff.
+-   **Task 1: Complete SOP Enhancements (P0)**
+    -   **Where to resume:** Continue editing . The main Create SOP dialog needs to be completed to include the UI components (likely multi-select dropdowns) for selecting Main Responsible and Also Involved employees. The  and  functions must be updated to send this new data.
+    -   **What will be achieved with this?** This will fulfill the user's requirement for a more granular way to assign responsibility for SOPs, and will trigger notifications upon publishing.
     -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** No
+    -   **Blocked on something:** No.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
+    -   **P0: Implement Attendance Grid View:**
+        -   Create a new backend endpoint () that returns attendance data in a matrix format (employees vs. dates) for a given department and date range.
+        -   Overhaul the UI in  to replace the current calendar with a data grid.
+        -   Implement inline editing (clicking a cell opens a modal to change status).
+        -   Add an Export to Excel button for the grid data.
     -   **P1: Helpdesk Enhancements (Phase 2):**
         -   Build a survey analytics dashboard to visualize results.
         -   Implement Colleague Feedback (360-degree) surveys.
-    -   **P2: Helpdesk Enhancements (Phase 3):**
-        -   Add in-app notifications for new surveys/complaints.
-        -   Implement automatic deadline reminders for surveys.
+    -   **P2: Bulk Import for Contract Workers:** Add an Excel upload feature to the Contract Labour page to quickly add many workers.
+
 -   **Future Tasks:**
-    -   Deploy the application to production to sync all the new features.
+    -   Deploy the application to production.
     -   Add over 100 missing employees to the database.
-    -   Allow employees to download their own payslips as a PDF.
     -   Meeting Management & Task Tracking module.
     -   Allow HR to download a spreadsheet of all employee salaries.
+    -   Helpdesk Enhancements (Phase 3): In-app notifications and deadline reminders.
 
 **Completed work in this session**
--   **Payroll Calculation Overhaul:** Successfully implemented a new payroll system based on a complex user-provided Excel template, including configurable formulas, payslip editing, SEWA advance management, and one-time deductions.
--   **Payroll Deletion:** Added functionality for HR to delete processed and locked payroll runs.
--   **Critical Payroll Bug Fix:** Resolved an issue causing payroll creation to fail due to missing authentication headers in API requests.
--   **Helpdesk Overhaul (Phase 1):** Created a new  with tabs for Complaints, Anonymous Suggestions, and a comprehensive Survey system with various templates and targeting options.
--   **Half-Day & Second Saturday Logic:** Enhanced the holiday system to support half-day holidays and updated the payroll calculation to correctly handle the company's second Saturday pay policy.
+-   **HR Attendance Editing System:** Implemented backend APIs and frontend UI for HR to edit attendance records with an audit trail.
+-   **Tour & Remote Punch-in System:** Created backend and frontend for tour management and GPS-based remote check-ins.
+-   **Payslip PDF Download:** Added backend endpoint and frontend button for employees to download their payslips.
+-   **Bug Fix:** Resolved issue with asset data not appearing on the employee 360 page by adding a fallback lookup using .
+-   **Bug Fix:** Fixed attendance data not showing on the employee 360 page by searching by both  and .
+-   **Bug Fix:** Made the Edit Profile button on the employee profile page functional by adding state and an edit dialog.
+-   **Contract Labour Module Overhaul:** Replaced the old Labour page with a new, tab-based mini-HR system for contract workers ().
+-   **SOP Management System (V1):** Created a full CRUD system for SOPs with Excel upload, linking, and a My SOPs dashboard card (, ).
 
 **Earlier issues found/mentioned but not fixed**
 -    endpoint returns 404: This issue from a previous handoff remains unresolved. A workaround () exists, but the root cause was not investigated.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork:** Deployed version is outdated. This is a persistent and critical issue. All work exists only in the preview environment.
+-   **Issue recurrence in previous fork:** Deployed version is outdated. This remains a critical issue, as all new features and fixes are only in the preview environment.
 -   **Recurrence count:** 3+
 -   **Status:** BLOCKED (on user approval for deployment).
 
@@ -72,77 +85,74 @@ There are no pending bugs. The focus is on the new feature implementation.
 
 
 **Key Technical Concepts**
--   **Modular Feature Development:** New complex features like payroll calculation () and the helpdesk () were built in separate, dedicated files for better organization.
--   **Audit Trail Implementation:** A new database collection () was planned to create an immutable log of all manual changes to attendance records.
--   **Stateful Business Logic:** The payroll system now incorporates complex business rules, such as special pay calculations for the second Saturday of the month.
--   **Component-Driven UI:** The complex Create Survey dialog was built using Shadcn UI components, demonstrating a flexible and reusable approach to building forms.
+-   **Robust API Design:** Enhanced backend endpoints to be more resilient to data inconsistencies by searching for employees using multiple identifiers ( and ).
+-   **Backend PDF Generation:** Utilized the  library in the FastAPI backend to dynamically generate PDF payslips from database records.
+-   **Complex Frontend State:** Managed intricate state for new features, including multi-tab views, dynamic forms with file uploads, and multi-select components for linking employees to SOPs.
+-   **Modular Page Overhaul:** Successfully replaced entire pages (, ) with new, more powerful versions (, ) while maintaining a seamless user experience through updated routing.
 
 **key DB schema**
 -   **New Collections:**
-    -   : Stores survey structure, questions, and configuration.
-    -   : Stores employee answers to surveys.
-    -   : For the anonymous suggestion box.
-    -   , : For special payroll adjustments.
-    -   : (Planned) To store the audit trail of HR-made attendance changes.
+    -   : 
 -   **Modified Collections:**
-    -   : Added  flag.
-    -   : (Planned) To add  flag.
-    -   : Being refactored into a  model with new fields for remote check-ins and tour type.
+    -   : A new collection for storing documents related to contract workers was effectively added through the new  endpoints.
 
 **All files of reference**
--   **/app/backend/routes/travel.py** (In Progress)
+-   **/app/backend/routes/sop.py** (New & In Progress)
+-   **/app/frontend/src/pages/SOPPage.js** (New & In Progress)
+-   **/app/backend/routes/labour.py** (Modified)
+-   **/app/frontend/src/pages/ContractLabourPage.js** (New)
+-   **/app/frontend/src/pages/AttendancePage.js** (To be modified for Grid View)
 -   **/app/backend/server.py** (Modified)
--   **/app/frontend/src/pages/TravelPage.js** (To be replaced)
--   **/app/frontend/src/pages/AttendancePage.js** (To be modified)
--   **/app/backend/routes/helpdesk.py**
--   **/app/frontend/src/pages/HelpdeskPage.js**
--   **/app/backend/routes/payroll_v2.py**
--   **/app/memory/PRD.md**
+-   **/app/frontend/src/pages/Employee360Page.js** (Modified)
+-   **/app/frontend/src/pages/EmployeeProfile.js** (Modified)
+-   **/app/memory/PRD.md** (Updated)
 
 **Areas that need refactoring**:
--   ** and ** are now deprecated by the new Helpdesk system and should be removed to avoid confusion.
--   ** and ** are actively being refactored. The goal is to fully replace them with a clean, unified tour management system.
--   **** has grown very large and complex. It should be broken down into smaller components for better maintainability.
+-   ** and ** are deprecated by the Helpdesk system and should be removed.
+-   ** and ** are now fully replaced by  and , respectively, and should be deleted to clean up the codebase.
 
 **key api endpoints**
--   : Create a survey.
--   : Submit a suggestion.
--   : Delete a payroll run.
--   : (New) Allows HR to edit an attendance record.
--   : (New) Allows eligible employees to punch in/out remotely.
+-   : Allows eligible employees to perform a GPS-based remote check-in.
+-   : Downloads a specific payslip as a PDF file.
+-   : Uploads a document for a contract worker.
+-   : Lists documents for a contract worker.
+-   : Creates a new SOP, including Excel file upload.
+-   : Publishes an SOP and creates notifications for linked employees.
+-   : Updates employee profile information.
 
 **Critical Info for New Agent**
--   Your primary objective is to complete the **HR Attendance Editing and Tour Request System**.
--   You must continue the work on the backend in , ensuring the tour approval logic correctly updates attendance and links to expenses.
--   After the backend is complete, you will need to build the frontend. This involves adding editing controls to the  and creating a new  that merges and replaces the old .
--   Remember to maintain an audit trail for all attendance changes made by HR, using the planned  collection.
+-   Your first priority is to complete the **SOP Enhancements** task. This involves finishing the UI in  for selecting main and involved employees and ensuring the data is saved correctly.
+-   Your next major task is to implement the **Attendance Grid View**. The user has provided detailed requirements: a table of employees vs. dates, inline editing, filtering, and an export function. You will need to build a new backend endpoint and significantly refactor the  frontend.
+-   All three bugs reported at the beginning of the user's last message have been fixed. You can proceed directly to the new features.
 
 **documents and test reports created in this job**
 -   
--   
--    (Continuously updated)
+-    (Updated with all new features and requests)
 
 **Last 10 User Messages and any pending HUMAN messages**
--   The last sequence of user messages involved a detailed back-and-forth to clarify and confirm the exact requirements for the HR attendance editing and new tour management system. The user has given their final approval on the proposed implementation plan, clearing the way for development.
+-   The user has provided detailed requirements for two major new features:
+    1.  **SOP Enhancements:** Link SOPs to a main responsible employee and multiple also involved employees. The UI should differentiate these roles. Notifications should be sent upon publishing.
+    2.  **Attendance Grid View:** Overhaul the attendance page from a calendar to a grid/table view. The table should show employees on rows and dates on columns. HR/Admins should be able to edit attendance status directly by clicking cells in the grid. The view needs filters (department, employee, date range) and an export-to-Excel feature.
+-   The agent has asked clarifying questions and received answers, confirming all requirements before starting implementation.
 
 **Project Health Check:**
--   **Broken:** The deployed production application is severely outdated and lacks numerous critical features and bug fixes developed in this environment.
--   **Mocked:** None.
+-   **Broken:** The deployed production application is severely outdated. All features developed and bugs fixed in this and previous sessions exist only in the preview environment.
 
 **3rd Party Integrations**
 -   Custom Biometric API (for attendance)
 -   Emergent-managed Google Auth
+-    for Excel parsing in the backend.
+-    for PDF generation in the backend.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES. The agent validated the payroll overhaul and the first phase of the helpdesk overhaul.
--   **Test files created:**
-    -   
-    -   
--   **Known regressions:** None in the preview environment.
+-   **Testing agent used after significant changes:** YES, for the initial set of features (Tour Management, Attendance Edit).
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:**  (from )
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
 -   **Admin/HR:**  / 
 -   **Employee:**  / 
 
 **What agent forgot to execute**
--   The agent has been diligent in following user requests. No tasks appear to have been forgotten; the current focus is on completing the large, in-progress feature.</analysis>
+-   The agent has not forgotten any tasks but has been prioritizing a continuous stream of new user requests. Older, lower-priority tasks (like Helpdesk Phase 2) have been pushed to the backlog.</analysis>
