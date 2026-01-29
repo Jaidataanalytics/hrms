@@ -35,6 +35,7 @@ import DataManagementPage from "./pages/DataManagementPage";
 import BiometricPage from "./pages/BiometricPage";
 import InsurancePage from "./pages/InsurancePage";
 import HolidayManagementPage from "./pages/HolidayManagementPage";
+import SOPPage from "./pages/SOPPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
