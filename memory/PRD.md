@@ -209,6 +209,20 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
+### Jan 29, 2026 - SOP Enhancements & Attendance Grid View
+1. ✅ **SOP Enhancements**
+   - Added "Main Responsible" field (max 3 employees)
+   - Added "Also Involved" field for additional employees
+   - SOP list table displays main responsible names
+   - Notifications sent to all linked employees on publish
+2. ✅ **Attendance Grid View** - New tab in Attendance page
+   - Matrix view: Employees vs Dates
+   - Color-coded status cells (P, L, A, WFH, Leave, HD)
+   - Sundays and holidays properly marked
+   - Inline editing (click cell to edit with reason)
+   - Export to Excel functionality
+   - Filters: Date range, Department, Employee search
+
 ### Jan 29, 2026 - Bug Fixes, Contract Labour Overhaul & SOP Management
 1. ✅ **Bug Fixes**
    - Asset lookup now resolves employee_id to emp_code correctly
