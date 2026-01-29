@@ -2043,6 +2043,91 @@ const AttendancePage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Grid Edit Dialog */}
+      <Dialog open={gridEditDialogOpen} onOpenChange={setGridEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Attendance</DialogTitle>
+            <DialogDescription>
+              {gridEditingCell && (
+                <span>
+                  {gridEditingCell.employee_name} ({gridEditingCell.emp_code}) - {gridEditingCell.date}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={gridEditForm.status}
+                onValueChange={(v) => setGridEditForm({ ...gridEditForm, status: v })}
+              >
+                <SelectTrigger data-testid="grid-edit-status-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="present">Present</SelectItem>
+                  <SelectItem value="absent">Absent</SelectItem>
+                  <SelectItem value="half_day">Half Day</SelectItem>
+                  <SelectItem value="wfh">Work From Home</SelectItem>
+                  <SelectItem value="tour">On Tour</SelectItem>
+                  <SelectItem value="leave">Leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>In Time</Label>
+                <Input
+                  type="time"
+                  value={gridEditForm.first_in}
+                  onChange={(e) => setGridEditForm({ ...gridEditForm, first_in: e.target.value })}
+                  data-testid="grid-edit-in-time"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Out Time</Label>
+                <Input
+                  type="time"
+                  value={gridEditForm.last_out}
+                  onChange={(e) => setGridEditForm({ ...gridEditForm, last_out: e.target.value })}
+                  data-testid="grid-edit-out-time"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Remarks</Label>
+              <Input
+                value={gridEditForm.remarks}
+                onChange={(e) => setGridEditForm({ ...gridEditForm, remarks: e.target.value })}
+                placeholder="Optional remarks"
+                data-testid="grid-edit-remarks"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-red-600">Reason for Edit *</Label>
+              <Textarea
+                value={gridEditForm.edit_reason}
+                onChange={(e) => setGridEditForm({ ...gridEditForm, edit_reason: e.target.value })}
+                placeholder="Explain why this record is being edited..."
+                rows={2}
+                data-testid="grid-edit-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGridEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleGridSaveEdit} data-testid="save-grid-edit-btn">
+              <Save className="w-4 h-4 mr-1" />
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
