@@ -307,7 +307,7 @@ async def delete_sop(sop_id: str, request: Request):
 @router.get("/{sop_id}/download")
 async def download_sop_file(sop_id: str, request: Request):
     """Download the SOP Excel file"""
-    user = await get_current_user(request)
+    await get_current_user(request)  # Auth check
     
     sop = await db.sops.find_one({"sop_id": sop_id})
     if not sop:
