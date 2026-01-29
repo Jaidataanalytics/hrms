@@ -144,18 +144,43 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 3. All Requests (HR) - Approve/reject tours
 4. Field Employees (HR) - Manage field employee status
 
-### 11. SOP Management (NEW - Jan 29, 2026)
+### 11. SOP Management (ENHANCED - Jan 29, 2026)
 
 **Standard Operating Procedures System:**
 - Create SOPs with Excel file upload
-- Link SOPs to departments and/or designations
+- **Main Responsible (max 3)** - Primary employees responsible for the SOP
+- **Also Involved** - Additional employees who follow the SOP
+- Link SOPs to departments and/or designations (auto-links to Also Involved)
 - Excel content parsed and shown as table preview
 - Download original Excel file
 - Draft/Published workflow
+- **Notifications sent** on publish to all linked employees
 
 **Employee Integration:**
 - "My SOPs" card on employee dashboard
-- Shows SOPs applicable to employee's designation/department
+- Split view: "Main Responsible" vs "Also Involved" SOPs
+
+### 12. Attendance Grid View (NEW - Jan 29, 2026)
+
+**Matrix Display of Attendance:**
+- Employee rows vs Date columns view
+- Color-coded status cells:
+  - P (green) = Present
+  - L (orange) = Late
+  - A (red) = Absent
+  - W (blue) = WFH
+  - LV (purple) = Leave
+  - HD (orange) = Half Day
+  - H = Holiday, – = Sunday
+- Summary columns: Present, Absent, Late counts per employee
+
+**Features:**
+- Date range filter (From Date, To Date)
+- Department filter
+- Employee search
+- **Inline Editing** - Click any cell to edit attendance status
+- **Export to Excel** - Download grid as spreadsheet
+- Sundays and holidays marked as non-editable
 
 ## Authentication & Security
 
