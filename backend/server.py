@@ -1209,12 +1209,26 @@ async def get_attendance(
         # HR/Admin can view any employee's attendance
         if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
             raise HTTPException(status_code=403, detail="Not authorized")
-        target_employee_id = employee_id
-        query = {"employee_id": target_employee_id}
+        
+        # Look up employee to get both employee_id and emp_code for broader matching
+        employee = await db.employees.find_one(
+            {"$or": [{"employee_id": employee_id}, {"emp_code": employee_id}]},
+            {"_id": 0, "employee_id": 1, "emp_code": 1}
+        )
+        
+        if employee:
+            # Query by both employee_id and emp_code to cover data inconsistencies
+            query = {"$or": [
+                {"employee_id": employee.get("employee_id")},
+                {"employee_id": employee.get("emp_code")},
+                {"emp_code": employee.get("emp_code")}
+            ]}
+        else:
+            # Fallback to direct employee_id match
+            query = {"employee_id": employee_id}
     elif user.get("role") in ["super_admin", "hr_admin", "hr_executive"]:
         # HR viewing all employees
         query = {}
-        target_employee_id = None
     else:
         # View own attendance
         target_employee_id = user.get("employee_id")
@@ -1224,24 +1238,36 @@ async def get_attendance(
     
     # Date range filter (preferred over month/year)
     if from_date and to_date:
-        query["date"] = {"$gte": from_date, "$lte": to_date}
+        if "$or" in query:
+            query = {"$and": [query, {"date": {"$gte": from_date, "$lte": to_date}}]}
+        else:
+            query["date"] = {"$gte": from_date, "$lte": to_date}
     elif month and year:
         # Filter by month/year
         month_str = str(month).zfill(2)
-        query["date"] = {"$regex": f"^{year}-{month_str}"}
+        date_filter = {"date": {"$regex": f"^{year}-{month_str}"}}
+        if "$or" in query:
+            query = {"$and": [query, date_filter]}
+        else:
+            query["date"] = {"$regex": f"^{year}-{month_str}"}
     elif year:
-        query["date"] = {"$regex": f"^{year}"}
+        date_filter = {"date": {"$regex": f"^{year}"}}
+        if "$or" in query:
+            query = {"$and": [query, date_filter]}
+        else:
+            query["date"] = {"$regex": f"^{year}"}
     
     attendance = await db.attendance.find(query, {"_id": 0}).sort("date", -1).to_list(500)
     
-    # Enrich with employee info for HR views
-    if not target_employee_id or target_employee_id == "all":
+    # Enrich with employee info
+    if attendance:
         emp_ids = list(set(a.get("employee_id") for a in attendance if a.get("employee_id")))
         employees = await db.employees.find(
-            {"employee_id": {"$in": emp_ids}}, 
+            {"$or": [{"employee_id": {"$in": emp_ids}}, {"emp_code": {"$in": emp_ids}}]}, 
             {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1, "emp_code": 1}
         ).to_list(1000)
         emp_map = {e["employee_id"]: e for e in employees}
+        emp_map.update({e["emp_code"]: e for e in employees if e.get("emp_code")})
         
         for att in attendance:
             emp = emp_map.get(att.get("employee_id"), {})
