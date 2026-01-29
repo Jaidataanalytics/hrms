@@ -399,3 +399,98 @@ async def delete_monthly_record(record_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Record not found")
     
     return {"message": "Record deleted"}
+
+
+# ==================== WORKER DOCUMENTS ====================
+
+@router.get("/workers/{worker_id}/documents")
+async def list_worker_documents(worker_id: str, request: Request):
+    """List documents for a contract worker"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    documents = await db.worker_documents.find(
+        {"worker_id": worker_id},
+        {"_id": 0}
+    ).to_list(50)
+    return documents
+
+
+@router.post("/workers/{worker_id}/documents")
+async def upload_worker_document(worker_id: str, request: Request):
+    """Upload a document for a contract worker"""
+    from fastapi import UploadFile
+    import base64
+    
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check worker exists
+    worker = await db.contract_workers.find_one({"worker_id": worker_id})
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    
+    # Parse multipart form data
+    form = await request.form()
+    document_type = form.get("document_type")
+    file = form.get("file")
+    
+    if not document_type or not file:
+        raise HTTPException(status_code=400, detail="Document type and file are required")
+    
+    # Read file content and encode as base64
+    file_content = await file.read()
+    file_base64 = base64.b64encode(file_content).decode('utf-8')
+    
+    doc = {
+        "document_id": f"doc_{uuid.uuid4().hex[:12]}",
+        "worker_id": worker_id,
+        "document_type": document_type,
+        "file_name": file.filename,
+        "file_data": file_base64,
+        "file_url": f"/api/labour/workers/{worker_id}/documents/{document_type}",
+        "content_type": file.content_type,
+        "uploaded_by": user["user_id"],
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Upsert - replace if same document type exists
+    await db.worker_documents.update_one(
+        {"worker_id": worker_id, "document_type": document_type},
+        {"$set": doc},
+        upsert=True
+    )
+    
+    return {"message": "Document uploaded", "document_id": doc["document_id"]}
+
+
+@router.get("/workers/{worker_id}/documents/{document_type}")
+async def download_worker_document(worker_id: str, document_type: str, request: Request):
+    """Download a specific document"""
+    from fastapi.responses import Response
+    import base64
+    
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    doc = await db.worker_documents.find_one({
+        "worker_id": worker_id,
+        "document_type": document_type
+    })
+    
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    file_content = base64.b64decode(doc["file_data"])
+    
+    return Response(
+        content=file_content,
+        media_type=doc.get("content_type", "application/octet-stream"),
+        headers={
+            "Content-Disposition": f"attachment; filename={doc.get('file_name', 'document')}"
+        }
+    )
+
