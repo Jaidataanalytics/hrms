@@ -363,20 +363,6 @@ const SOPPage = () => {
                         <span className="text-xs text-slate-400">All</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {sop.designation_names?.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {sop.designation_names.slice(0, 2).map((name, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">{name}</Badge>
-                          ))}
-                          {sop.designation_names.length > 2 && (
-                            <Badge variant="outline" className="text-xs">+{sop.designation_names.length - 2}</Badge>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">All</span>
-                      )}
-                    </TableCell>
                     <TableCell>v{sop.version}</TableCell>
                     <TableCell>
                       <Badge className={statusColors[sop.status]}>{sop.status}</Badge>
