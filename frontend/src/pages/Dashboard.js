@@ -327,6 +327,50 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
+          {/* My SOPs Card */}
+          {mySops.length > 0 && (
+            <Card data-testid="my-sops-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                    My SOPs
+                  </CardTitle>
+                  <Link to="/dashboard/sop">
+                    <Button variant="ghost" size="sm">View All</Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {mySops.slice(0, 3).map((sop, idx) => (
+                  <div key={idx} className="p-3 bg-emerald-50 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-emerald-900 text-sm">{sop.title}</p>
+                        {sop.description && (
+                          <p className="text-xs text-emerald-600 line-clamp-1 mt-1">{sop.description}</p>
+                        )}
+                        <p className="text-xs text-emerald-500 mt-1">v{sop.version}</p>
+                      </div>
+                      {sop.file_name && (
+                        <a
+                          href={`${API_URL}/sop/${sop.sop_id}/download`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0"
+                        >
+                          <Button size="sm" variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
+                            <Download className="w-3 h-3" />
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Quick Actions */}
           <Card data-testid="quick-actions-card">
             <CardHeader className="pb-3">
