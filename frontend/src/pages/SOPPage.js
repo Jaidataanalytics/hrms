@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { toast } from 'sonner';
 import {
   FileSpreadsheet, Plus, RefreshCw, Download, Eye, Upload, Building2,
-  Briefcase, CheckCircle, Edit, Trash2, Send, FileText, X
+  Briefcase, CheckCircle, Edit, Trash2, Send, FileText, X, User, Users
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
