@@ -2088,6 +2088,169 @@ async def get_attendance_edit_history(
     }
 
 
+# ==================== ATTENDANCE GRID VIEW ====================
+
+@api_router.get("/attendance/grid")
+async def get_attendance_grid(
+    request: Request,
+    from_date: str,
+    to_date: str,
+    department_id: Optional[str] = None,
+    search: Optional[str] = None
+):
+    """
+    Get attendance data in grid format (employees vs dates).
+    Returns a matrix of employee rows and date columns for easy tabular display.
+    """
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Build employee query
+    emp_query = {"is_active": True}
+    if department_id and department_id != 'all':
+        emp_query["department_id"] = department_id
+    
+    # Get employees with optional search
+    employees_cursor = db.employees.find(emp_query, {"_id": 0})
+    employees = await employees_cursor.to_list(500)
+    
+    # Apply search filter
+    if search:
+        search_lower = search.lower()
+        employees = [
+            e for e in employees 
+            if search_lower in (e.get("first_name", "") + " " + e.get("last_name", "")).lower()
+            or search_lower in (e.get("emp_code", "") or "").lower()
+        ]
+    
+    # Sort employees by name
+    employees.sort(key=lambda x: f"{x.get('first_name', '')} {x.get('last_name', '')}")
+    
+    # Get department names
+    dept_ids = list(set(e.get("department_id") for e in employees if e.get("department_id")))
+    departments = await db.departments.find({"department_id": {"$in": dept_ids}}, {"_id": 0}).to_list(100)
+    dept_map = {d["department_id"]: d["name"] for d in departments}
+    
+    # Get holidays in range
+    holidays = await db.holidays.find({
+        "date": {"$gte": from_date, "$lte": to_date}
+    }, {"_id": 0}).to_list(100)
+    holiday_dates = {h["date"]: h.get("name", "Holiday") for h in holidays}
+    
+    # Generate date range
+    from datetime import datetime as dt
+    start = dt.strptime(from_date, "%Y-%m-%d")
+    end = dt.strptime(to_date, "%Y-%m-%d")
+    dates = []
+    current = start
+    while current <= end:
+        date_str = current.strftime("%Y-%m-%d")
+        is_sunday = current.weekday() == 6
+        is_holiday = date_str in holiday_dates
+        dates.append({
+            "date": date_str,
+            "day_name": current.strftime("%a"),
+            "day_num": current.day,
+            "is_sunday": is_sunday,
+            "is_holiday": is_holiday,
+            "holiday_name": holiday_dates.get(date_str) if is_holiday else None
+        })
+        current += timedelta(days=1)
+    
+    # Get all attendance records in range
+    emp_ids = [e["employee_id"] for e in employees]
+    attendance_records = await db.attendance.find({
+        "employee_id": {"$in": emp_ids},
+        "date": {"$gte": from_date, "$lte": to_date}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Build attendance lookup: {employee_id: {date: record}}
+    att_lookup = {}
+    for att in attendance_records:
+        emp_id = att.get("employee_id")
+        date = att.get("date")
+        if emp_id not in att_lookup:
+            att_lookup[emp_id] = {}
+        att_lookup[emp_id][date] = att
+    
+    # Build grid rows
+    rows = []
+    for emp in employees:
+        emp_id = emp["employee_id"]
+        emp_attendance = att_lookup.get(emp_id, {})
+        
+        # Build cells for each date
+        cells = []
+        for date_info in dates:
+            date_str = date_info["date"]
+            att = emp_attendance.get(date_str)
+            
+            cell = {
+                "date": date_str,
+                "status": None,
+                "first_in": None,
+                "last_out": None,
+                "is_late": False,
+                "late_minutes": 0,
+                "attendance_id": None,
+                "is_editable": not date_info["is_sunday"]
+            }
+            
+            if date_info["is_sunday"]:
+                cell["status"] = "sunday"
+            elif date_info["is_holiday"]:
+                cell["status"] = "holiday"
+                cell["holiday_name"] = date_info["holiday_name"]
+            elif att:
+                cell["status"] = att.get("status", "present")
+                cell["first_in"] = att.get("first_in")
+                cell["last_out"] = att.get("last_out")
+                cell["is_late"] = att.get("is_late", False)
+                cell["late_minutes"] = att.get("late_minutes", 0)
+                cell["attendance_id"] = att.get("attendance_id")
+                cell["total_hours"] = att.get("total_hours")
+                cell["is_manually_edited"] = att.get("is_manually_edited", False)
+            else:
+                cell["status"] = "no_record"
+            
+            cells.append(cell)
+        
+        # Calculate summary for the row
+        present_count = sum(1 for c in cells if c["status"] == "present")
+        absent_count = sum(1 for c in cells if c["status"] in ["absent", "no_record"] and not c.get("is_sunday") and not c.get("holiday_name"))
+        wfh_count = sum(1 for c in cells if c["status"] == "wfh")
+        late_count = sum(1 for c in cells if c.get("is_late"))
+        leave_count = sum(1 for c in cells if c["status"] == "leave")
+        half_day_count = sum(1 for c in cells if c["status"] in ["half_day", "HD"])
+        
+        rows.append({
+            "employee_id": emp_id,
+            "emp_code": emp.get("emp_code", ""),
+            "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
+            "department": dept_map.get(emp.get("department_id"), "Unknown"),
+            "department_id": emp.get("department_id"),
+            "cells": cells,
+            "summary": {
+                "present": present_count,
+                "absent": absent_count,
+                "wfh": wfh_count,
+                "late": late_count,
+                "leave": leave_count,
+                "half_day": half_day_count
+            }
+        })
+    
+    return {
+        "dates": dates,
+        "rows": rows,
+        "total_employees": len(rows),
+        "from_date": from_date,
+        "to_date": to_date
+    }
+
+
 # ==================== HOLIDAY MANAGEMENT ====================
 
 @api_router.get("/holidays")
