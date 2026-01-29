@@ -28,6 +28,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [employeeDashboard, setEmployeeDashboard] = useState(null);
   const [leaveTypes, setLeaveTypes] = useState([]);
+  const [mySops, setMySops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAttendance, setMarkingAttendance] = useState(false);
 
@@ -38,10 +39,11 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const authHeaders = getAuthHeaders();
-      const [statsRes, empDashRes, leaveTypesRes] = await Promise.all([
+      const [statsRes, empDashRes, leaveTypesRes, sopsRes] = await Promise.all([
         fetch(`${API_URL}/dashboard/stats`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/dashboard/employee`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/sop/my-sops`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (statsRes.ok) {
