@@ -316,8 +316,8 @@ const SOPPage = () => {
                 <TableRow className="bg-slate-50">
                   <TableHead>SOP ID</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead>Departments</TableHead>
-                  <TableHead>Designations</TableHead>
+                  <TableHead>Main Responsible</TableHead>
+                  <TableHead>Also Involved</TableHead>
                   <TableHead>Version</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -336,13 +336,27 @@ const SOPPage = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {sop.department_names?.length > 0 ? (
+                      {sop.main_responsible_names?.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {sop.department_names.slice(0, 2).map((name, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">{name}</Badge>
+                          {sop.main_responsible_names.map((name, i) => (
+                            <Badge key={i} className="bg-blue-100 text-blue-700 text-xs">{name}</Badge>
                           ))}
-                          {sop.department_names.length > 2 && (
-                            <Badge variant="outline" className="text-xs">+{sop.department_names.length - 2}</Badge>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {(sop.also_involved_names?.length > 0 || sop.designation_names?.length > 0) ? (
+                        <div className="flex flex-wrap gap-1">
+                          {sop.also_involved_names?.slice(0, 2).map((name, i) => (
+                            <Badge key={`emp-${i}`} variant="outline" className="text-xs">{name}</Badge>
+                          ))}
+                          {sop.designation_names?.slice(0, 2).map((name, i) => (
+                            <Badge key={`desig-${i}`} variant="outline" className="text-xs bg-purple-50">{name}</Badge>
+                          ))}
+                          {((sop.also_involved_names?.length || 0) + (sop.designation_names?.length || 0)) > 4 && (
+                            <Badge variant="outline" className="text-xs">+more</Badge>
                           )}
                         </div>
                       ) : (
