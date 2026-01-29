@@ -171,7 +171,7 @@ async def create_sop(request: Request):
 @router.get("/{sop_id}")
 async def get_sop(sop_id: str, request: Request):
     """Get SOP details"""
-    user = await get_current_user(request)
+    await get_current_user(request)  # Auth check
     
     sop = await db.sops.find_one({"sop_id": sop_id}, {"_id": 0, "file_data": 0})
     if not sop:
