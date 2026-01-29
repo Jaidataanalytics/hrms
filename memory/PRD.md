@@ -1,7 +1,7 @@
 # Sharda HR System - Product Requirements Document
 
 ## Overview
-Comprehensive HR management system for Sharda Diesels with employee management, attendance tracking, payroll, leave management, insurance, and helpdesk modules.
+Comprehensive HR management system for Sharda Diesels with employee management, attendance tracking, payroll, leave management, insurance, helpdesk, contract labour, SOP management, and tour modules.
 
 ## Core Modules
 
@@ -9,6 +9,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Employee directory with search and filters
 - Bulk import/export functionality
 - Role-Based Access: Only HR/Admin can access Employees page
+- **Edit Profile** - HR can edit employee details via profile dialog (NEW Jan 29)
 
 ### 2. Attendance Management
 - Organization-wide attendance view (HR/Admin only)
@@ -16,6 +17,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Late Marking: Arrival after 10:00 AM is marked as LATE
 - Biometric API Integration: Auto-sync every 3 hours
 - Calendar View: Daily attendance stats with drill-down
+- **HR Attendance Editing** - Edit records tab, manual entry, audit trail (NEW Jan 28)
 
 ### 3. Leave Management
 - Leave balance management
@@ -36,12 +38,14 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - One-time Deductions (Loan EMI, Advance Recovery, etc.)
 - Payslip Editing Before Lock
 - Export to Excel in Template Format
-- **DELETE PAYROLL** - Can delete both processed AND locked payrolls (NEW)
+- **DELETE PAYROLL** - Can delete both processed AND locked payrolls
+- **PAYSLIP PDF DOWNLOAD** - Employees can download their payslips as PDF (NEW Jan 28)
 
 ### 5. Asset Management
 - Asset Inventory with individual asset tracking
 - Employee Assignment view
 - Edit, Delete, Reassign, Unassign operations
+- **Fixed asset lookup** - Now resolves employee_id to emp_code correctly (Jan 29)
 
 ### 6. Helpdesk Module (OVERHAULED - Jan 28, 2026)
 
