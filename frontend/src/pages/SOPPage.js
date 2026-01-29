@@ -443,12 +443,80 @@ const SOPPage = () => {
               />
               <p className="text-xs text-slate-500">Upload an Excel file containing the SOP steps</p>
             </div>
+
+            {/* Main Responsible - up to 3 employees */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-blue-700">
+                <User className="w-4 h-4" />
+                Main Responsible (max 3)
+              </Label>
+              <p className="text-xs text-slate-500 mb-2">Primary employee(s) responsible for this SOP</p>
+              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border border-blue-200 rounded-lg bg-blue-50/50">
+                {employees.filter(e => e.is_active !== false).map(emp => (
+                  <Badge
+                    key={emp.employee_id}
+                    variant={form.main_responsible.includes(emp.employee_id) ? "default" : "outline"}
+                    className={`cursor-pointer ${form.main_responsible.includes(emp.employee_id) ? 'bg-blue-600' : ''}`}
+                    onClick={() => toggleMainResponsible(emp.employee_id)}
+                  >
+                    {emp.first_name} {emp.last_name}
+                    {form.main_responsible.includes(emp.employee_id) && <X className="w-3 h-3 ml-1" />}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Also Involved - individual employees */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Also Involved (Individual Employees)
+              </Label>
+              <p className="text-xs text-slate-500 mb-2">Additional employees who follow this SOP</p>
+              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-lg">
+                {employees.filter(e => e.is_active !== false && !form.main_responsible.includes(e.employee_id)).map(emp => (
+                  <Badge
+                    key={emp.employee_id}
+                    variant={form.also_involved.includes(emp.employee_id) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleAlsoInvolved(emp.employee_id)}
+                  >
+                    {emp.first_name} {emp.last_name}
+                    {form.also_involved.includes(emp.employee_id) && <X className="w-3 h-3 ml-1" />}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Designations - auto-adds to Also Involved */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                Target Designations (Auto-link to Also Involved)
+              </Label>
+              <p className="text-xs text-slate-500 mb-2">All employees with these designations will be auto-linked</p>
+              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-lg">
+                {designations.map(desig => (
+                  <Badge
+                    key={desig.designation_id}
+                    variant={form.designations.includes(desig.designation_id) ? "default" : "outline"}
+                    className={`cursor-pointer ${form.designations.includes(desig.designation_id) ? 'bg-purple-600' : ''}`}
+                    onClick={() => toggleDesignation(desig.designation_id)}
+                  >
+                    {desig.name}
+                    {form.designations.includes(desig.designation_id) && <X className="w-3 h-3 ml-1" />}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Departments - auto-adds to Also Involved */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                Target Departments
+                Target Departments (Auto-link to Also Involved)
               </Label>
-              <p className="text-xs text-slate-500 mb-2">Leave empty to apply to all departments</p>
+              <p className="text-xs text-slate-500 mb-2">All employees in these departments will be auto-linked</p>
               <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-lg">
                 {departments.map(dept => (
                   <Badge
@@ -459,26 +527,6 @@ const SOPPage = () => {
                   >
                     {dept.name}
                     {form.departments.includes(dept.department_id) && <X className="w-3 h-3 ml-1" />}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Briefcase className="w-4 h-4" />
-                Target Designations
-              </Label>
-              <p className="text-xs text-slate-500 mb-2">Leave empty to apply to all designations</p>
-              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-lg">
-                {designations.map(desig => (
-                  <Badge
-                    key={desig.designation_id}
-                    variant={form.designations.includes(desig.designation_id) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleDesignation(desig.designation_id)}
-                  >
-                    {desig.name}
-                    {form.designations.includes(desig.designation_id) && <X className="w-3 h-3 ml-1" />}
                   </Badge>
                 ))}
               </div>
@@ -508,6 +556,49 @@ const SOPPage = () => {
                   <p>{selectedSOP.description}</p>
                 </div>
               )}
+
+              {/* Main Responsible */}
+              <div>
+                <Label className="text-blue-600">Main Responsible</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {selectedSOP.main_responsible_names?.length > 0 ? (
+                    selectedSOP.main_responsible_names.map((name, i) => (
+                      <Badge key={i} className="bg-blue-100 text-blue-700">{name}</Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-slate-400">Not assigned</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Also Involved */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-slate-500">Also Involved (Employees)</Label>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedSOP.also_involved_names?.length > 0 ? (
+                      selectedSOP.also_involved_names.map((name, i) => (
+                        <Badge key={i} variant="outline">{name}</Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-slate-400">None</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Also Involved (via Designation)</Label>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedSOP.designation_names?.length > 0 ? (
+                      selectedSOP.designation_names.map((name, i) => (
+                        <Badge key={i} variant="outline" className="bg-purple-50">{name}</Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-slate-400">None</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-slate-500">Departments</Label>
