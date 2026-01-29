@@ -211,6 +211,33 @@ const SOPPage = () => {
     }));
   };
 
+  const toggleMainResponsible = (empId) => {
+    setForm(prev => {
+      if (prev.main_responsible.includes(empId)) {
+        return { ...prev, main_responsible: prev.main_responsible.filter(e => e !== empId) };
+      } else if (prev.main_responsible.length < 3) {
+        return { ...prev, main_responsible: [...prev.main_responsible, empId] };
+      } else {
+        toast.error('Maximum 3 main responsible employees allowed');
+        return prev;
+      }
+    });
+  };
+
+  const toggleAlsoInvolved = (empId) => {
+    setForm(prev => ({
+      ...prev,
+      also_involved: prev.also_involved.includes(empId)
+        ? prev.also_involved.filter(e => e !== empId)
+        : [...prev.also_involved, empId]
+    }));
+  };
+
+  const getEmployeeName = (empId) => {
+    const emp = employees.find(e => e.employee_id === empId);
+    return emp ? `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.emp_code : empId;
+  };
+
   const statusColors = {
     draft: 'bg-amber-100 text-amber-700',
     published: 'bg-emerald-100 text-emerald-700',
