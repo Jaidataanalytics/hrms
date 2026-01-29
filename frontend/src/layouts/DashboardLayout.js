@@ -128,6 +128,7 @@ const DashboardLayout = () => {
     { name: 'Assets', path: '/dashboard/assets', icon: Package },
     { name: 'Expenses', path: '/dashboard/expenses', icon: Receipt },
     { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
+    { name: 'SOPs', path: '/dashboard/sop', icon: FileSpreadsheet },
     { name: 'Recruitment', path: '/dashboard/recruitment', icon: Briefcase },
     { name: 'Onboarding', path: '/dashboard/onboarding', icon: UserMinus },
     { name: 'Contract Labour', path: '/dashboard/labour', icon: HardHat },
