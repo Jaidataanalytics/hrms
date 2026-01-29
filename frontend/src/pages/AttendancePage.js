@@ -1322,7 +1322,7 @@ const AttendancePage = () => {
                   <Card>
                     <CardContent className="py-12 text-center">
                       <Grid className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-500 mb-2">Select date range and click "Load Grid"</p>
+                      <p className="text-slate-500 mb-2">Select date range and click &quot;Load Grid&quot;</p>
                       <p className="text-xs text-slate-400">Grid view shows all employees vs dates in a table format</p>
                     </CardContent>
                   </Card>
