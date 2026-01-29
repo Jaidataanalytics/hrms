@@ -1121,6 +1121,215 @@ const AttendancePage = () => {
               )}
             </TabsContent>
 
+            {/* Grid View Tab */}
+            <TabsContent value="grid">
+              <div className="space-y-4">
+                {/* Grid Filters */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex flex-wrap items-end gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">From Date</Label>
+                        <Input
+                          type="date"
+                          value={gridFromDate}
+                          onChange={(e) => setGridFromDate(e.target.value)}
+                          className="w-[150px]"
+                          data-testid="grid-from-date"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">To Date</Label>
+                        <Input
+                          type="date"
+                          value={gridToDate}
+                          onChange={(e) => setGridToDate(e.target.value)}
+                          className="w-[150px]"
+                          data-testid="grid-to-date"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Department</Label>
+                        <Select value={gridDepartment} onValueChange={setGridDepartment}>
+                          <SelectTrigger className="w-[180px]" data-testid="grid-department-select">
+                            <SelectValue placeholder="All Departments" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Departments</SelectItem>
+                            {departments.map((dept) => (
+                              <SelectItem key={dept.department_id} value={dept.department_id}>
+                                {dept.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Search Employee</Label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            placeholder="Name or Code..."
+                            value={gridSearch}
+                            onChange={(e) => setGridSearch(e.target.value)}
+                            className="w-[180px] pl-9"
+                            data-testid="grid-search"
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={fetchGridData} disabled={gridLoading} data-testid="load-grid-btn">
+                        {gridLoading ? (
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                        )}
+                        Load Grid
+                      </Button>
+                      {gridData && (
+                        <Button variant="outline" onClick={exportGridToExcel} data-testid="export-grid-btn">
+                          <Download className="w-4 h-4 mr-2" />
+                          Export Excel
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Grid Table */}
+                {gridLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : gridData ? (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Grid className="w-5 h-5 text-primary" />
+                            Attendance Grid ({gridData.total_employees} employees)
+                          </CardTitle>
+                          <CardDescription>
+                            Click on any cell to edit attendance. Period: {gridFromDate} to {gridToDate}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-4 text-xs">
+                          <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500"></span> Present</div>
+                          <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500"></span> Late</div>
+                          <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500"></span> Absent</div>
+                          <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500"></span> WFH</div>
+                          <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-purple-500"></span> Leave</div>
+                          <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-300"></span> No Record</div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                        <table className="w-full text-sm border-collapse">
+                          <thead className="sticky top-0 z-10 bg-slate-100">
+                            <tr>
+                              <th className="sticky left-0 z-20 bg-slate-100 px-3 py-2 text-left font-semibold border-b border-r min-w-[180px]">
+                                Employee
+                              </th>
+                              {gridData.dates.map((d) => (
+                                <th 
+                                  key={d.date} 
+                                  className={`px-1 py-2 text-center border-b min-w-[40px] text-xs ${
+                                    d.is_sunday ? 'bg-slate-200' : d.is_holiday ? 'bg-orange-100' : ''
+                                  }`}
+                                  title={d.is_holiday ? d.holiday_name : d.date}
+                                >
+                                  <div className="font-semibold">{d.day_num}</div>
+                                  <div className="text-[10px] text-slate-500">{d.day_name}</div>
+                                </th>
+                              ))}
+                              <th className="px-2 py-2 text-center border-b border-l bg-emerald-50 text-emerald-700 font-semibold">P</th>
+                              <th className="px-2 py-2 text-center border-b bg-red-50 text-red-700 font-semibold">A</th>
+                              <th className="px-2 py-2 text-center border-b bg-amber-50 text-amber-700 font-semibold">L</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {gridData.rows.map((row) => (
+                              <tr key={row.employee_id} className="hover:bg-slate-50" data-testid={`grid-row-${row.employee_id}`}>
+                                <td className="sticky left-0 z-10 bg-white px-3 py-2 border-b border-r">
+                                  <div className="font-medium text-slate-900 truncate max-w-[150px]" title={row.name}>
+                                    {row.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500">{row.emp_code} • {row.department}</div>
+                                </td>
+                                {row.cells.map((cell, idx) => {
+                                  const cellBg = 
+                                    cell.status === 'present' ? (cell.is_late ? 'bg-amber-100 hover:bg-amber-200' : 'bg-emerald-100 hover:bg-emerald-200') :
+                                    cell.status === 'absent' ? 'bg-red-100 hover:bg-red-200' :
+                                    cell.status === 'wfh' ? 'bg-blue-100 hover:bg-blue-200' :
+                                    cell.status === 'leave' ? 'bg-purple-100 hover:bg-purple-200' :
+                                    cell.status === 'half_day' || cell.status === 'HD' ? 'bg-orange-100 hover:bg-orange-200' :
+                                    cell.status === 'sunday' ? 'bg-slate-200' :
+                                    cell.status === 'holiday' ? 'bg-orange-50' :
+                                    cell.status === 'no_record' ? 'bg-slate-50 hover:bg-slate-100' :
+                                    'bg-slate-50';
+
+                                  const cellText = 
+                                    cell.status === 'present' ? (cell.is_late ? 'L' : 'P') :
+                                    cell.status === 'absent' ? 'A' :
+                                    cell.status === 'wfh' ? 'W' :
+                                    cell.status === 'leave' ? 'LV' :
+                                    cell.status === 'half_day' || cell.status === 'HD' ? 'HD' :
+                                    cell.status === 'sunday' ? '–' :
+                                    cell.status === 'holiday' ? 'H' :
+                                    cell.status === 'no_record' ? '-' :
+                                    cell.status?.charAt(0).toUpperCase() || '-';
+
+                                  const isClickable = cell.is_editable && cell.status !== 'sunday' && cell.status !== 'holiday';
+
+                                  return (
+                                    <td 
+                                      key={idx}
+                                      onClick={() => isClickable && handleGridCellClick(row, cell)}
+                                      className={`px-1 py-2 text-center border-b text-xs font-medium ${cellBg} ${
+                                        isClickable ? 'cursor-pointer' : ''
+                                      } ${cell.is_manually_edited ? 'ring-1 ring-inset ring-blue-400' : ''}`}
+                                      title={
+                                        cell.status === 'sunday' ? 'Sunday' :
+                                        cell.status === 'holiday' ? cell.holiday_name :
+                                        cell.first_in ? `In: ${cell.first_in} | Out: ${cell.last_out || '-'}` :
+                                        cell.status === 'no_record' ? 'No record - Click to add' :
+                                        cell.status
+                                      }
+                                      data-testid={`grid-cell-${row.employee_id}-${cell.date}`}
+                                    >
+                                      {cellText}
+                                    </td>
+                                  );
+                                })}
+                                <td className="px-2 py-2 text-center border-b border-l bg-emerald-50 font-semibold text-emerald-700">
+                                  {row.summary.present}
+                                </td>
+                                <td className="px-2 py-2 text-center border-b bg-red-50 font-semibold text-red-700">
+                                  {row.summary.absent}
+                                </td>
+                                <td className="px-2 py-2 text-center border-b bg-amber-50 font-semibold text-amber-700">
+                                  {row.summary.late}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <Grid className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500 mb-2">Select date range and click "Load Grid"</p>
+                      <p className="text-xs text-slate-400">Grid view shows all employees vs dates in a table format</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
             {/* Edit Records Tab (HR Only) */}
             <TabsContent value="edit-records">
               <div className="space-y-6">
