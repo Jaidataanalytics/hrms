@@ -36,8 +36,11 @@ const SOPPage = () => {
     description: '',
     departments: [],
     designations: [],
+    main_responsible: [],
+    also_involved: [],
     file: null
   });
+  const [employees, setEmployees] = useState([]);
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin';
 
@@ -45,6 +48,7 @@ const SOPPage = () => {
     fetchSOPs();
     fetchDepartments();
     fetchDesignations();
+    fetchEmployees();
   }, [filterDepartment, filterStatus]);
 
   const fetchSOPs = async () => {
