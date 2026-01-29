@@ -881,10 +881,14 @@ const AttendancePage = () => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex-wrap h-auto gap-1">
               <TabsTrigger value="calendar" className="gap-2">
                 <CalendarIcon className="w-4 h-4" />
                 Calendar
+              </TabsTrigger>
+              <TabsTrigger value="grid" className="gap-2" data-testid="tab-grid-view">
+                <Grid className="w-4 h-4" />
+                Grid View
               </TabsTrigger>
               <TabsTrigger value="edit-records" className="gap-2" data-testid="tab-edit-records">
                 <Edit className="w-4 h-4" />
