@@ -295,10 +295,15 @@ async def update_sop(sop_id: str, request: Request):
 
 @router.put("/{sop_id}/publish")
 async def publish_sop(sop_id: str, request: Request):
-    """Publish a draft SOP"""
+    """Publish a draft SOP and send notifications"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get SOP details for notification
+    sop = await db.sops.find_one({"sop_id": sop_id}, {"_id": 0})
+    if not sop:
+        raise HTTPException(status_code=404, detail="SOP not found")
     
     result = await db.sops.update_one(
         {"sop_id": sop_id},
@@ -313,7 +318,48 @@ async def publish_sop(sop_id: str, request: Request):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="SOP not found")
     
-    return {"message": "SOP published"}
+    # Create notifications for all involved employees
+    notification_recipients = set()
+    notification_recipients.update(sop.get("main_responsible", []))
+    notification_recipients.update(sop.get("also_involved", []))
+    
+    # Also notify employees in linked designations and departments
+    if sop.get("designations"):
+        employees_by_desig = await db.employees.find(
+            {"designation_id": {"$in": sop["designations"]}, "is_active": True},
+            {"_id": 0, "employee_id": 1}
+        ).to_list(500)
+        for emp in employees_by_desig:
+            notification_recipients.add(emp["employee_id"])
+    
+    if sop.get("departments"):
+        employees_by_dept = await db.employees.find(
+            {"department_id": {"$in": sop["departments"]}, "is_active": True},
+            {"_id": 0, "employee_id": 1}
+        ).to_list(500)
+        for emp in employees_by_dept:
+            notification_recipients.add(emp["employee_id"])
+    
+    # Create notifications
+    if notification_recipients:
+        notifications = []
+        for emp_id in notification_recipients:
+            notifications.append({
+                "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+                "user_id": emp_id,
+                "type": "sop_published",
+                "title": "New SOP Published",
+                "message": f"A new SOP '{sop['title']}' has been published that involves you.",
+                "link": f"/dashboard/sop",
+                "sop_id": sop_id,
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+        
+        if notifications:
+            await db.notifications.insert_many(notifications)
+    
+    return {"message": "SOP published", "notifications_sent": len(notification_recipients)}
 
 
 @router.delete("/{sop_id}")
