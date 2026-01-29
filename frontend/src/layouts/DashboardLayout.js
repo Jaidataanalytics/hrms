@@ -45,7 +45,8 @@ import {
   Database,
   Fingerprint,
   Shield,
-  Search
+  Search,
+  FileSpreadsheet
 } from 'lucide-react';
 import GlobalSearch from '../components/GlobalSearch';
 
