@@ -217,7 +217,7 @@ const EmployeeProfile = () => {
               </div>
             </div>
             <div className="flex justify-center md:justify-end">
-              <Button variant="outline" className="gap-2" data-testid="edit-employee-btn">
+              <Button variant="outline" className="gap-2" data-testid="edit-employee-btn" onClick={handleEditClick}>
                 <Edit className="w-4 h-4" />
                 Edit Profile
               </Button>
