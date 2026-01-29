@@ -85,6 +85,18 @@ const SOPPage = () => {
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch(`${API_URL}/employees`, { credentials: 'include', headers: getAuthHeaders() });
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data.employees || data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
   const handleCreateSOP = async () => {
     if (!form.title) {
       toast.error('Please enter a title');
@@ -96,6 +108,8 @@ const SOPPage = () => {
     formData.append('description', form.description);
     form.departments.forEach(d => formData.append('departments', d));
     form.designations.forEach(d => formData.append('designations', d));
+    form.main_responsible.forEach(e => formData.append('main_responsible', e));
+    form.also_involved.forEach(e => formData.append('also_involved', e));
     if (form.file) formData.append('file', form.file);
 
     try {
@@ -109,7 +123,7 @@ const SOPPage = () => {
       if (response.ok) {
         toast.success('SOP created successfully');
         setShowCreateDialog(false);
-        setForm({ title: '', description: '', departments: [], designations: [], file: null });
+        setForm({ title: '', description: '', departments: [], designations: [], main_responsible: [], also_involved: [], file: null });
         fetchSOPs();
       } else {
         toast.error('Failed to create SOP');
