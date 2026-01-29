@@ -188,11 +188,194 @@ const AttendancePage = () => {
         fetchSummary();
         fetchEmployees();
         fetchCalendarData();
+        fetchDepartments();
       } else {
         fetchMySummary();
       }
     }
   }, [fromDate, toDate, selectedEmployee]);
+
+  // Initialize grid dates when switching to grid tab
+  useEffect(() => {
+    if (activeTab === 'grid' && !gridFromDate) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      setGridFromDate(`${year}-${String(month + 1).padStart(2, '0')}-01`);
+      setGridToDate(today.toISOString().split('T')[0]);
+    }
+  }, [activeTab]);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch(`${API_URL}/departments`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data);
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
+
+  const fetchGridData = async () => {
+    if (!gridFromDate || !gridToDate) {
+      toast.error('Please select date range');
+      return;
+    }
+
+    setGridLoading(true);
+    try {
+      const params = new URLSearchParams({
+        from_date: gridFromDate,
+        to_date: gridToDate
+      });
+      if (gridDepartment && gridDepartment !== 'all') {
+        params.append('department_id', gridDepartment);
+      }
+      if (gridSearch) {
+        params.append('search', gridSearch);
+      }
+
+      const response = await fetch(
+        `${API_URL}/attendance/grid?${params}`,
+        { credentials: 'include', headers: getAuthHeaders() }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setGridData(data);
+      } else {
+        toast.error('Failed to fetch grid data');
+      }
+    } catch (error) {
+      console.error('Error fetching grid data:', error);
+      toast.error('Failed to fetch grid data');
+    } finally {
+      setGridLoading(false);
+    }
+  };
+
+  const handleGridCellClick = (row, cell) => {
+    if (!cell.is_editable || cell.status === 'sunday' || cell.status === 'holiday') return;
+    
+    setGridEditingCell({ 
+      ...cell, 
+      employee_id: row.employee_id,
+      employee_name: row.name,
+      emp_code: row.emp_code
+    });
+    setGridEditForm({
+      status: cell.status === 'no_record' ? 'present' : cell.status,
+      first_in: cell.first_in || '',
+      last_out: cell.last_out || '',
+      remarks: '',
+      edit_reason: ''
+    });
+    setGridEditDialogOpen(true);
+  };
+
+  const handleGridSaveEdit = async () => {
+    if (!gridEditingCell) return;
+    
+    if (!gridEditForm.edit_reason) {
+      toast.error('Please provide a reason for the edit');
+      return;
+    }
+
+    try {
+      let response;
+      
+      if (gridEditingCell.attendance_id) {
+        // Update existing record
+        response = await fetch(
+          `${API_URL}/attendance/${gridEditingCell.attendance_id}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            credentials: 'include',
+            body: JSON.stringify(gridEditForm)
+          }
+        );
+      } else {
+        // Create new record
+        response = await fetch(
+          `${API_URL}/attendance/manual`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            credentials: 'include',
+            body: JSON.stringify({
+              employee_id: gridEditingCell.employee_id,
+              date: gridEditingCell.date,
+              ...gridEditForm
+            })
+          }
+        );
+      }
+
+      if (response.ok) {
+        toast.success('Attendance updated');
+        setGridEditDialogOpen(false);
+        setGridEditingCell(null);
+        fetchGridData();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Failed to update attendance');
+      }
+    } catch (error) {
+      toast.error('Failed to update attendance');
+    }
+  };
+
+  const exportGridToExcel = () => {
+    if (!gridData || !gridData.rows.length) {
+      toast.error('No data to export');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    // Build header row
+    const headerRow = ['Employee Code', 'Name', 'Department', ...gridData.dates.map(d => d.date), 'Present', 'Absent', 'Late', 'WFH', 'Leave'];
+    
+    // Build data rows
+    const dataRows = gridData.rows.map(row => {
+      const cells = row.cells.map(c => {
+        if (c.status === 'sunday') return 'SUN';
+        if (c.status === 'holiday') return 'HOL';
+        if (c.status === 'present') return c.is_late ? 'P(L)' : 'P';
+        if (c.status === 'absent') return 'A';
+        if (c.status === 'wfh') return 'WFH';
+        if (c.status === 'leave') return 'L';
+        if (c.status === 'half_day' || c.status === 'HD') return 'HD';
+        if (c.status === 'no_record') return '-';
+        return c.status || '-';
+      });
+      
+      return [
+        row.emp_code,
+        row.name,
+        row.department,
+        ...cells,
+        row.summary.present,
+        row.summary.absent,
+        row.summary.late,
+        row.summary.wfh,
+        row.summary.leave
+      ];
+    });
+
+    const wsData = [headerRow, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Grid');
+
+    XLSX.writeFile(wb, `Attendance_Grid_${gridFromDate}_to_${gridToDate}.xlsx`);
+    toast.success('Grid exported successfully');
+  };
 
   const fetchCalendarData = async () => {
     if (!fromDate || !toDate) return;
