@@ -301,6 +301,15 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## API Endpoints
 
+### Attendance Grid View (NEW - Jan 29, 2026)
+- `GET /api/attendance/grid?from_date=X&to_date=Y&department_id=Z&search=Q` - Get attendance matrix data
+
+### SOP Management (ENHANCED - Jan 29, 2026)
+- `POST /api/sop/create` - Create SOP with main_responsible and also_involved
+- `GET /api/sop/list` - List SOPs with main_responsible_names column
+- `PUT /api/sop/{id}/publish` - Publish SOP and send notifications
+- `GET /api/sop/my-sops` - Get user's SOPs split by main_responsible vs also_involved
+
 ### HR Attendance Editing (NEW)
 - `GET /api/attendance/daily?date=YYYY-MM-DD` - Load attendance records for a date
 - `PUT /api/attendance/{id}` - Edit attendance record (with audit trail)
