@@ -17,7 +17,9 @@ import {
   XCircle,
   ArrowRight,
   Megaphone,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
