@@ -64,12 +64,12 @@ async def list_sops(
 
 @router.get("/my-sops")
 async def get_my_sops(request: Request):
-    """Get SOPs applicable to the current user based on their designation"""
+    """Get SOPs applicable to the current user - split by main responsible and also involved"""
     user = await get_current_user(request)
     employee_id = user.get("employee_id")
     
     if not employee_id:
-        return []
+        return {"main_responsible": [], "also_involved": []}
     
     # Get employee's designation and department
     employee = await db.employees.find_one(
@@ -77,25 +77,41 @@ async def get_my_sops(request: Request):
         {"_id": 0, "designation_id": 1, "department_id": 1}
     )
     
-    if not employee:
-        return []
+    designation_id = employee.get("designation_id") if employee else None
+    department_id = employee.get("department_id") if employee else None
     
-    designation_id = employee.get("designation_id")
-    department_id = employee.get("department_id")
+    # Find SOPs where user is main responsible
+    main_responsible_sops = await db.sops.find(
+        {
+            "is_active": True,
+            "status": "published",
+            "main_responsible": employee_id
+        },
+        {"_id": 0, "file_data": 0}
+    ).sort("created_at", -1).to_list(50)
     
-    # Find SOPs that match employee's designation or department, or are for all
-    query = {
+    # Find SOPs where user is also involved (directly or via designation/department)
+    also_involved_query = {
         "is_active": True,
         "status": "published",
+        "main_responsible": {"$ne": employee_id},  # Exclude ones where they're main responsible
         "$or": [
-            {"designations": {"$size": 0}, "departments": {"$size": 0}},  # For all
-            {"designations": designation_id} if designation_id else {"designations": {"$exists": False}},
-            {"departments": department_id} if department_id else {"departments": {"$exists": False}}
+            {"also_involved": employee_id},  # Directly assigned
+            {"designations": designation_id} if designation_id else {"_id": {"$exists": False}},
+            {"departments": department_id} if department_id else {"_id": {"$exists": False}},
+            {"designations": {"$size": 0}, "departments": {"$size": 0}, "also_involved": {"$size": 0}}  # For all
         ]
     }
     
-    sops = await db.sops.find(query, {"_id": 0, "file_data": 0}).sort("created_at", -1).to_list(50)
-    return sops
+    also_involved_sops = await db.sops.find(
+        also_involved_query,
+        {"_id": 0, "file_data": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    return {
+        "main_responsible": main_responsible_sops,
+        "also_involved": also_involved_sops
+    }
 
 
 @router.post("/create")
