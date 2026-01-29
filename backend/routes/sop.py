@@ -42,22 +42,32 @@ async def list_sops(
     
     sops = await db.sops.find(query, {"_id": 0, "file_data": 0}).sort("created_at", -1).to_list(100)
     
-    # Enrich with department and designation names
+    # Enrich with department, designation, and employee names
     dept_ids = set()
     desig_ids = set()
+    emp_ids = set()
     for sop in sops:
         dept_ids.update(sop.get("departments", []))
         desig_ids.update(sop.get("designations", []))
+        emp_ids.update(sop.get("main_responsible", []))
+        emp_ids.update(sop.get("also_involved", []))
     
     departments = await db.departments.find({"department_id": {"$in": list(dept_ids)}}, {"_id": 0}).to_list(100)
     designations = await db.designations.find({"designation_id": {"$in": list(desig_ids)}}, {"_id": 0}).to_list(100)
+    employees = await db.employees.find(
+        {"employee_id": {"$in": list(emp_ids)}},
+        {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1, "emp_code": 1}
+    ).to_list(500)
     
     dept_map = {d["department_id"]: d["name"] for d in departments}
     desig_map = {d["designation_id"]: d["name"] for d in designations}
+    emp_map = {e["employee_id"]: f"{e.get('first_name', '')} {e.get('last_name', '')}".strip() or e.get('emp_code', e['employee_id']) for e in employees}
     
     for sop in sops:
         sop["department_names"] = [dept_map.get(d, d) for d in sop.get("departments", [])]
         sop["designation_names"] = [desig_map.get(d, d) for d in sop.get("designations", [])]
+        sop["main_responsible_names"] = [emp_map.get(e, e) for e in sop.get("main_responsible", [])]
+        sop["also_involved_names"] = [emp_map.get(e, e) for e in sop.get("also_involved", [])]
     
     return sops
 
