@@ -24,7 +24,7 @@ import HelpdeskPage from "./pages/HelpdeskPage";
 import RecruitmentPage from "./pages/RecruitmentPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ReportsPage from "./pages/ReportsPage";
-import LabourPage from "./pages/LabourPage";
+import ContractLabourPage from "./pages/ContractLabourPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ReportBuilderPage from "./pages/ReportBuilderPage";
 import UserManagementPage from "./pages/UserManagementPage";
