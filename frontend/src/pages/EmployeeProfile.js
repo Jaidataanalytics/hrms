@@ -401,6 +401,174 @@ const EmployeeProfile = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Employee Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Employee Profile</DialogTitle>
+            <DialogDescription>Update employee information</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {/* Personal Info */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-700">Personal Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input
+                    value={editForm.first_name || ''}
+                    onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input
+                    value={editForm.last_name || ''}
+                    onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={editForm.email || ''}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input
+                    value={editForm.phone || ''}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date of Birth</Label>
+                  <Input
+                    type="date"
+                    value={editForm.date_of_birth || ''}
+                    onChange={(e) => setEditForm({ ...editForm, date_of_birth: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Gender</Label>
+                  <Select value={editForm.gender || ''} onValueChange={(v) => setEditForm({ ...editForm, gender: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-700">Address</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label>Address</Label>
+                  <Input
+                    value={editForm.address || ''}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input
+                    value={editForm.city || ''}
+                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>State</Label>
+                  <Input
+                    value={editForm.state || ''}
+                    onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Pincode</Label>
+                  <Input
+                    value={editForm.pincode || ''}
+                    onChange={(e) => setEditForm({ ...editForm, pincode: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Employment */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-700">Employment</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Department</Label>
+                  <Select value={editForm.department_id || ''} onValueChange={(v) => setEditForm({ ...editForm, department_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.department_id} value={dept.department_id}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Designation</Label>
+                  <Select value={editForm.designation_id || ''} onValueChange={(v) => setEditForm({ ...editForm, designation_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select designation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {designations.map((desig) => (
+                        <SelectItem key={desig.designation_id} value={desig.designation_id}>
+                          {desig.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Emergency Contact */}
+            <div>
+              <h4 className="font-medium mb-3 text-slate-700">Emergency Contact</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Contact Name</Label>
+                  <Input
+                    value={editForm.emergency_contact_name || ''}
+                    onChange={(e) => setEditForm({ ...editForm, emergency_contact_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contact Phone</Label>
+                  <Input
+                    value={editForm.emergency_contact_phone || ''}
+                    onChange={(e) => setEditForm({ ...editForm, emergency_contact_phone: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEmployee} disabled={saving}>
+              {saving ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
