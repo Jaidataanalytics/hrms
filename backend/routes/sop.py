@@ -30,7 +30,7 @@ async def list_sops(
     status: Optional[str] = None
 ):
     """List all SOPs with optional filters"""
-    user = await get_current_user(request)
+    await get_current_user(request)  # Auth check
     
     query = {"is_active": True}
     if department_id:
