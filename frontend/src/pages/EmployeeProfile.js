@@ -490,19 +490,176 @@ const EmployeeProfile = () => {
         <TabsContent value="attendance">
           <Card>
             <CardHeader>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-primary" />
+                    Monthly Attendance
+                  </CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monthOptions.map(m => (
+                        <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map(y => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+                <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-600">{attendanceSummary.present}</p>
+                  <p className="text-xs text-emerald-700">Present</p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-red-600">{attendanceSummary.absent}</p>
+                  <p className="text-xs text-red-700">Absent</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-600">{attendanceSummary.wfh}</p>
+                  <p className="text-xs text-blue-700">WFH</p>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-600">{attendanceSummary.leave}</p>
+                  <p className="text-xs text-amber-700">Leave</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-orange-600">{attendanceSummary.late}</p>
+                  <p className="text-xs text-orange-700">Late</p>
+                </div>
+              </div>
+
+              {/* Attendance Table */}
+              {attendanceLoading ? (
+                <div className="flex justify-center py-8">
+                  <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded-lg">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-slate-50">
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Day</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>In</TableHead>
+                        <TableHead>Out</TableHead>
+                        <TableHead>Hours</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {attendance.length > 0 ? (
+                        attendance.slice(0, 31).map((record, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{record.date}</TableCell>
+                            <TableCell>{new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short' })}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(record.status)}>
+                                {record.status}
+                                {record.is_late && <span className="ml-1">(L)</span>}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">{record.first_in || record.check_in_time || '-'}</TableCell>
+                            <TableCell className="font-mono text-sm">{record.last_out || record.check_out_time || '-'}</TableCell>
+                            <TableCell>{record.total_hours ? `${record.total_hours}h` : '-'}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                            No attendance records for this month
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="assets">
+          <Card>
+            <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                Attendance Summary
+                <Package className="w-5 h-5 text-primary" />
+                Assigned Assets
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">Attendance data will appear here</p>
-                <Link to="/dashboard/attendance">
-                  <Button variant="outline" className="mt-4">View Full Attendance</Button>
-                </Link>
-              </div>
+              {assets ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 border rounded-lg text-center">
+                    <Smartphone className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm font-medium">Mobile & Charger</p>
+                    <Badge className={assets.mobile_charger ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                      {assets.mobile_charger ? 'Assigned' : 'Not Assigned'}
+                    </Badge>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <Laptop className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm font-medium">Laptop</p>
+                    <Badge className={assets.laptop ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                      {assets.laptop ? 'Assigned' : 'Not Assigned'}
+                    </Badge>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm font-medium">System</p>
+                    <Badge className={assets.system ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                      {assets.system ? 'Assigned' : 'Not Assigned'}
+                    </Badge>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <Printer className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm font-medium">Printer</p>
+                    <Badge className={assets.printer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                      {assets.printer ? 'Assigned' : 'Not Assigned'}
+                    </Badge>
+                  </div>
+                  {assets.sdpl_number && (
+                    <div className="p-4 border rounded-lg col-span-2">
+                      <p className="text-sm text-slate-500 mb-1">SDPL Number</p>
+                      <p className="font-medium">{assets.sdpl_number}</p>
+                    </div>
+                  )}
+                  {assets.tag && (
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm text-slate-500 mb-1">Tag</p>
+                      <p className="font-medium">{assets.tag}</p>
+                    </div>
+                  )}
+                  {assets.sim_mobile_no && (
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm text-slate-500 mb-1">SIM/Mobile No</p>
+                      <p className="font-medium">{assets.sim_mobile_no}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Package className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">No assets assigned to this employee</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
