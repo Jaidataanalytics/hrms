@@ -66,6 +66,12 @@ const EmployeeProfile = () => {
     fetchEmployeeData();
   }, [id]);
 
+  useEffect(() => {
+    if (employee) {
+      fetchAttendance();
+    }
+  }, [employee, selectedMonth, selectedYear]);
+
   const fetchEmployeeData = async () => {
     try {
       const authHeaders = getAuthHeaders();
@@ -78,6 +84,8 @@ const EmployeeProfile = () => {
       if (empRes.ok) {
         const empData = await empRes.json();
         setEmployee(empData);
+        // Fetch assets after getting employee data
+        fetchAssets(empData.employee_id, empData.emp_code);
       } else {
         toast.error('Employee not found');
       }
@@ -89,6 +97,47 @@ const EmployeeProfile = () => {
       toast.error('Failed to load employee data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAttendance = async () => {
+    if (!employee) return;
+    setAttendanceLoading(true);
+    try {
+      const authHeaders = getAuthHeaders();
+      // Try with employee_id first, then emp_code
+      const identifier = employee.employee_id || employee.emp_code;
+      const response = await fetch(
+        `${API_URL}/attendance?employee_id=${identifier}&month=${selectedMonth}&year=${selectedYear}`,
+        { credentials: 'include', headers: authHeaders }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAttendance(data);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const fetchAssets = async (employeeId, empCode) => {
+    try {
+      const authHeaders = getAuthHeaders();
+      // Try with emp_code first (most common), then employee_id
+      let response = await fetch(`${API_URL}/employee-assets/${empCode || employeeId}`, { 
+        credentials: 'include', 
+        headers: authHeaders 
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAssets(data);
+      }
+    } catch (error) {
+      console.error('Error fetching assets:', error);
     }
   };
 
