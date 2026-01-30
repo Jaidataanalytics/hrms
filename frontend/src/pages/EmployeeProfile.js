@@ -156,6 +156,38 @@ const EmployeeProfile = () => {
     }
   };
 
+  // Attendance helpers
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'present': return 'bg-emerald-100 text-emerald-700';
+      case 'absent': return 'bg-red-100 text-red-700';
+      case 'wfh': return 'bg-blue-100 text-blue-700';
+      case 'leave': return 'bg-amber-100 text-amber-700';
+      case 'half_day': case 'hd': return 'bg-orange-100 text-orange-700';
+      case 'holiday': return 'bg-purple-100 text-purple-700';
+      default: return 'bg-slate-100 text-slate-600';
+    }
+  };
+
+  const attendanceSummary = {
+    present: attendance.filter(a => a.status === 'present').length,
+    absent: attendance.filter(a => a.status === 'absent').length,
+    wfh: attendance.filter(a => a.status === 'wfh').length,
+    leave: attendance.filter(a => a.status === 'leave').length,
+    late: attendance.filter(a => a.is_late).length
+  };
+
+  const monthOptions = [];
+  for (let i = 1; i <= 12; i++) {
+    monthOptions.push({ value: i, label: new Date(2000, i - 1).toLocaleString('default', { month: 'long' }) });
+  }
+
+  const yearOptions = [];
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= currentYear - 3; y--) {
+    yearOptions.push(y);
+  }
+
   const handleEditClick = () => {
     setEditForm({
       first_name: employee.first_name || '',
