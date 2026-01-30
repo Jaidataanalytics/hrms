@@ -333,11 +333,12 @@ const EmployeeProfile = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="personal" className="space-y-4">
-        <TabsList className="bg-white border">
+        <TabsList className="bg-white border flex-wrap h-auto gap-1">
           <TabsTrigger value="personal" data-testid="tab-personal">Personal</TabsTrigger>
           <TabsTrigger value="employment" data-testid="tab-employment">Employment</TabsTrigger>
-          <TabsTrigger value="documents" data-testid="tab-documents">Documents</TabsTrigger>
           <TabsTrigger value="attendance" data-testid="tab-attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="assets" data-testid="tab-assets">Assets</TabsTrigger>
+          <TabsTrigger value="documents" data-testid="tab-documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="personal">
