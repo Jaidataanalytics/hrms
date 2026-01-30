@@ -37,8 +37,23 @@ import {
   FileText,
   Edit,
   RefreshCw,
-  Save
+  Save,
+  Package,
+  CheckCircle2,
+  XCircle,
+  Home,
+  Laptop,
+  Smartphone,
+  Printer
 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
 import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
