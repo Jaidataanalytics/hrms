@@ -209,6 +209,17 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
+### Jan 30, 2026 - Employee Profile Enhancements
+1. ✅ **Attendance Tab Fix**
+   - Replaced placeholder with inline attendance data
+   - Added month/year selectors for filtering
+   - Shows summary cards (Present, Absent, WFH, Leave, Late)
+   - Displays attendance table with all records
+2. ✅ **Assets Tab Added**
+   - New tab showing assigned assets (Mobile, Laptop, System, Printer)
+   - Displays SDPL Number, Tag, and SIM/Mobile info
+   - Shows "Not Assigned" status when no assets
+
 ### Jan 29, 2026 - SOP Enhancements & Attendance Grid View
 1. ✅ **SOP Enhancements**
    - Added "Main Responsible" field (max 3 employees)
