@@ -36,6 +36,7 @@ import BiometricPage from "./pages/BiometricPage";
 import InsurancePage from "./pages/InsurancePage";
 import HolidayManagementPage from "./pages/HolidayManagementPage";
 import SOPPage from "./pages/SOPPage";
+import MyCalendarPage from "./pages/MyCalendarPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
