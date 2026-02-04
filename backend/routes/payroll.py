@@ -431,7 +431,8 @@ async def process_payroll(payroll_id: str, request: Request):
             # Summary fields (for backwards compatibility)
             "working_days": total_days,
             "present_days": office_days + wfh_days,
-            "lwp_days": leave_days,
+            "lwp_days": unpaid_leave_days,
+            "paid_leave_days": paid_leave_days,
             "paid_days": payslip_data["attendance"]["total_earned_days"],
             "basic": payslip_data["earnings"]["basic_da_earned"],
             "hra": payslip_data["earnings"]["hra_earned"],
