@@ -865,69 +865,86 @@ const SOPPage = () => {
             </div>
           ) : sops.length > 0 ? (
             // Table View
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead>SOP Number</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Task Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sops.map((sop) => (
-                  <TableRow 
-                    key={sop.sop_id} 
-                    className="cursor-pointer hover:bg-slate-50"
-                    onClick={() => handleEditSOP(sop)}
-                    data-testid={`sop-row-${sop.sop_id}`}
-                  >
-                    <TableCell className="font-mono text-sm">{sop.sop_number || sop.sop_id}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{sop.title}</p>
-                        {sop.description && (
-                          <p className="text-xs text-slate-500 truncate max-w-[200px]">{sop.description}</p>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="w-[120px]">SOP Number</TableHead>
+                    <TableHead className="min-w-[180px]">Title</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Responsible</TableHead>
+                    <TableHead>Stakeholders</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right w-[140px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sops.map((sop) => (
+                    <TableRow 
+                      key={sop.sop_id} 
+                      className="cursor-pointer hover:bg-slate-50"
+                      onClick={() => handleEditSOP(sop)}
+                      data-testid={`sop-row-${sop.sop_id}`}
+                    >
+                      <TableCell className="font-mono text-xs">{sop.sop_number || sop.sop_id}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{sop.title}</p>
+                          {sop.task_type && (
+                            <Badge variant="outline" className="text-xs mt-1">{sop.task_type}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {sop.process_owner ? (
+                          <Badge className="bg-blue-100 text-blue-700 text-xs max-w-[150px] truncate">
+                            {sop.process_owner.split(' ').slice(0, 2).join(' ')}
+                          </Badge>
+                        ) : sop.main_responsible_names?.length > 0 ? (
+                          <Badge className="bg-blue-100 text-blue-700 text-xs">
+                            {sop.main_responsible_names[0]}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {sop.department_names?.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {sop.department_names.slice(0, 2).map((name, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">{name}</Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {sop.main_responsible_names?.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {sop.main_responsible_names.map((name, i) => (
-                            <Badge key={i} className="bg-blue-100 text-blue-700 text-xs">{name}</Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {sop.task_type ? (
-                        <Badge variant="outline" className="text-xs">{sop.task_type}</Badge>
-                      ) : (
-                        <span className="text-xs text-slate-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[sop.status]}>{sop.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-1">
+                      </TableCell>
+                      <TableCell>
+                        {sop.responsible_persons?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-[180px]">
+                            {sop.responsible_persons.slice(0, 2).map((person, i) => (
+                              <Badge key={i} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                                {person.length > 15 ? person.slice(0, 15) + '...' : person}
+                              </Badge>
+                            ))}
+                            {sop.responsible_persons.length > 2 && (
+                              <Badge variant="outline" className="text-xs">+{sop.responsible_persons.length - 2}</Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {sop.stakeholders?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-[180px]">
+                            {sop.stakeholders.slice(0, 2).map((s, i) => (
+                              <Badge key={i} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                                {s.length > 12 ? s.slice(0, 12) + '...' : s}
+                              </Badge>
+                            ))}
+                            {sop.stakeholders.length > 2 && (
+                              <Badge variant="outline" className="text-xs">+{sop.stakeholders.length - 2}</Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusColors[sop.status]}>{sop.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
                         <Button size="sm" variant="outline" onClick={() => handleEditSOP(sop)} title="Edit">
                           <Edit className="w-3 h-3" />
                         </Button>
