@@ -94,6 +94,11 @@ const DashboardLayout = () => {
       icon: CalendarDays 
     },
     { 
+      name: 'Meetings', 
+      path: '/dashboard/meetings', 
+      icon: UsersRound 
+    },
+    { 
       name: 'Leave', 
       path: '/dashboard/leave', 
       icon: Calendar 
