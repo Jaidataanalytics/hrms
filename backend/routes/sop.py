@@ -63,38 +63,50 @@ async def parse_sop_with_ai(text_content: str, employees_list: list) -> dict:
         # Create employee name list for context
         employee_names = [f"{e.get('first_name', '')} {e.get('last_name', '')}".strip() for e in employees_list if e.get('first_name')]
         
-        system_prompt = """You are an expert at parsing Standard Operating Procedure (SOP) documents. 
-Extract all relevant information from the provided SOP content and return it as valid JSON.
+        system_prompt = """You are an expert at parsing Standard Operating Procedure (SOP) documents from Indian manufacturing companies.
+Extract ALL relevant information comprehensively and return it as valid JSON.
 
-The JSON should have these fields (use null if not found):
+The JSON MUST have these fields (use null or empty array if not found):
 {
-  "sop_number": "The SOP ID/Number (e.g., SDPL/SOP/8, SOP-123)",
-  "title": "The title or process name of the SOP",
-  "process_owner": "Name of the process owner/document owner",
-  "created_by": "Name of who created the document",
-  "department": "Department name if mentioned",
-  "version": "Version number if mentioned",
-  "revision_date": "Last revision date if mentioned",
-  "purpose": "The purpose/objective of this SOP (brief summary)",
-  "scope": "The scope of this SOP (what it covers)",
-  "input_requirements": "Input requirements if mentioned",
-  "output_deliverables": "Output/deliverables if mentioned",
-  "procedure_summary": "Brief summary of the main procedure steps",
-  "responsible_persons": ["List of people/roles mentioned as responsible"],
-  "reports": ["List of reports mentioned in the SOP"],
-  "task_type": "Category/type of task (e.g., Audit, Quality, Safety, Production, Maintenance)",
-  "stakeholders": ["List of stakeholders if mentioned"],
-  "key_activities": ["Main activities/steps mentioned"]
+  "sop_number": "The SOP ID/Number (e.g., SDPL/SOP/28, SDPL/SOP/HR/01)",
+  "title": "The title or process name (e.g., EMPLOYEE LIFE CYCLE, EXPENSE BUDGETING)",
+  "process_owner": "Full name and designation of process owner (e.g., NANDINI KUMARI ASSISTANT MANAGER HUMAN RESOURCE)",
+  "created_by": "Name of document creator",
+  "department": "Department name (HR, Finance, Production, Quality, etc.)",
+  "version": "Version number",
+  "revision_date": "Last revision date",
+  "purpose": "COMPLETE purpose/objective text - do not truncate, include full description",
+  "scope": "COMPLETE scope text - do not truncate",
+  "input_requirements": "What inputs are needed to start this process",
+  "output_deliverables": "What outputs/deliverables this process produces",
+  "procedure_summary": "Brief summary of the overall procedure",
+  "responsible_persons": ["Extract ALL roles/persons mentioned as responsible - look for RESP/IN-CHARGE column, include designations like HOD, ASSISTANT MANAGER HR, MD, ACCOUNTS, etc."],
+  "reports": ["List of reports or documents mentioned"],
+  "task_type": "Category: HR, Finance, Quality, Production, Safety, Audit, Maintenance, Admin, etc.",
+  "stakeholders": "Extract from PROCESS STAKEHOLDERS field - include ALL stakeholders mentioned",
+  "key_activities": ["Extract main activities/steps from the procedure section"],
+  "process_flow_steps": [
+    {
+      "step_number": 1,
+      "step_name": "Short name for the step",
+      "description": "Detailed description of what happens in this step",
+      "responsible": "Who is responsible (role/person)",
+      "input": "Input for this step if mentioned",
+      "output": "Output of this step if mentioned"
+    }
+  ]
 }
 
-Be thorough in extracting information. Look for patterns like:
-- "Process Owner:", "Document Owner:", "Prepared by:", "Created by:"
-- "Purpose:", "Objective:", "Aim:"
-- "Scope:", "Applicable to:"
-- Table headers and data
-- Section titles and content
+IMPORTANT EXTRACTION RULES:
+1. Look for "PROCESS STAKEHOLDERs" or "STAKEHOLDERS" row - extract ALL names/departments listed
+2. Look for "RESP/IN-CHARGE" column in the process flow - extract all responsible parties
+3. Look for "PURPOSE OF PROCESS" - copy the FULL text, not abbreviated
+4. Look for "SCOPE" - copy the FULL text
+5. For process_flow_steps: Look for the STANDARD OPERATING PROCEDURE section with step-by-step procedures
+6. Each process step usually has: Step name, Description, and RESP/IN-CHARGE
+7. Include ALL stakeholders even if they seem like roles (e.g., "POTENTIAL CANDIDATES", "EMPLOYEES", "ACCOUNTS DEPT")
 
-Return ONLY valid JSON, no other text."""
+Return ONLY valid JSON, no other text or explanation."""
 
         chat = LlmChat(
             api_key=api_key,
