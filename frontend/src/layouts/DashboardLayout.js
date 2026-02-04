@@ -310,13 +310,13 @@ const DashboardLayout = () => {
 
             {/* Breadcrumb */}
             <div className="hidden sm:flex items-center gap-2 text-sm">
-              <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link to="/dashboard" className="text-slate-500 hover:text-slate-700">
                 Dashboard
               </Link>
               {location.pathname !== '/dashboard' && (
                 <>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-foreground font-medium capitalize">
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-900 font-medium capitalize">
                     {location.pathname.split('/').pop().replace('-', ' ')}
                   </span>
                 </>
