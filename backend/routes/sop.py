@@ -6,8 +6,13 @@ from datetime import datetime, timezone
 import uuid
 import base64
 import re
+import json
+import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter(prefix="/sop", tags=["SOP Management"])
 
@@ -46,8 +51,94 @@ async def match_employee_name(name: str, employees_cache: list) -> Optional[str]
     return None
 
 
-async def parse_sop_excel(file_content: bytes) -> dict:
-    """Parse SOP Excel file and extract metadata + content"""
+async def parse_sop_with_ai(text_content: str, employees_list: list) -> dict:
+    """Use AI to intelligently parse SOP content and extract structured data"""
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        if not api_key:
+            return {"error": "No API key configured"}
+        
+        # Create employee name list for context
+        employee_names = [f"{e.get('first_name', '')} {e.get('last_name', '')}".strip() for e in employees_list if e.get('first_name')]
+        
+        system_prompt = """You are an expert at parsing Standard Operating Procedure (SOP) documents. 
+Extract all relevant information from the provided SOP content and return it as valid JSON.
+
+The JSON should have these fields (use null if not found):
+{
+  "sop_number": "The SOP ID/Number (e.g., SDPL/SOP/8, SOP-123)",
+  "title": "The title or process name of the SOP",
+  "process_owner": "Name of the process owner/document owner",
+  "created_by": "Name of who created the document",
+  "department": "Department name if mentioned",
+  "version": "Version number if mentioned",
+  "revision_date": "Last revision date if mentioned",
+  "purpose": "The purpose/objective of this SOP (brief summary)",
+  "scope": "The scope of this SOP (what it covers)",
+  "input_requirements": "Input requirements if mentioned",
+  "output_deliverables": "Output/deliverables if mentioned",
+  "procedure_summary": "Brief summary of the main procedure steps",
+  "responsible_persons": ["List of people/roles mentioned as responsible"],
+  "reports": ["List of reports mentioned in the SOP"],
+  "task_type": "Category/type of task (e.g., Audit, Quality, Safety, Production, Maintenance)",
+  "stakeholders": ["List of stakeholders if mentioned"],
+  "key_activities": ["Main activities/steps mentioned"]
+}
+
+Be thorough in extracting information. Look for patterns like:
+- "Process Owner:", "Document Owner:", "Prepared by:", "Created by:"
+- "Purpose:", "Objective:", "Aim:"
+- "Scope:", "Applicable to:"
+- Table headers and data
+- Section titles and content
+
+Return ONLY valid JSON, no other text."""
+
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"sop_parse_{uuid.uuid4().hex[:8]}",
+            system_message=system_prompt
+        ).with_model("openai", "gpt-4o-mini")
+        
+        # Truncate content if too long
+        max_chars = 15000
+        if len(text_content) > max_chars:
+            text_content = text_content[:max_chars] + "\n...[Content truncated]"
+        
+        user_message = UserMessage(
+            text=f"""Parse this SOP document content and extract all relevant information:
+
+---
+{text_content}
+---
+
+Available employees in the system for name matching: {', '.join(employee_names[:50])}
+
+Return the extracted data as valid JSON only."""
+        )
+        
+        response = await chat.send_message(user_message)
+        
+        # Parse JSON from response
+        try:
+            # Try to extract JSON from response
+            json_match = re.search(r'\{[\s\S]*\}', response)
+            if json_match:
+                parsed = json.loads(json_match.group())
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        
+        return {"error": "Failed to parse AI response", "raw_response": response[:500]}
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+
+async def parse_sop_excel(file_content: bytes, employees_list: list = None) -> dict:
+    """Parse SOP Excel file and extract metadata + content using AI"""
     import io
     import openpyxl
     
@@ -60,9 +151,12 @@ async def parse_sop_excel(file_content: bytes) -> dict:
         "version": None,
         "purpose": None,
         "scope": None,
-        "procedure_steps": [],
+        "procedure_summary": None,
         "responsible_persons": [],
         "reports": [],
+        "task_type": None,
+        "stakeholders": [],
+        "key_activities": [],
         "preview_data": [],
         "total_rows": 0,
         "total_cols": 0
@@ -75,80 +169,40 @@ async def parse_sop_excel(file_content: bytes) -> dict:
         result["total_rows"] = ws.max_row
         result["total_cols"] = ws.max_column
         
-        # Extract all cell data for searching
+        # Extract all cell data
         all_text = []
         for row_idx, row in enumerate(ws.iter_rows(values_only=True)):
             row_data = [str(cell) if cell is not None else "" for cell in row]
-            all_text.extend(row_data)
+            all_text.append(" | ".join([c for c in row_data if c.strip()]))
             
             if row_idx < 100:  # Preview first 100 rows
                 result["preview_data"].append(row_data)
         
-        # Join all text for pattern matching
-        full_text = " ".join(all_text)
+        # Combine all text for AI parsing
+        full_text = "\n".join([t for t in all_text if t.strip()])
         
-        # Extract SOP Number (patterns like SDPL/SOP/8, SOP-8, etc.)
-        sop_patterns = [
-            r'SDPL/SOP/[A-Z]*/?\d+',
-            r'SOP[-/]\d+',
-            r'PROCEDURE NO\.?\s*:?\s*([A-Z]+/[A-Z]+/[A-Z]*/?\d+)',
-        ]
-        for pattern in sop_patterns:
-            match = re.search(pattern, full_text, re.IGNORECASE)
-            if match:
-                result["sop_number"] = match.group(0).strip()
-                break
+        # Use AI to parse the content
+        if employees_list is None:
+            employees_list = []
         
-        # Extract Process Owner
-        owner_patterns = [
-            r'PROCESS OWNER\s*:?\s*([A-Za-z\s]+?)(?=\n|DATE|VERSION|PROCEDURE)',
-            r'CREATED BY\s*:?\s*([A-Za-z\s]+?)(?=\n|DATE|PROCEDURE)',
-        ]
-        for pattern in owner_patterns:
-            match = re.search(pattern, full_text, re.IGNORECASE)
-            if match:
-                result["process_owner"] = match.group(1).strip()
-                break
+        ai_result = await parse_sop_with_ai(full_text, employees_list)
         
-        # Extract Title/Process Name
-        title_patterns = [
-            r'PROCESS NAME\s*/?.*?:?\s*([A-Za-z\s,&]+?)(?=\n|VERSION|DATE)',
-            r'Process Flow Chart\s*([A-Za-z\s,&]+?)(?=\n|APPENDIX)',
-        ]
-        for pattern in title_patterns:
-            match = re.search(pattern, full_text, re.IGNORECASE)
-            if match:
-                result["title"] = match.group(1).strip()
-                break
-        
-        # Extract Purpose
-        purpose_match = re.search(r'PURPOSE OF PROCESS\s*:?\s*(.+?)(?=SCOPE|INPUT|$)', full_text, re.IGNORECASE | re.DOTALL)
-        if purpose_match:
-            result["purpose"] = purpose_match.group(1).strip()[:500]
-        
-        # Extract Scope
-        scope_match = re.search(r'SCOPE\s*:?\s*(.+?)(?=INPUT|OUTPUT|$)', full_text, re.IGNORECASE | re.DOTALL)
-        if scope_match:
-            result["scope"] = scope_match.group(1).strip()[:500]
-        
-        # Extract responsible persons from RESP/IN-CHARGE column
-        resp_patterns = [
-            r'RESP/?IN-CHARGE\s*:?\s*([A-Za-z,\s]+)',
-            r'Auditor|HOD|Manager|Supervisor|Executive',
-        ]
-        resp_persons = set()
-        for pattern in resp_patterns:
-            matches = re.findall(pattern, full_text, re.IGNORECASE)
-            for m in matches:
-                if isinstance(m, str) and len(m) > 2:
-                    resp_persons.add(m.strip())
-        result["responsible_persons"] = list(resp_persons)[:10]
-        
-        # Extract report information
-        report_match = re.search(r'REPORT NAME\s*:?\s*(.+?)(?=NUMBER|GENERATED|$)', full_text, re.IGNORECASE)
-        if report_match:
-            reports = re.split(r'[,\n]', report_match.group(1))
-            result["reports"] = [r.strip() for r in reports if r.strip()][:5]
+        if "error" not in ai_result:
+            # Merge AI results into our result
+            for key in ["sop_number", "title", "process_owner", "created_by", "department", 
+                       "version", "purpose", "scope", "procedure_summary", "task_type"]:
+                if ai_result.get(key):
+                    result[key] = ai_result[key]
+            
+            for key in ["responsible_persons", "reports", "stakeholders", "key_activities"]:
+                if ai_result.get(key) and isinstance(ai_result[key], list):
+                    result[key] = ai_result[key]
+        else:
+            result["ai_parse_error"] = ai_result.get("error")
+            # Fallback to regex for basic fields
+            sop_match = re.search(r'SDPL/SOP/[A-Z]*/?\d+|SOP[-/]\d+', full_text, re.IGNORECASE)
+            if sop_match:
+                result["sop_number"] = sop_match.group(0)
         
     except Exception as e:
         result["parse_error"] = str(e)
