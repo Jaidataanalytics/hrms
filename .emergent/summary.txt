@@ -1,80 +1,71 @@
 <analysis>**original_problem_statement:**
-The user initially requested a complete overhaul of the payroll calculation system, helpdesk, and attendance logic. This session began with a request to add HR Attendance Editing and a Tour & Remote Punch-in system.
+The user's initial high-level goals were to overhaul the company's HR systems, including payroll, helpdesk, and attendance.
 
-During this session, the user added several new requirements, which have been implemented or are in progress:
-1.  **HR Attendance Editing & Tour System:** Allow HR to manually edit attendance with an audit trail. Merge the Travel page into a Tour Request system for approvals and GPS-based remote punch-ins. (COMPLETED)
-2.  **Employee Payslip Download:** Allow employees to download their own payslips as a PDF. (COMPLETED)
-3.  **Critical Bug Fixes:** (COMPLETED)
-    *   Fix asset information not showing correctly on the employee landing page.
-    *   Fix employee attendance data not appearing on their detail page.
-    *   Fix the non-functional Edit Profile button.
-4.  **Contract Labour Overhaul:** Rebuild the Contract Labour page into a comprehensive mini-HR system with tabs for worker profiles, payroll, attendance, and document management. (COMPLETED)
-5.  **SOP Management Page:** Create a new page for HR to manage Standard Operating Procedures (SOPs), upload them via Excel, and link them to employees. (COMPLETED)
-6.  **SOP Enhancements:** Differentiate between a main responsible employee and also involved employees for each SOP. (IN PROGRESS)
-7.  **Attendance Grid View:** A new request to change the attendance calendar view into a table/grid format, showing employees vs. dates, with inline editing capabilities and an export option. (NOT STARTED)
+Throughout the sessions, this evolved into a series of feature requests and bug fixes:
+1.  **SOP Enhancements:** Differentiate between a main responsible employee and also involved employees for SOPs. (COMPLETED)
+2.  **Attendance Grid View:** Change the attendance calendar into a table/grid format with inline editing and an export option. (COMPLETED)
+3.  **UI/UX Refinement:** Remove the now-redundant Edit Records tab from the Attendance page after implementing the grid view. (COMPLETED)
+4.  **Bug Fixes:** Address issues on the employee profile page where assigned assets were not showing, and the attendance tab was not displaying the current month's data inline. (COMPLETED)
+5.  **Payroll Calculation Overhaul:** Analyze and fix discrepancies between software-generated and manual payroll calculations, specifically regarding how paid leaves and Sundays are counted towards earned days. (COMPLETED)
+6.  **Employee Self-Service:** Add sections to the employee dashboard for them to view their own assigned assets, tour requests, and expense claims. (COMPLETED)
+7.  **Onboarding Redesign:** Rebuild the employee onboarding page from a simple list into a comprehensive, multi-step wizard/pipeline view. (COMPLETED)
+8.  **Personal Calendar:** Create a new page for employees to view a personal calendar showing their attendance, holidays, and allow them to schedule tasks and meetings. (IN PROGRESS)
+9.  **UI/UX Overhaul:** A global request to upgrade the entire application's design using ,  for animations, and implementing dark mode, to be done after all functional features are complete. (NOT STARTED)
 
 **User's preferred language**: English
 
 **what currently exists?**
-A comprehensive full-stack HR management system. Recent additions include:
--   **HR Attendance Editing:** A new Edit Records tab on the Attendance page allows HR to search for and edit attendance records for any employee and date range. Changes are audited.
--   **Tour Management & Remote Punch-in:** The old Travel page has been replaced by a Tour Management page. It supports tour requests/approvals and a GPS-based remote check-in for authorized employees (those on tour or designated field staff).
--   **Payslip PDF Download:** Employees can now download a PDF of their payslip from the My Payslips tab on the Payroll page.
--   **Contract Labour Module:** A new, dedicated page () that serves as a mini-HR system for contract workers. It includes a master list of contractors and a detailed view for each worker with tabs for Profile, Attendance, Payroll, and Document uploads.
--   **SOP Management Module:** A new page for creating, managing, and publishing SOPs. HR can upload SOPs via Excel, preview the content, and link them to departments, designations, or specific employees. Published SOPs appear on the relevant employees' dashboards.
--   **Bug Fixes:** The critical bugs related to asset display, attendance data on the 360 page, and the non-functional edit profile button have all been resolved.
+The project is a comprehensive full-stack HR management system built with a React frontend and FastAPI backend. The latest session introduced several major features and fixes:
+-   **Advanced Payroll Logic:** A new  module accurately calculates salaries based on complex rules for paid/unpaid leaves and weekly Sunday pay.
+-   **SOP Enhancements:** The SOP creation form and backend now support separate fields for main responsible and also involved employees.
+-   **Attendance Grid:** The attendance page features a powerful data grid showing employees vs. dates, with inline editing, filtering, and Excel export, replacing the old separate editing tab.
+-   **Revamped Employee Profile:** The employee profile page now correctly displays a list of assigned assets and an inline view of their monthly attendance records.
+-   **Employee Dashboard:** The main dashboard for employees now includes quick-access cards and links for viewing their assets, tours, and expenses.
+-   **Onboarding Pipeline:** A completely new onboarding page () provides a Kanban-style pipeline view to track new hires through various stages (Pre-Joining, Day 1, Week 1, etc.).
+-   **Personal Calendar (V1):** A new My Calendar page () has been created, which successfully displays an employee's attendance data (Present, Late, Leave) and company holidays on a calendar grid. Backend routes exist but functionality for adding tasks/meetings is pending.
 
 **Last working item**:
--   **Last item agent was working:** Implementing the SOP enhancements. The agent updated the backend models and API endpoints in  to support  and . The agent was in the process of modifying the frontend in  to include multi-select dropdowns for these new fields in the Create SOP dialog and updating the main SOP table to display this information.
--   **Status:** IN PROGRESS
--   **Agent Testing Done:** N
--   **Which testing method agent to use?** both
-    -   Backend: Test the  and  endpoints to ensure the new employee link fields are saved and that notifications are generated correctly.
-    -   Frontend: Test the Create/Edit SOP dialog to verify the new employee selection components work and that the main table displays the Main Responsible employee correctly.
+-   **Last item agent was working:** The agent was discussing calendar integration methods with the user. After presenting the plan for a full Microsoft Graph API integration (for Outlook/Teams), the user asked for a simpler alternative that doesn't require API keys and Azure setup. The agent proposed two simpler options: generating downloadable  files or using Add to Calendar deeplinks.
+-   **Status:** USER VERIFICATION PENDING
+-   **Agent Testing Done:** N/A
+-   **Which testing method agent to use?** N/A
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
 There are no pending bugs; all reported issues in this session have been fixed.
 
 **In progress Task List**:
--   **Task 1: Complete SOP Enhancements (P0)**
-    -   **Where to resume:** Continue editing . The main Create SOP dialog needs to be completed to include the UI components (likely multi-select dropdowns) for selecting Main Responsible and Also Involved employees. The  and  functions must be updated to send this new data.
-    -   **What will be achieved with this?** This will fulfill the user's requirement for a more granular way to assign responsibility for SOPs, and will trigger notifications upon publishing.
-    -   **Status:** IN PROGRESS
+-   **Task 1: Implement Calendar Meeting/Task Scheduling (P0)**
+    -   **Where to resume:** The agent is awaiting the user's decision on how to implement meeting scheduling. The choice is between a full Microsoft Graph API integration or a simpler method like generating  files or using deeplinks. Once the user decides, the agent needs to implement the chosen solution.
+    -   **What will be achieved with this?** Employees will be able to use the Add Task and Schedule Meeting buttons on the My Calendar page to manage their schedule and invite colleagues.
+    -   **Status:** BLOCKED
     -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** No.
+    -   **Blocked on something:** User's decision on the integration method.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P0: Implement Attendance Grid View:**
-        -   Create a new backend endpoint () that returns attendance data in a matrix format (employees vs. dates) for a given department and date range.
-        -   Overhaul the UI in  to replace the current calendar with a data grid.
-        -   Implement inline editing (clicking a cell opens a modal to change status).
-        -   Add an Export to Excel button for the grid data.
-    -   **P1: Helpdesk Enhancements (Phase 2):**
-        -   Build a survey analytics dashboard to visualize results.
-        -   Implement Colleague Feedback (360-degree) surveys.
-    -   **P2: Bulk Import for Contract Workers:** Add an Excel upload feature to the Contract Labour page to quickly add many workers.
+    -   **P0: App-wide UI/UX & Animation Overhaul:** After all functionality is complete, refactor the entire application to meet the user's detailed design specifications. This includes integrating  components, using  for animations, implementing dark mode, improving visual hierarchy, and replacing loading spinners with skeleton loaders.
+    -   **P1: Helpdesk Enhancements (Phase 2):** Build a survey analytics dashboard and implement Colleague Feedback (360-degree) surveys.
 
 -   **Future Tasks:**
-    -   Deploy the application to production.
-    -   Add over 100 missing employees to the database.
-    -   Meeting Management & Task Tracking module.
+    -   Add a bulk import feature (Excel upload) for contract workers.
+    -   Meeting Management & Task Tracking module (scope needs to be clarified post-calendar implementation).
     -   Allow HR to download a spreadsheet of all employee salaries.
-    -   Helpdesk Enhancements (Phase 3): In-app notifications and deadline reminders.
+    -   Add over 100 missing employees to the database.
+    -   Helpdesk Enhancements (Phase 3): Implement in-app notifications and deadline reminders.
+    -   Deploy the application to production.
 
 **Completed work in this session**
--   **HR Attendance Editing System:** Implemented backend APIs and frontend UI for HR to edit attendance records with an audit trail.
--   **Tour & Remote Punch-in System:** Created backend and frontend for tour management and GPS-based remote check-ins.
--   **Payslip PDF Download:** Added backend endpoint and frontend button for employees to download their payslips.
--   **Bug Fix:** Resolved issue with asset data not appearing on the employee 360 page by adding a fallback lookup using .
--   **Bug Fix:** Fixed attendance data not showing on the employee 360 page by searching by both  and .
--   **Bug Fix:** Made the Edit Profile button on the employee profile page functional by adding state and an edit dialog.
--   **Contract Labour Module Overhaul:** Replaced the old Labour page with a new, tab-based mini-HR system for contract workers ().
--   **SOP Management System (V1):** Created a full CRUD system for SOPs with Excel upload, linking, and a My SOPs dashboard card (, ).
+-   **Payroll Calculation Fix:** Implemented new logic in  to correctly handle paid/unpaid leaves and a weekly Sunday pay rule. Added a Total Working Days column to the payroll export.
+-   **SOP Enhancements:** Completed the UI and backend logic to distinguish between main responsible and also involved employees.
+-   **Attendance Grid View:** Built the grid view with inline editing and removed the redundant Edit Records tab from the .
+-   **Employee Profile Fixes:** Fixed the  page to correctly display assigned assets and inline monthly attendance data.
+-   **Employee Self-Service Features:** Added My Assets, My Tours, and My Expenses sections to the employee .
+-   **Onboarding Page Redesign:** Replaced the old list view with a new, multi-step Kanban-style wizard in .
+-   **Personal Calendar (V1):** Created the  and associated backend routes () to display an employee's attendance and holidays.
 
 **Earlier issues found/mentioned but not fixed**
--    endpoint returns 404: This issue from a previous handoff remains unresolved. A workaround () exists, but the root cause was not investigated.
+-    endpoint returns 404: This issue from a previous handoff remains unresolved. A workaround () exists, but the root cause has not been investigated.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Deployed version is outdated. This remains a critical issue, as all new features and fixes are only in the preview environment.
@@ -85,69 +76,80 @@ There are no pending bugs; all reported issues in this session have been fixed.
 
 
 **Key Technical Concepts**
--   **Robust API Design:** Enhanced backend endpoints to be more resilient to data inconsistencies by searching for employees using multiple identifiers ( and ).
--   **Backend PDF Generation:** Utilized the  library in the FastAPI backend to dynamically generate PDF payslips from database records.
--   **Complex Frontend State:** Managed intricate state for new features, including multi-tab views, dynamic forms with file uploads, and multi-select components for linking employees to SOPs.
--   **Modular Page Overhaul:** Successfully replaced entire pages (, ) with new, more powerful versions (, ) while maintaining a seamless user experience through updated routing.
+-   **Modular Backend Logic:** Encapsulated complex payroll rules into a new, dedicated  module to improve maintainability.
+-   **Frontend State Refactoring:** Successfully refactored large components like  to remove redundant features and integrate new ones (Grid View) while cleaning up unused state and functions.
+-   **Employee-Scoped APIs:** Created dedicated my-* endpoints (, , ) that are automatically filtered for the logged-in user, simplifying frontend logic.
+-   **Dynamic UI Generation:** Built a feature-rich calendar grid from scratch using  and custom logic to display various event types with color-coding.
+-   **Complex UI Implementation:** Created a multi-step Kanban-style wizard for the onboarding process, managing state for drag-and-drop functionality and stage transitions.
 
 **key DB schema**
 -   **New Collections:**
     -   : 
+    -   : 
 -   **Modified Collections:**
-    -   : A new collection for storing documents related to contract workers was effectively added through the new  endpoints.
+    -   : The  field in payslip documents now contains new data points from the  calculation, such as  and .
 
 **All files of reference**
--   **/app/backend/routes/sop.py** (New & In Progress)
--   **/app/frontend/src/pages/SOPPage.js** (New & In Progress)
--   **/app/backend/routes/labour.py** (Modified)
--   **/app/frontend/src/pages/ContractLabourPage.js** (New)
--   **/app/frontend/src/pages/AttendancePage.js** (To be modified for Grid View)
--   **/app/backend/server.py** (Modified)
--   **/app/frontend/src/pages/Employee360Page.js** (Modified)
+-   **/app/backend/routes/payroll_v2.py** (New)
+-   **/app/frontend/src/pages/OnboardingPage.js** (Rewritten)
+-   **/app/frontend/src/pages/MyCalendarPage.js** (New)
+-   **/app/backend/routes/calendar.py** (New)
+-   **/app/frontend/src/pages/AttendancePage.js** (Modified)
 -   **/app/frontend/src/pages/EmployeeProfile.js** (Modified)
+-   **/app/frontend/src/pages/Dashboard.js** (Modified)
 -   **/app/memory/PRD.md** (Updated)
 
 **Areas that need refactoring**:
--   ** and ** are deprecated by the Helpdesk system and should be removed.
--   ** and ** are now fully replaced by  and , respectively, and should be deleted to clean up the codebase.
+-   The user has explicitly requested a full UI/UX overhaul as a final step, which will involve refactoring nearly all frontend components to use a consistent design system (, ).
+-   The deprecated , , and  files (and their corresponding backend routes) should be deleted to clean up the codebase.
 
 **key api endpoints**
--   : Allows eligible employees to perform a GPS-based remote check-in.
--   : Downloads a specific payslip as a PDF file.
--   : Uploads a document for a contract worker.
--   : Lists documents for a contract worker.
--   : Creates a new SOP, including Excel file upload.
--   : Publishes an SOP and creates notifications for linked employees.
--   : Updates employee profile information.
+-   : Triggers the new, enhanced payroll calculation logic.
+-   : Returns attendance data in a matrix format for the grid view.
+-   : Retrieves all records for the new onboarding pipeline view.
+-   : Fetches all events (attendance, holidays, tasks, meetings) for the logged-in user's calendar.
+-   : Creates a new task for the user.
+-   : Gets assets assigned to the logged-in employee.
+-   : Gets tours requested by the logged-in employee.
+-   : Gets expenses claimed by the logged-in employee.
 
 **Critical Info for New Agent**
--   Your first priority is to complete the **SOP Enhancements** task. This involves finishing the UI in  for selecting main and involved employees and ensuring the data is saved correctly.
--   Your next major task is to implement the **Attendance Grid View**. The user has provided detailed requirements: a table of employees vs. dates, inline editing, filtering, and an export function. You will need to build a new backend endpoint and significantly refactor the  frontend.
--   All three bugs reported at the beginning of the user's last message have been fixed. You can proceed directly to the new features.
+-   Your first priority is to **resolve the user's question about the Calendar integration**. They want to avoid a complex Microsoft API setup. You must clearly present the simpler alternatives (generating  files or using Add to Calendar links), get their approval, and then implement the meeting/task scheduling functionality based on their choice.
+-   The **app-wide UI/UX overhaul is the next major task**, but it should only be started *after* the calendar functionality is complete, as per the user's explicit instructions.
+-   Be aware that the core payroll logic now resides in . Any future modifications to salary calculations should be made there.
 
 **documents and test reports created in this job**
 -   
--    (Updated with all new features and requests)
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
--   The user has provided detailed requirements for two major new features:
-    1.  **SOP Enhancements:** Link SOPs to a main responsible employee and multiple also involved employees. The UI should differentiate these roles. Notifications should be sent upon publishing.
-    2.  **Attendance Grid View:** Overhaul the attendance page from a calendar to a grid/table view. The table should show employees on rows and dates on columns. HR/Admins should be able to edit attendance status directly by clicking cells in the grid. The view needs filters (department, employee, date range) and an export-to-Excel feature.
--   The agent has asked clarifying questions and received answers, confirming all requirements before starting implementation.
+1.  **User:** Asks to fix the completely wrong onboarding page, adds requests for employees to see their own assets/tours/expenses, and requests a new personal calendar feature for attendance, tasks, and meetings with email integration.
+2.  **Agent:** Asks for confirmation on a detailed plan covering the onboarding redesign and the calendar feature with Microsoft integration options.
+3.  **User:** Confirms the plan, clarifies the Sunday payroll rule, and provides detailed UI/UX requirements for the entire app (shadcn, Framer Motion, dark mode). Sets the priority order: Payroll fix -> Onboarding -> Calendar -> Self-service access -> UI/UX overhaul last.
+4.  **Agent:** Asks if the Sunday rule is weekly or monthly.
+5.  **User:** weekly basis . (COMPLETED - Payroll fix is done).
+6.  **Agent:** After implementing several features, asks for approval to proceed with Microsoft Graph API integration for the calendar.
+7.  **User:** yes (APPROVAL GIVEN).
+8.  **Agent:** Provides the Microsoft Graph API playbook and asks for the necessary credentials (Tenant ID, Client ID, etc.).
+9.  **User:** is there a way to do it without api integration ?? (NEW REQUIREMENT - Seeking simpler alternative).
+10. **Agent:** Proposes simpler alternatives (ICS files, deeplinks) and awaits the user's decision. (PENDING)
 
 **Project Health Check:**
--   **Broken:** The deployed production application is severely outdated. All features developed and bugs fixed in this and previous sessions exist only in the preview environment.
+-   **Broken:** The deployed production application is significantly outdated and does not reflect any of the recent feature additions or bug fixes.
+-   **Mocked:** None.
 
 **3rd Party Integrations**
--   Custom Biometric API (for attendance)
+-   Custom Biometric API
 -   Emergent-managed Google Auth
--    for Excel parsing in the backend.
--    for PDF generation in the backend.
+-    (for Excel parsing)
+-    (for PDF generation)
+-    (frontend library for calendar logic)
+-   **Pending Decision:** A calendar integration for scheduling meetings. The choice is between the Microsoft Graph API and a simpler, non-API-based solution like generating  files.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, for the initial set of features (Tour Management, Attendance Edit).
+-   **Testing agent used after significant changes:** YES, for the SOP and Attendance Grid features.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:**  (from )
+-   **Test files created:** 
 -   **Known regressions:** None.
 
 **Credentials to test flow:**
@@ -155,4 +157,4 @@ There are no pending bugs; all reported issues in this session have been fixed.
 -   **Employee:**  / 
 
 **What agent forgot to execute**
--   The agent has not forgotten any tasks but has been prioritizing a continuous stream of new user requests. Older, lower-priority tasks (like Helpdesk Phase 2) have been pushed to the backlog.</analysis>
+-   The agent has correctly followed the user's shifting priorities and has not forgotten any tasks. The global UI/UX overhaul remains in the backlog, as per the user's request to complete all functionality first.</analysis>
