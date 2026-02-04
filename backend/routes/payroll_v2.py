@@ -245,6 +245,8 @@ def process_employee_salary(
     """
     Process salary for a single employee based on the salary structure template
     
+    NEW: Implements Sunday pay rule and paid/unpaid leave distinction
+    
     Returns complete payslip data
     """
     # Get calendar days in month
@@ -288,18 +290,38 @@ def process_employee_salary(
     late_deduction_enabled = payroll_config.get("late_deduction_enabled", True)
     late_count_threshold = int(payroll_config.get("late_count_threshold", 2))
     
-    # Get attendance data
+    # Get attendance data - NEW STRUCTURE with Sunday pay status
     office_days = float(attendance_data.get("office_days", 0))
-    sundays_holidays = float(attendance_data.get("sundays_holidays", 0))
-    leave_days = float(attendance_data.get("leave_days", 0))
     wfh_days = float(attendance_data.get("wfh_days", 0))
     late_count = int(attendance_data.get("late_count", 0))
-    half_day_count = float(attendance_data.get("half_day_count", 0))  # NEW: Half-day attendance
-    second_saturday_count = float(attendance_data.get("second_saturday_count", 0))  # NEW: Second Saturdays (paid as half-day)
+    half_day_count = float(attendance_data.get("half_day_count", 0))
+    second_saturday_count = float(attendance_data.get("second_saturday_count", 0))
     
-    # Calculate earned days (including half-days)
+    # NEW: Paid vs Unpaid leave breakdown
+    paid_leave_days = float(attendance_data.get("paid_leave_days", 0))  # EL, CL, SL
+    unpaid_leave_days = float(attendance_data.get("unpaid_leave_days", 0))  # LOP, absent
+    total_leave_days = paid_leave_days + unpaid_leave_days
+    
+    # NEW: Sunday pay status from the rule (>2 leaves in week = Sunday unpaid)
+    paid_sundays = float(attendance_data.get("paid_sundays", 0))
+    unpaid_sundays = float(attendance_data.get("unpaid_sundays", 0))
+    total_sundays = paid_sundays + unpaid_sundays
+    
+    # Paid holidays (company holidays)
+    paid_holidays = float(attendance_data.get("paid_holidays", 0))
+    
+    # Working days breakdown
+    working_days_info = attendance_data.get("working_days_info", {})
+    
+    # Calculate earned days using NEW formula
     total_earned_days = calculate_earned_days(
-        office_days, sundays_holidays, leave_days, wfh_days, half_day_count + second_saturday_count, wfh_percentage
+        office_days=office_days,
+        paid_sundays=paid_sundays,
+        paid_holidays=paid_holidays,
+        paid_leave_days=paid_leave_days,
+        wfh_days=wfh_days,
+        half_day_count=half_day_count + second_saturday_count,
+        wfh_percentage=wfh_percentage
     )
     
     # Pro-rate each component
