@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -15,7 +16,8 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { toast } from 'sonner';
-import { Mail, Lock, Loader2, KeyRound } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Mail, Lock, Loader2, KeyRound, Sun, Moon } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
