@@ -8,6 +8,9 @@ import os
 
 router = APIRouter(prefix="/travel", tags=["Travel & Tour Management"])
 
+# Also create a secondary router for /tours alias
+tours_router = APIRouter(prefix="/tours", tags=["Tours"])
+
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'test_database')]
@@ -16,6 +19,38 @@ db = client[os.environ.get('DB_NAME', 'test_database')]
 async def get_current_user(request: Request) -> dict:
     from server import get_current_user as auth_get_user
     return await auth_get_user(request)
+
+
+# ==================== EMPLOYEE SELF-SERVICE ====================
+
+@tours_router.get("/my-tours")
+async def get_my_tours(request: Request):
+    """Get tours for the current logged-in employee"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        return []
+    
+    tours = await db.travel_requests.find(
+        {"employee_id": employee_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    # Transform for dashboard display
+    result = []
+    for tour in tours:
+        result.append({
+            "request_id": tour.get("request_id"),
+            "destination": tour.get("location") or tour.get("client_name") or tour.get("purpose"),
+            "from_date": tour.get("start_date"),
+            "to_date": tour.get("end_date"),
+            "status": tour.get("status"),
+            "purpose": tour.get("purpose"),
+            "request_type": tour.get("request_type", "tour")
+        })
+    
+    return result
 
 
 # ==================== TOUR/TRAVEL REQUESTS ====================
