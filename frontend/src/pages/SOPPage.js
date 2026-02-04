@@ -16,11 +16,64 @@ import { toast } from 'sonner';
 import {
   FileSpreadsheet, Plus, RefreshCw, Download, Eye, Upload, Building2,
   Briefcase, CheckCircle, Edit, Trash2, Send, FileText, X, User, Users,
-  Search, Filter, FolderOpen, Tag, ChevronDown, Save, Loader2
+  Search, Filter, FolderOpen, Tag, ChevronDown, Save, Loader2, ArrowRight,
+  GitBranch, RotateCcw
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+
+// Process Flow Chart Component
+const ProcessFlowChart = ({ steps }) => {
+  if (!steps || steps.length === 0) return null;
+  
+  return (
+    <div className="space-y-3">
+      <Label className="text-blue-700 font-semibold flex items-center gap-2">
+        <GitBranch className="w-4 h-4" />
+        Process Flow Chart
+      </Label>
+      <div className="relative">
+        {steps.map((step, index) => (
+          <div key={index} className="flex items-start gap-3 mb-4">
+            {/* Step number circle */}
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">
+              {step.step_number || index + 1}
+            </div>
+            
+            {/* Connecting line */}
+            {index < steps.length - 1 && (
+              <div className="absolute left-4 ml-[-1px] w-0.5 bg-blue-200 h-full" style={{ top: `${(index * 100) + 32}px`, height: '60px' }} />
+            )}
+            
+            {/* Step content */}
+            <div className="flex-1 bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-lg p-3 shadow-sm">
+              <div className="flex justify-between items-start">
+                <h4 className="font-semibold text-slate-800">{step.step_name || `Step ${index + 1}`}</h4>
+                {step.responsible && (
+                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                    {step.responsible}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-slate-600 mt-1">{step.description}</p>
+              {(step.input || step.output) && (
+                <div className="flex gap-4 mt-2 text-xs">
+                  {step.input && (
+                    <span className="text-green-600"><strong>Input:</strong> {step.input}</span>
+                  )}
+                  {step.output && (
+                    <span className="text-purple-600"><strong>Output:</strong> {step.output}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const SOPPage = () => {
   const { user } = useAuth();
@@ -30,6 +83,7 @@ const SOPPage = () => {
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [reparsing, setReparsing] = useState(false);
   
   // Dialogs
   const [showCreateDialog, setShowCreateDialog] = useState(false);
