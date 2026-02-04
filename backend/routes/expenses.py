@@ -35,6 +35,38 @@ async def seed_expense_categories():
         await db.expense_categories.insert_many(categories)
 
 
+# ==================== EMPLOYEE SELF-SERVICE ====================
+
+@router.get("/my-expenses")
+async def get_my_expenses(request: Request, limit: int = 20):
+    """Get expenses for the current logged-in employee"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        return []
+    
+    expenses = await db.expenses.find(
+        {"employee_id": employee_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    
+    # Transform for dashboard display
+    result = []
+    for exp in expenses:
+        result.append({
+            "expense_id": exp.get("expense_id"),
+            "category": exp.get("category"),
+            "description": exp.get("description"),
+            "amount": exp.get("amount"),
+            "status": exp.get("status"),
+            "date": exp.get("expense_date") or exp.get("created_at", "")[:10],
+            "receipt_url": exp.get("receipt_url")
+        })
+    
+    return result
+
+
 # ==================== CATEGORIES ====================
 
 @router.get("/categories")
