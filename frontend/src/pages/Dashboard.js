@@ -304,7 +304,7 @@ const Dashboard = () => {
           <Card data-testid="attendance-status-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                Today's Attendance
+                Today&apos;s Attendance
               </CardTitle>
               <CardDescription>Your attendance status for today</CardDescription>
             </CardHeader>
