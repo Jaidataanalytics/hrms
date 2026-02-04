@@ -209,10 +209,10 @@ const Dashboard = () => {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <h1 className="page-title">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Welcome back, {user?.name?.split(' ')[0]}!
           </h1>
-          <p className="page-description">
+          <p className="text-slate-600 mt-1">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
