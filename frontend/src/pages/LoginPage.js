@@ -127,24 +127,10 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 dark:from-primary/10 dark:to-transparent"></div>
-      
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"></div>
-      
-      {/* Theme Toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleTheme}
-        className="absolute top-4 right-4 z-10"
-        data-testid="theme-toggle-btn"
-      >
-        {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-      </Button>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-100 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"></div>
       
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -152,7 +138,7 @@ const LoginPage = () => {
         transition={{ duration: 0.5 }}
         className="relative w-full max-w-md"
       >
-        <Card className="shadow-2xl border-border/50 backdrop-blur-sm bg-card/95">
+        <Card className="shadow-xl border-slate-200/60 bg-white">
           <CardHeader className="text-center pb-4">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -163,10 +149,10 @@ const LoginPage = () => {
                 <img src="/logo.png" alt="Sharda HR" className="h-10 w-10 object-contain" />
               </div>
             </motion.div>
-            <CardTitle className="text-2xl font-bold">
+            <CardTitle className="text-2xl font-bold text-slate-900">
               Welcome Back
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-slate-500">
               Sign in to your Sharda HR account
             </CardDescription>
           </CardHeader>
@@ -179,7 +165,7 @@ const LoginPage = () => {
             >
               <Button 
                 variant="outline" 
-                className="w-full h-11 gap-3 hover:bg-accent/50"
+                className="w-full h-11 gap-3 hover:bg-slate-50"
                 onClick={handleGoogleLogin}
                 data-testid="google-login-btn"
               >
@@ -195,7 +181,7 @@ const LoginPage = () => {
 
             <div className="relative">
               <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-slate-400">
                 or continue with email
               </span>
             </div>
@@ -209,9 +195,9 @@ const LoginPage = () => {
               transition={{ delay: 0.4 }}
             >
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-slate-700">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
                     id="email"
                     type="email"
@@ -226,10 +212,10 @@ const LoginPage = () => {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-slate-700">Password</Label>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
                     id="password"
                     type="password"
