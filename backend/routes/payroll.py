@@ -286,33 +286,63 @@ async def process_payroll(payroll_id: str, request: Request):
             {"employee_id": employee_id, "date": {"$regex": f"^{month_str}"}}
         ).to_list(50)
         
-        # Calculate attendance breakdown
+        # Also try with emp_code as fallback
+        if not attendance:
+            emp_code = employee.get("emp_code")
+            if emp_code:
+                attendance = await db.attendance.find(
+                    {"emp_code": emp_code, "date": {"$regex": f"^{month_str}"}}
+                ).to_list(50)
+        
+        # Calculate attendance breakdown with NEW leave type distinction
         office_days = 0
         wfh_days = 0
-        leave_days = 0
+        paid_leave_days = 0    # EL, CL, SL - these count as earned
+        unpaid_leave_days = 0  # LOP, absent - these don't count
         late_count = 0
-        half_day_count = 0  # NEW: Count half-day attendance
+        half_day_count = 0
+        
+        # Paid leave types (case-insensitive)
+        paid_leave_types = ["el", "cl", "sl", "ml", "earned_leave", "casual_leave", 
+                           "sick_leave", "maternity_leave", "privilege_leave", "leave"]
         
         for att in attendance:
             status = att.get("status", "").lower()
+            leave_type = att.get("leave_type", "").lower() if att.get("leave_type") else ""
+            
             if status in ["present", "tour"]:
                 office_days += 1
             elif status == "wfh":
                 wfh_days += 1
-            elif status in ["leave", "absent"]:
-                leave_days += 1
-            elif status in ["half_day", "hd", "half-day"]:  # NEW: Half-day status
+            elif status in ["half_day", "hd", "half-day"]:
                 half_day_count += 1
+            elif status in ["leave"]:
+                # Check if it's a paid leave type
+                if leave_type in paid_leave_types or leave_type == "":
+                    # Default leave is paid leave
+                    paid_leave_days += 1
+                else:
+                    unpaid_leave_days += 1
+            elif status in ["lop", "lwp", "loss_of_pay", "absent"]:
+                unpaid_leave_days += 1
             
             if att.get("is_late"):
                 late_count += 1
         
-        # Calculate Sundays, holidays, and second Saturdays in the month
-        sundays_holidays = 0
-        half_day_holidays = 0
-        second_saturday_count = 0
+        # Import Sunday pay calculation
+        from routes.payroll_v2 import calculate_sunday_pay_status, get_working_days_in_month, is_second_saturday
         
-        from routes.payroll_v2 import is_second_saturday
+        # Calculate Sunday pay status using the weekly rule
+        sunday_pay_result = calculate_sunday_pay_status(attendance, year, month)
+        paid_sundays = sunday_pay_result["paid_sundays"]
+        unpaid_sundays = sunday_pay_result["unpaid_sundays"]
+        
+        # Calculate working days breakdown
+        working_days_info = get_working_days_in_month(year, month, holidays)
+        
+        # Calculate holidays and second Saturdays
+        paid_holidays = 0
+        second_saturday_count = 0
         
         for day in range(1, total_days + 1):
             date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
@@ -323,26 +353,34 @@ async def process_payroll(payroll_id: str, request: Request):
                 # Check if it's a second Saturday (half-day work, half-day pay)
                 if is_second_saturday(year, month, day):
                     second_saturday_count += 1
-                elif d.weekday() == 6:  # Sunday (full day off)
-                    sundays_holidays += 1
-                elif date_str in holiday_dates:
+                elif d.weekday() != 6 and date_str in holiday_dates:  # Not Sunday and is holiday
                     holiday = holiday_dates[date_str]
-                    if holiday.get("is_half_day"):
-                        half_day_holidays += 1  # Half-day holiday
-                    else:
-                        sundays_holidays += 1  # Full-day holiday
+                    if not holiday.get("is_half_day"):
+                        paid_holidays += 1
             except Exception:
                 pass
         
-        # Build attendance data
+        # Build attendance data with NEW STRUCTURE
         attendance_data = {
             "office_days": office_days,
-            "sundays_holidays": sundays_holidays,
-            "leave_days": leave_days,
             "wfh_days": wfh_days,
             "late_count": late_count,
-            "half_day_count": half_day_count + half_day_holidays,  # Combine half-day attendance + half-day holidays
-            "second_saturday_count": second_saturday_count
+            "half_day_count": half_day_count,
+            "second_saturday_count": second_saturday_count,
+            
+            # NEW: Sunday pay status from weekly rule
+            "paid_sundays": paid_sundays,
+            "unpaid_sundays": unpaid_sundays,
+            
+            # NEW: Holiday count
+            "paid_holidays": paid_holidays,
+            
+            # NEW: Leave breakdown
+            "paid_leave_days": paid_leave_days,
+            "unpaid_leave_days": unpaid_leave_days,
+            
+            # NEW: Working days info
+            "working_days_info": working_days_info
         }
         
         # Get SEWA advance if applicable
