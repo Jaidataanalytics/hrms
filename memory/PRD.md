@@ -190,6 +190,54 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - **Export to Excel** - Download grid as spreadsheet
 - Sundays and holidays marked as non-editable
 
+### 13. Meeting Management System (NEW - Feb 4, 2026)
+
+**Purpose:** Track organizational meetings, discussions, and follow-ups with automatic scheduling.
+
+**Meeting Structure:**
+- Subject/Title
+- Date, Start Time, End Time
+- Location (Conference room / Online)
+- Participants (multi-select employees)
+- Agenda / Things to Focus On
+- Discussion Notes (with edit tracking)
+- Follow-up Points for Next Meeting
+
+**Key Features:**
+
+*Meeting Creation & Tracking:*
+- Create new meetings with all details
+- Add/remove participants (invitees get notifications)
+- Link meetings in series (follow-up chain)
+- View full meeting history for a topic
+
+*Edit Tracking:*
+- All changes logged with timestamp and user name
+- Discussion notes track: "John added a note at 10:30 AM"
+- Edit history preserved for notes
+
+*Follow-up System:*
+- Add follow-up points with assignment to employees
+- Toggle completion status (pending/completed)
+- **Auto-Schedule Follow-up**: Creates new meeting with follow-up points as agenda
+
+*In-App Notifications (Bell Icon):*
+- Meeting invitations
+- Morning reminder at 9:00 AM
+- 1 hour before reminder
+- Meeting cancellation notifications
+
+*Analytics Dashboard (HR/Admin Only):*
+- Total meetings per employee/department
+- Meeting frequency trends (by day of week)
+- Follow-up completion rate
+- Average time between meetings in a series
+- Top organizers and top attendees
+
+**Access Control:**
+- Participants: View/edit meetings they organize or are invited to
+- HR/Admin: Access to all meetings + analytics
+
 ## Authentication & Security
 
 ### Role-Based Access Control
@@ -210,12 +258,39 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 | Remote Check-in | ✅ (if eligible) | ✅ (if eligible) |
 | Download Own Payslip PDF | ✅ | ✅ |
 | Download Any Payslip PDF | ✅ | ❌ |
+| Meeting Management | ✅ | ✅ (own meetings) |
+| Meeting Analytics | ✅ | ❌ |
 
 ## Test Credentials
 - **Admin:** admin@shardahr.com / Admin@123
 - **Employee:** employee@shardahr.com / Employee@123
 
 ## Recent Changes
+
+### Feb 4, 2026 - Meeting Management System
+1. ✅ **Internal Meeting System**
+   - Full CRUD for meetings with subject, date, time, location
+   - Multi-participant support with employee search
+   - Agenda / Things to Focus On section
+   - Discussion notes with edit tracking
+   - Follow-up points with assignment & completion tracking
+
+2. ✅ **Meeting Linking & Series**
+   - Meetings linked as series (follow-up chain)
+   - Auto-schedule follow-up: copies follow-up points as agenda
+   - View full meeting history
+
+3. ✅ **In-App Notification System**
+   - Bell icon in header with unread badge
+   - Meeting invitation notifications
+   - Morning (9 AM) and 1-hour-before reminders
+   - Background service for scheduled notifications
+
+4. ✅ **Meeting Analytics (HR/Admin)**
+   - Total meetings, avg/day, completion rate
+   - Frequency by day of week
+   - Top organizers and attendees
+   - Follow-up completion rate
 
 ### Jan 30, 2026 - Employee Profile Enhancements
 1. ✅ **Attendance Tab Fix**
