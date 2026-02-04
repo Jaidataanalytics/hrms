@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -10,10 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { ScrollArea } from '../components/ui/scroll-area';
+import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
 import {
   FileSpreadsheet, Plus, RefreshCw, Download, Eye, Upload, Building2,
-  Briefcase, CheckCircle, Edit, Trash2, Send, FileText, X, User, Users
+  Briefcase, CheckCircle, Edit, Trash2, Send, FileText, X, User, Users,
+  Search, Filter, FolderOpen, Tag, ChevronDown, Save, Loader2
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
@@ -23,49 +26,76 @@ const SOPPage = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState([]);
+  const [groupedSOPs, setGroupedSOPs] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  
+  // Dialogs
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedSOP, setSelectedSOP] = useState(null);
+  
+  // Filters & Search
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterOwner, setFilterOwner] = useState('all');
+  const [groupBy, setGroupBy] = useState('none');
 
+  // Form state
   const [form, setForm] = useState({
     title: '',
     description: '',
+    sop_number: '',
+    task_type: '',
     departments: [],
     designations: [],
     main_responsible: [],
     also_involved: [],
     file: null
   });
-  const [employees, setEmployees] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin';
 
-  useEffect(() => {
-    fetchSOPs();
-    fetchDepartments();
-    fetchDesignations();
-    fetchEmployees();
-  }, [filterDepartment, filterStatus]);
-
-  const fetchSOPs = async () => {
+  const fetchSOPs = useCallback(async () => {
     setLoading(true);
     try {
       let url = `${API_URL}/sop/list?`;
       if (filterDepartment && filterDepartment !== 'all') url += `department_id=${filterDepartment}&`;
-      if (filterStatus && filterStatus !== 'all') url += `status=${filterStatus}`;
+      if (filterStatus && filterStatus !== 'all') url += `status=${filterStatus}&`;
+      if (filterOwner && filterOwner !== 'all') url += `owner_id=${filterOwner}&`;
+      if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
+      if (groupBy && groupBy !== 'none') url += `group_by=${groupBy}`;
       
       const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
-      if (response.ok) setSOPs(await response.json());
+      if (response.ok) {
+        const data = await response.json();
+        if (data.grouped) {
+          setGroupedSOPs(data.groups);
+          setSOPs([]);
+        } else {
+          setSOPs(data);
+          setGroupedSOPs(null);
+        }
+      }
     } catch (error) {
       console.error('Error fetching SOPs:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterDepartment, filterStatus, filterOwner, searchTerm, groupBy]);
+
+  useEffect(() => {
+    fetchSOPs();
+  }, [fetchSOPs]);
+
+  useEffect(() => {
+    fetchDepartments();
+    fetchDesignations();
+    fetchEmployees();
+  }, []);
 
   const fetchDepartments = async () => {
     try {
@@ -98,14 +128,11 @@ const SOPPage = () => {
   };
 
   const handleCreateSOP = async () => {
-    if (!form.title) {
-      toast.error('Please enter a title');
-      return;
-    }
-
+    setSaving(true);
     const formData = new FormData();
-    formData.append('title', form.title);
-    formData.append('description', form.description);
+    if (form.title) formData.append('title', form.title);
+    if (form.description) formData.append('description', form.description);
+    if (form.task_type) formData.append('task_type', form.task_type);
     form.departments.forEach(d => formData.append('departments', d));
     form.designations.forEach(d => formData.append('designations', d));
     form.main_responsible.forEach(e => formData.append('main_responsible', e));
@@ -121,15 +148,61 @@ const SOPPage = () => {
       });
 
       if (response.ok) {
+        const newSOP = await response.json();
         toast.success('SOP created successfully');
+        if (newSOP.process_owner) {
+          toast.info(`Auto-detected Process Owner: ${newSOP.process_owner}`);
+        }
         setShowCreateDialog(false);
-        setForm({ title: '', description: '', departments: [], designations: [], main_responsible: [], also_involved: [], file: null });
+        resetForm();
         fetchSOPs();
       } else {
-        toast.error('Failed to create SOP');
+        const err = await response.json();
+        toast.error(err.detail || 'Failed to create SOP');
       }
     } catch (error) {
       toast.error('Failed to create SOP');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateSOP = async () => {
+    if (!selectedSOP) return;
+    setSaving(true);
+    
+    const formData = new FormData();
+    formData.append('title', form.title);
+    formData.append('description', form.description || '');
+    formData.append('sop_number', form.sop_number || '');
+    formData.append('task_type', form.task_type || '');
+    formData.append('status', form.status || 'draft');
+    form.departments.forEach(d => formData.append('departments', d));
+    form.designations.forEach(d => formData.append('designations', d));
+    form.main_responsible.forEach(e => formData.append('main_responsible', e));
+    form.also_involved.forEach(e => formData.append('also_involved', e));
+    if (form.file) formData.append('file', form.file);
+
+    try {
+      const response = await fetch(`${API_URL}/sop/${selectedSOP.sop_id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+        body: formData
+      });
+
+      if (response.ok) {
+        toast.success('SOP updated successfully');
+        setShowEditDialog(false);
+        resetForm();
+        fetchSOPs();
+      } else {
+        toast.error('Failed to update SOP');
+      }
+    } catch (error) {
+      toast.error('Failed to update SOP');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -173,7 +246,8 @@ const SOPPage = () => {
     }
   };
 
-  const handleViewSOP = async (sop) => {
+  const handleEditSOP = async (sop) => {
+    // Fetch full SOP details
     try {
       const response = await fetch(`${API_URL}/sop/${sop.sop_id}`, {
         credentials: 'include',
@@ -182,7 +256,19 @@ const SOPPage = () => {
       if (response.ok) {
         const data = await response.json();
         setSelectedSOP(data);
-        setShowPreviewDialog(true);
+        setForm({
+          title: data.title || '',
+          description: data.description || '',
+          sop_number: data.sop_number || '',
+          task_type: data.task_type || '',
+          status: data.status || 'draft',
+          departments: data.departments || [],
+          designations: data.designations || [],
+          main_responsible: data.main_responsible || [],
+          also_involved: data.also_involved || [],
+          file: null
+        });
+        setShowEditDialog(true);
       }
     } catch (error) {
       toast.error('Failed to load SOP details');
@@ -193,43 +279,27 @@ const SOPPage = () => {
     window.open(`${API_URL}/sop/${sopId}/download`, '_blank');
   };
 
-  const toggleDepartment = (deptId) => {
-    setForm(prev => ({
-      ...prev,
-      departments: prev.departments.includes(deptId)
-        ? prev.departments.filter(d => d !== deptId)
-        : [...prev.departments, deptId]
-    }));
-  };
-
-  const toggleDesignation = (desigId) => {
-    setForm(prev => ({
-      ...prev,
-      designations: prev.designations.includes(desigId)
-        ? prev.designations.filter(d => d !== desigId)
-        : [...prev.designations, desigId]
-    }));
-  };
-
-  const toggleMainResponsible = (empId) => {
-    setForm(prev => {
-      if (prev.main_responsible.includes(empId)) {
-        return { ...prev, main_responsible: prev.main_responsible.filter(e => e !== empId) };
-      } else if (prev.main_responsible.length < 3) {
-        return { ...prev, main_responsible: [...prev.main_responsible, empId] };
-      } else {
-        toast.error('Maximum 3 main responsible employees allowed');
-        return prev;
-      }
+  const resetForm = () => {
+    setForm({
+      title: '',
+      description: '',
+      sop_number: '',
+      task_type: '',
+      departments: [],
+      designations: [],
+      main_responsible: [],
+      also_involved: [],
+      file: null
     });
+    setSelectedSOP(null);
   };
 
-  const toggleAlsoInvolved = (empId) => {
+  const toggleArrayItem = (field, value) => {
     setForm(prev => ({
       ...prev,
-      also_involved: prev.also_involved.includes(empId)
-        ? prev.also_involved.filter(e => e !== empId)
-        : [...prev.also_involved, empId]
+      [field]: prev[field].includes(value)
+        ? prev[field].filter(v => v !== value)
+        : [...prev[field], value]
     }));
   };
 
@@ -244,13 +314,238 @@ const SOPPage = () => {
     archived: 'bg-slate-100 text-slate-600'
   };
 
+  const taskTypes = ['Audit', 'Quality', 'Safety', 'Production', 'Maintenance', 'HR', 'Finance', 'IT', 'Other'];
+
+  // SOP Card for grouped view
+  const SOPCard = ({ sop }) => (
+    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleEditSOP(sop)}>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Badge className={statusColors[sop.status]}>{sop.status}</Badge>
+              {sop.sop_number && <span className="text-xs text-slate-500 font-mono">{sop.sop_number}</span>}
+            </div>
+            <h4 className="font-medium mt-2 truncate">{sop.title}</h4>
+            {sop.task_type && <Badge variant="outline" className="mt-1 text-xs">{sop.task_type}</Badge>}
+            <div className="mt-2 flex items-center gap-2">
+              {sop.main_responsible_names?.length > 0 && (
+                <span className="text-xs text-blue-600">
+                  <User className="w-3 h-3 inline mr-1" />
+                  {sop.main_responsible_names[0]}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-1">
+            {sop.file_name && (
+              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDownload(sop.sop_id); }}>
+                <Download className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Form Component (reused for create and edit)
+  const SOPForm = ({ isEdit = false }) => (
+    <div className="space-y-6 py-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Title</Label>
+          <Input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="SOP Title (auto-detected from file)"
+            data-testid="sop-title-input"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>SOP Number</Label>
+          <Input
+            value={form.sop_number}
+            onChange={(e) => setForm({ ...form, sop_number: e.target.value })}
+            placeholder="e.g., SDPL/SOP/8"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Task Type / Category</Label>
+          <Select value={form.task_type} onValueChange={(v) => setForm({ ...form, task_type: v })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select task type" />
+            </SelectTrigger>
+            <SelectContent>
+              {taskTypes.map(t => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {isEdit && (
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Description</Label>
+        <Textarea
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          placeholder="Brief description..."
+          rows={2}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Excel File</Label>
+        <Input
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={(e) => setForm({ ...form, file: e.target.files?.[0] })}
+          data-testid="sop-file-input"
+        />
+        <p className="text-xs text-slate-500">
+          Upload SOP template - Process Owner and title will be auto-detected
+        </p>
+      </div>
+
+      {/* Department Selection */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <Building2 className="w-4 h-4" />
+          Departments
+        </Label>
+        <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 border rounded-lg">
+          {departments.map(dept => (
+            <Badge
+              key={dept.department_id}
+              variant={form.departments.includes(dept.department_id) ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => toggleArrayItem('departments', dept.department_id)}
+            >
+              {dept.name}
+              {form.departments.includes(dept.department_id) && <X className="w-3 h-3 ml-1" />}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Responsible */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2 text-blue-700">
+          <User className="w-4 h-4" />
+          Main Responsible / SOP Owner
+        </Label>
+        <p className="text-xs text-slate-500">Auto-matched from "Process Owner" in Excel</p>
+        <ScrollArea className="h-[100px] border rounded-lg p-2">
+          <div className="flex flex-wrap gap-2">
+            {employees.filter(e => e.is_active !== false).slice(0, 100).map(emp => (
+              <Badge
+                key={emp.employee_id}
+                variant={form.main_responsible.includes(emp.employee_id) ? "default" : "outline"}
+                className={`cursor-pointer ${form.main_responsible.includes(emp.employee_id) ? 'bg-blue-600' : ''}`}
+                onClick={() => toggleArrayItem('main_responsible', emp.employee_id)}
+              >
+                {emp.first_name} {emp.last_name}
+                {form.main_responsible.includes(emp.employee_id) && <X className="w-3 h-3 ml-1" />}
+              </Badge>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Also Involved */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <Users className="w-4 h-4" />
+          Also Involved (Employees)
+        </Label>
+        <ScrollArea className="h-[100px] border rounded-lg p-2">
+          <div className="flex flex-wrap gap-2">
+            {employees.filter(e => e.is_active !== false && !form.main_responsible.includes(e.employee_id)).slice(0, 100).map(emp => (
+              <Badge
+                key={emp.employee_id}
+                variant={form.also_involved.includes(emp.employee_id) ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => toggleArrayItem('also_involved', emp.employee_id)}
+              >
+                {emp.first_name} {emp.last_name}
+                {form.also_involved.includes(emp.employee_id) && <X className="w-3 h-3 ml-1" />}
+              </Badge>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Target Designations */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <Briefcase className="w-4 h-4" />
+          Target Designations
+        </Label>
+        <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 border rounded-lg">
+          {designations.map(desig => (
+            <Badge
+              key={desig.designation_id}
+              variant={form.designations.includes(desig.designation_id) ? "default" : "outline"}
+              className={`cursor-pointer ${form.designations.includes(desig.designation_id) ? 'bg-purple-600' : ''}`}
+              onClick={() => toggleArrayItem('designations', desig.designation_id)}
+            >
+              {desig.name}
+              {form.designations.includes(desig.designation_id) && <X className="w-3 h-3 ml-1" />}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      {/* Preview data for edit mode */}
+      {isEdit && selectedSOP?.preview_data?.length > 0 && (
+        <div className="space-y-2">
+          <Label>File Preview</Label>
+          <div className="border rounded-lg overflow-x-auto max-h-[200px] overflow-y-auto">
+            <table className="w-full text-xs">
+              <tbody>
+                {selectedSOP.preview_data.slice(0, 20).map((row, rowIdx) => (
+                  <tr key={rowIdx} className={rowIdx === 0 ? 'bg-slate-100 font-medium' : rowIdx % 2 === 0 ? 'bg-slate-50' : ''}>
+                    {row.slice(0, 10).map((cell, colIdx) => (
+                      <td key={colIdx} className="px-2 py-1 border-b border-r whitespace-nowrap max-w-[150px] truncate">
+                        {cell || '-'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6 p-6" data-testid="sop-page">
+    <div className="space-y-6" data-testid="sop-page">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Standard Operating Procedures</h1>
-          <p className="text-slate-600 mt-1">Manage and distribute SOPs by department and designation</p>
+          <p className="text-slate-600 mt-1">Manage, search, and track SOPs by department, task, and owner</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchSOPs}>
@@ -258,40 +553,82 @@ const SOPPage = () => {
             Refresh
           </Button>
           {isHR && (
-            <Button onClick={() => setShowCreateDialog(true)} data-testid="create-sop-btn">
+            <Button onClick={() => { resetForm(); setShowCreateDialog(true); }} data-testid="create-sop-btn">
               <Plus className="w-4 h-4 mr-1" />
-              Create SOP
+              Upload SOP
             </Button>
           )}
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Search & Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="w-[200px]">
-              <Label className="text-xs text-slate-500">Filter by Department</Label>
-              <Select value={filterDepartment} onValueChange={setFilterDepartment}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map(dept => (
-                    <SelectItem key={dept.department_id} value={dept.department_id}>{dept.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search by title, SOP number, owner, content..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+                data-testid="sop-search-input"
+              />
             </div>
-            <div className="w-[200px]">
-              <Label className="text-xs text-slate-500">Filter by Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* Filters Row */}
+            <div className="flex flex-wrap gap-4">
+              <div className="w-[180px]">
+                <Label className="text-xs text-slate-500">Department</Label>
+                <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.department_id} value={dept.department_id}>{dept.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[150px]">
+                <Label className="text-xs text-slate-500">Status</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[180px]">
+                <Label className="text-xs text-slate-500">Owner</Label>
+                <Select value={filterOwner} onValueChange={setFilterOwner}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Owners</SelectItem>
+                    {employees.filter(e => e.is_active !== false).slice(0, 50).map(emp => (
+                      <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                        {emp.first_name} {emp.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[150px]">
+                <Label className="text-xs text-slate-500">Group By</Label>
+                <Select value={groupBy} onValueChange={setGroupBy}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Grouping</SelectItem>
+                    <SelectItem value="department">Department</SelectItem>
+                    <SelectItem value="owner">Owner</SelectItem>
+                    <SelectItem value="task_type">Task Type</SelectItem>
+                    <SelectItem value="status">Status</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -302,7 +639,7 @@ const SOPPage = () => {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-primary" />
-            SOPs ({sops.length})
+            SOPs ({groupedSOPs ? Object.values(groupedSOPs).flat().length : sops.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -310,23 +647,48 @@ const SOPPage = () => {
             <div className="flex justify-center py-8">
               <RefreshCw className="w-8 h-8 animate-spin text-primary" />
             </div>
+          ) : groupedSOPs ? (
+            // Grouped View
+            <div className="space-y-6">
+              {Object.entries(groupedSOPs).map(([groupName, groupSOPs]) => (
+                <div key={groupName}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FolderOpen className="w-4 h-4 text-slate-500" />
+                    <h3 className="font-semibold text-slate-700">{groupName}</h3>
+                    <Badge variant="outline">{groupSOPs.length}</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pl-6">
+                    {groupSOPs.map(sop => (
+                      <SOPCard key={sop.sop_id} sop={sop} />
+                    ))}
+                  </div>
+                  <Separator className="mt-4" />
+                </div>
+              ))}
+            </div>
           ) : sops.length > 0 ? (
+            // Table View
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
-                  <TableHead>SOP ID</TableHead>
+                  <TableHead>SOP Number</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead>Main Responsible</TableHead>
-                  <TableHead>Also Involved</TableHead>
-                  <TableHead>Version</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Task Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sops.map((sop) => (
-                  <TableRow key={sop.sop_id} data-testid={`sop-row-${sop.sop_id}`}>
-                    <TableCell className="font-mono text-sm">{sop.sop_id}</TableCell>
+                  <TableRow 
+                    key={sop.sop_id} 
+                    className="cursor-pointer hover:bg-slate-50"
+                    onClick={() => handleEditSOP(sop)}
+                    data-testid={`sop-row-${sop.sop_id}`}
+                  >
+                    <TableCell className="font-mono text-sm">{sop.sop_number || sop.sop_id}</TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{sop.title}</p>
@@ -334,6 +696,17 @@ const SOPPage = () => {
                           <p className="text-xs text-slate-500 truncate max-w-[200px]">{sop.description}</p>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {sop.department_names?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {sop.department_names.slice(0, 2).map((name, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">{name}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {sop.main_responsible_names?.length > 0 ? (
@@ -347,30 +720,19 @@ const SOPPage = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {(sop.also_involved_names?.length > 0 || sop.designation_names?.length > 0) ? (
-                        <div className="flex flex-wrap gap-1">
-                          {sop.also_involved_names?.slice(0, 2).map((name, i) => (
-                            <Badge key={`emp-${i}`} variant="outline" className="text-xs">{name}</Badge>
-                          ))}
-                          {sop.designation_names?.slice(0, 2).map((name, i) => (
-                            <Badge key={`desig-${i}`} variant="outline" className="text-xs bg-purple-50">{name}</Badge>
-                          ))}
-                          {((sop.also_involved_names?.length || 0) + (sop.designation_names?.length || 0)) > 4 && (
-                            <Badge variant="outline" className="text-xs">+more</Badge>
-                          )}
-                        </div>
+                      {sop.task_type ? (
+                        <Badge variant="outline" className="text-xs">{sop.task_type}</Badge>
                       ) : (
-                        <span className="text-xs text-slate-400">All</span>
+                        <span className="text-xs text-slate-400">-</span>
                       )}
                     </TableCell>
-                    <TableCell>v{sop.version}</TableCell>
                     <TableCell>
                       <Badge className={statusColors[sop.status]}>{sop.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" onClick={() => handleViewSOP(sop)} title="View">
-                          <Eye className="w-3 h-3" />
+                        <Button size="sm" variant="outline" onClick={() => handleEditSOP(sop)} title="Edit">
+                          <Edit className="w-3 h-3" />
                         </Button>
                         {sop.file_name && (
                           <Button size="sm" variant="outline" onClick={() => handleDownload(sop.sop_id)} title="Download">
@@ -399,7 +761,7 @@ const SOPPage = () => {
               <p className="text-slate-500">No SOPs found</p>
               {isHR && (
                 <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
-                  Create First SOP
+                  Upload First SOP
                 </Button>
               )}
             </div>
@@ -411,269 +773,48 @@ const SOPPage = () => {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New SOP</DialogTitle>
-            <DialogDescription>Upload an Excel file with SOP steps and assign to departments/designations</DialogDescription>
+            <DialogTitle>Upload New SOP</DialogTitle>
+            <DialogDescription>
+              Upload an Excel SOP file. Process Owner and title will be auto-detected from the template.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label>Title *</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g., Machine Safety Protocol"
-                data-testid="sop-title-input"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Brief description of this SOP..."
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Excel File (with steps)</Label>
-              <Input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={(e) => setForm({ ...form, file: e.target.files?.[0] })}
-                data-testid="sop-file-input"
-              />
-              <p className="text-xs text-slate-500">Upload an Excel file containing the SOP steps</p>
-            </div>
-
-            {/* Main Responsible - up to 3 employees */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-blue-700">
-                <User className="w-4 h-4" />
-                Main Responsible (max 3)
-              </Label>
-              <p className="text-xs text-slate-500 mb-2">Primary employee(s) responsible for this SOP</p>
-              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border border-blue-200 rounded-lg bg-blue-50/50">
-                {employees.filter(e => e.is_active !== false).map(emp => (
-                  <Badge
-                    key={emp.employee_id}
-                    variant={form.main_responsible.includes(emp.employee_id) ? "default" : "outline"}
-                    className={`cursor-pointer ${form.main_responsible.includes(emp.employee_id) ? 'bg-blue-600' : ''}`}
-                    onClick={() => toggleMainResponsible(emp.employee_id)}
-                  >
-                    {emp.first_name} {emp.last_name}
-                    {form.main_responsible.includes(emp.employee_id) && <X className="w-3 h-3 ml-1" />}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Also Involved - individual employees */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Also Involved (Individual Employees)
-              </Label>
-              <p className="text-xs text-slate-500 mb-2">Additional employees who follow this SOP</p>
-              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-lg">
-                {employees.filter(e => e.is_active !== false && !form.main_responsible.includes(e.employee_id)).map(emp => (
-                  <Badge
-                    key={emp.employee_id}
-                    variant={form.also_involved.includes(emp.employee_id) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleAlsoInvolved(emp.employee_id)}
-                  >
-                    {emp.first_name} {emp.last_name}
-                    {form.also_involved.includes(emp.employee_id) && <X className="w-3 h-3 ml-1" />}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Target Designations - auto-adds to Also Involved */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Briefcase className="w-4 h-4" />
-                Target Designations (Auto-link to Also Involved)
-              </Label>
-              <p className="text-xs text-slate-500 mb-2">All employees with these designations will be auto-linked</p>
-              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-lg">
-                {designations.map(desig => (
-                  <Badge
-                    key={desig.designation_id}
-                    variant={form.designations.includes(desig.designation_id) ? "default" : "outline"}
-                    className={`cursor-pointer ${form.designations.includes(desig.designation_id) ? 'bg-purple-600' : ''}`}
-                    onClick={() => toggleDesignation(desig.designation_id)}
-                  >
-                    {desig.name}
-                    {form.designations.includes(desig.designation_id) && <X className="w-3 h-3 ml-1" />}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Target Departments - auto-adds to Also Involved */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Target Departments (Auto-link to Also Involved)
-              </Label>
-              <p className="text-xs text-slate-500 mb-2">All employees in these departments will be auto-linked</p>
-              <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 border rounded-lg">
-                {departments.map(dept => (
-                  <Badge
-                    key={dept.department_id}
-                    variant={form.departments.includes(dept.department_id) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleDepartment(dept.department_id)}
-                  >
-                    {dept.name}
-                    {form.departments.includes(dept.department_id) && <X className="w-3 h-3 ml-1" />}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
+          <SOPForm isEdit={false} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreateSOP} data-testid="save-sop-btn">Create SOP</Button>
+            <Button onClick={handleCreateSOP} disabled={saving} data-testid="save-sop-btn">
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+              Upload SOP
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* SOP Preview Dialog */}
-      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      {/* Edit SOP Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedSOP?.title}</DialogTitle>
+            <DialogTitle>Edit SOP</DialogTitle>
             <DialogDescription>
-              {selectedSOP?.sop_id} • Version {selectedSOP?.version} • {selectedSOP?.status}
+              {selectedSOP?.sop_id} • Version {selectedSOP?.version}
             </DialogDescription>
           </DialogHeader>
-          {selectedSOP && (
-            <div className="space-y-6 py-4">
-              {selectedSOP.description && (
-                <div>
-                  <Label className="text-slate-500">Description</Label>
-                  <p>{selectedSOP.description}</p>
-                </div>
-              )}
-
-              {/* Main Responsible */}
-              <div>
-                <Label className="text-blue-600">Main Responsible</Label>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {selectedSOP.main_responsible_names?.length > 0 ? (
-                    selectedSOP.main_responsible_names.map((name, i) => (
-                      <Badge key={i} className="bg-blue-100 text-blue-700">{name}</Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-slate-400">Not assigned</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Also Involved */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-slate-500">Also Involved (Employees)</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedSOP.also_involved_names?.length > 0 ? (
-                      selectedSOP.also_involved_names.map((name, i) => (
-                        <Badge key={i} variant="outline">{name}</Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-slate-400">None</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-slate-500">Also Involved (via Designation)</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedSOP.designation_names?.length > 0 ? (
-                      selectedSOP.designation_names.map((name, i) => (
-                        <Badge key={i} variant="outline" className="bg-purple-50">{name}</Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-slate-400">None</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-slate-500">Departments</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedSOP.department_names?.length > 0 ? (
-                      selectedSOP.department_names.map((name, i) => (
-                        <Badge key={i} variant="outline">{name}</Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-slate-400">All Departments</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-slate-500">Designations</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedSOP.designation_names?.length > 0 ? (
-                      selectedSOP.designation_names.map((name, i) => (
-                        <Badge key={i} variant="outline">{name}</Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-slate-400">All Designations</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Excel Preview */}
-              {selectedSOP.preview_data?.length > 0 && (
-                <div>
-                  <Label className="text-slate-500 mb-2 block">
-                    SOP Content Preview ({selectedSOP.total_rows} rows × {selectedSOP.total_cols} columns)
-                  </Label>
-                  <div className="border rounded-lg overflow-x-auto max-h-[400px] overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <tbody>
-                        {selectedSOP.preview_data.map((row, rowIdx) => (
-                          <tr key={rowIdx} className={rowIdx === 0 ? 'bg-slate-100 font-medium' : rowIdx % 2 === 0 ? 'bg-slate-50' : ''}>
-                            {row.map((cell, colIdx) => (
-                              <td key={colIdx} className="px-3 py-2 border-b border-r whitespace-nowrap">
-                                {cell || '-'}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {selectedSOP.total_rows > 50 && (
-                    <p className="text-xs text-slate-500 mt-2">Showing first 50 rows. Download the file to see all content.</p>
-                  )}
-                </div>
-              )}
-              
-              {selectedSOP.file_name && (
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FileSpreadsheet className="w-8 h-8 text-emerald-600" />
-                    <div>
-                      <p className="font-medium">{selectedSOP.file_name}</p>
-                      <p className="text-xs text-slate-500">
-                        {selectedSOP.file_size ? `${(selectedSOP.file_size / 1024).toFixed(1)} KB` : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <Button onClick={() => handleDownload(selectedSOP.sop_id)}>
-                    <Download className="w-4 h-4 mr-1" />
-                    Download
-                  </Button>
-                </div>
+          <SOPForm isEdit={true} />
+          <DialogFooter className="flex justify-between">
+            <div className="flex gap-2">
+              {selectedSOP?.file_name && (
+                <Button variant="outline" onClick={() => handleDownload(selectedSOP.sop_id)}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download File
+                </Button>
               )}
             </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>Close</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
+              <Button onClick={handleUpdateSOP} disabled={saving}>
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Changes
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
