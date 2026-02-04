@@ -23,7 +23,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Leave balance management
 - Configurable Leave Policy Rules: Annual quotas, carry forward, Sunday penalty rules
 
-### 4. Payroll Management (OVERHAULED - Jan 2026)
+### 4. Payroll Management (ENHANCED - Feb 2026)
 
 **Salary Structure Template Format:**
 - Fixed Components: Basic, DA, HRA, Conveyance, Grade Pay, Other Allowance, Medical Allowance
@@ -33,11 +33,19 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Deductions: EPF (12% capped at ₹15,000), ESI (0.75% if Gross ≤ ₹21,000), SEWA (2%)
 - Professional Tax: EXCLUDED
 
+**NEW - Feb 4, 2026: Sunday Pay Rule & Leave Type Distinction**
+- **Sunday Pay Rule**: Sundays are PAID unless >2 leaves taken that week
+  - If employee takes >2 leaves (Mon-Sat), that Sunday becomes UNPAID
+  - Evaluated on weekly basis (each week calculated separately)
+- **Paid Leave Types**: EL, CL, SL, ML - these COUNT towards earned days
+- **Unpaid Leave (LOP)**: Does NOT count towards earned days
+- **New Export Columns**: Calendar Days, Total Working Days, Paid/Unpaid Sundays, Paid/Unpaid Leave
+
 **Features:**
 - SEWA Advance Management
 - One-time Deductions (Loan EMI, Advance Recovery, etc.)
 - Payslip Editing Before Lock
-- Export to Excel in Template Format
+- Export to Excel in Template Format (with new breakdown columns)
 - **DELETE PAYROLL** - Can delete both processed AND locked payrolls
 - **PAYSLIP PDF DOWNLOAD** - Employees can download their payslips as PDF (NEW Jan 28)
 
