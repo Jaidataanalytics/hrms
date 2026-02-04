@@ -744,7 +744,7 @@ async def publish_sop(sop_id: str, request: Request):
                 "type": "sop_published",
                 "title": "New SOP Published",
                 "message": f"A new SOP '{sop['title']}' has been published that involves you.",
-                "link": f"/dashboard/sop",
+                "link": "/dashboard/sop",
                 "sop_id": sop_id,
                 "is_read": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
