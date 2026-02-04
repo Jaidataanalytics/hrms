@@ -168,6 +168,232 @@ async def apply_template_to_employee(data: dict, request: Request):
     return {"message": f"Created {len(created_tasks)} onboarding tasks", "tasks": created_tasks}
 
 
+# ==================== ONBOARDING RECORDS (NEW) ====================
+
+# Default task templates for each stage
+ONBOARDING_TASK_TEMPLATES = {
+    'pre_joining': [
+        {'task_id': 'id_proof', 'title': 'Submit ID Proof', 'description': 'Upload Aadhaar/Passport/Voter ID', 'category': 'documents'},
+        {'task_id': 'pan_card', 'title': 'Submit PAN Card', 'description': 'Upload PAN card copy', 'category': 'documents'},
+        {'task_id': 'bank_details', 'title': 'Submit Bank Details', 'description': 'Provide bank account for salary', 'category': 'documents'},
+        {'task_id': 'address_proof', 'title': 'Submit Address Proof', 'description': 'Upload utility bill/rent agreement', 'category': 'documents'},
+        {'task_id': 'education_certs', 'title': 'Submit Education Certificates', 'description': 'Upload degree/diploma certificates', 'category': 'documents'},
+        {'task_id': 'offer_acceptance', 'title': 'Accept Offer Letter', 'description': 'Sign and accept the offer letter', 'category': 'documents'},
+    ],
+    'day_1': [
+        {'task_id': 'id_card', 'title': 'ID Card Generation', 'description': 'Employee ID card creation', 'category': 'it_setup', 'assigned_to_hr': True},
+        {'task_id': 'laptop_assignment', 'title': 'Laptop Assignment', 'description': 'Assign laptop and accessories', 'category': 'it_setup', 'assigned_to_hr': True},
+        {'task_id': 'email_setup', 'title': 'Email Account Setup', 'description': 'Create corporate email account', 'category': 'it_setup', 'assigned_to_hr': True},
+        {'task_id': 'system_access', 'title': 'System Access', 'description': 'Grant access to required systems', 'category': 'it_setup', 'assigned_to_hr': True},
+        {'task_id': 'workstation', 'title': 'Workstation Setup', 'description': 'Allocate desk and workspace', 'category': 'it_setup', 'assigned_to_hr': True},
+    ],
+    'week_1': [
+        {'task_id': 'company_orientation', 'title': 'Company Orientation', 'description': 'Attend company overview session', 'category': 'training'},
+        {'task_id': 'hr_policies', 'title': 'HR Policies Training', 'description': 'Complete HR policies acknowledgment', 'category': 'training'},
+        {'task_id': 'safety_training', 'title': 'Safety Training', 'description': 'Complete workplace safety training', 'category': 'training'},
+        {'task_id': 'department_intro', 'title': 'Department Introduction', 'description': 'Meet team members', 'category': 'introduction'},
+        {'task_id': 'buddy_meeting', 'title': 'Buddy/Mentor Meeting', 'description': 'Initial meeting with assigned mentor', 'category': 'introduction'},
+    ],
+    'month_1': [
+        {'task_id': 'mentor_checkin', 'title': 'Mentor Check-in', 'description': '30-day mentor review', 'category': 'review'},
+        {'task_id': 'initial_feedback', 'title': 'Initial Feedback', 'description': 'Provide initial experience feedback', 'category': 'review'},
+        {'task_id': 'goal_setting', 'title': 'Goal Setting', 'description': 'Set initial performance goals', 'category': 'review'},
+        {'task_id': 'role_clarity', 'title': 'Role Clarity Session', 'description': 'Clarify job responsibilities', 'category': 'review'},
+    ],
+    'probation': [
+        {'task_id': 'performance_review', 'title': 'Probation Review', 'description': 'Complete probation performance review', 'category': 'evaluation', 'assigned_to_hr': True},
+        {'task_id': 'confirmation_decision', 'title': 'Confirmation Decision', 'description': 'Confirmation/extension decision', 'category': 'evaluation', 'assigned_to_hr': True},
+        {'task_id': 'final_feedback', 'title': 'Final Feedback', 'description': 'Probation period feedback', 'category': 'evaluation'},
+    ]
+}
+
+
+@router.get("/records")
+async def list_onboarding_records(request: Request, status: Optional[str] = None):
+    """List all onboarding records (HR sees all, employees see their own)"""
+    user = await get_current_user(request)
+    
+    query = {}
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        query["employee_id"] = user.get("employee_id")
+    
+    if status:
+        query["status"] = status
+    
+    records = await db.onboarding_records.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    
+    # Enrich with employee names
+    for record in records:
+        emp = await db.employees.find_one({"employee_id": record.get("employee_id")}, {"_id": 0})
+        if emp:
+            record["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+            record["emp_code"] = emp.get("emp_code", "")
+    
+    return records
+
+
+@router.post("/records")
+async def create_onboarding_record(data: dict, request: Request):
+    """Create a new onboarding record for an employee"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="Employee ID is required")
+    
+    # Check if employee already has active onboarding
+    existing = await db.onboarding_records.find_one({
+        "employee_id": employee_id,
+        "status": "active"
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Employee already has an active onboarding")
+    
+    # Get employee details
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Create all tasks for all stages
+    all_tasks = []
+    for stage, tasks in ONBOARDING_TASK_TEMPLATES.items():
+        for task in tasks:
+            all_tasks.append({
+                **task,
+                "stage": stage,
+                "completed": False,
+                "completed_at": None,
+                "completed_by": None
+            })
+    
+    record = {
+        "onboarding_id": f"onb_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "department_id": employee.get("department_id") or data.get("department_id"),
+        "designation_id": employee.get("designation_id") or data.get("designation_id"),
+        "joining_date": data.get("joining_date"),
+        "mentor_id": data.get("mentor_id"),
+        "current_stage": "pre_joining",
+        "status": "active",
+        "tasks": all_tasks,
+        "created_by": user["user_id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.onboarding_records.insert_one(record)
+    record.pop('_id', None)
+    
+    # Add employee name for response
+    record["employee_name"] = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+    record["emp_code"] = employee.get("emp_code", "")
+    
+    return record
+
+
+@router.get("/records/{onboarding_id}")
+async def get_onboarding_record(onboarding_id: str, request: Request):
+    """Get a specific onboarding record"""
+    user = await get_current_user(request)
+    
+    record = await db.onboarding_records.find_one({"onboarding_id": onboarding_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Onboarding record not found")
+    
+    # Check access
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    is_owner = record.get("employee_id") == user.get("employee_id")
+    
+    if not (is_hr or is_owner):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Add employee name
+    emp = await db.employees.find_one({"employee_id": record.get("employee_id")}, {"_id": 0})
+    if emp:
+        record["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+        record["emp_code"] = emp.get("emp_code", "")
+    
+    return record
+
+
+@router.put("/records/{onboarding_id}/stage")
+async def update_onboarding_stage(onboarding_id: str, data: dict, request: Request):
+    """Update the current stage of an onboarding record"""
+    user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    record = await db.onboarding_records.find_one({"onboarding_id": onboarding_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Onboarding record not found")
+    
+    new_stage = data.get("stage")
+    valid_stages = ["pre_joining", "day_1", "week_1", "month_1", "probation", "completed"]
+    
+    if new_stage not in valid_stages:
+        raise HTTPException(status_code=400, detail="Invalid stage")
+    
+    update_data = {
+        "current_stage": new_stage,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # If stage is completed, mark the record as completed
+    if new_stage == "completed":
+        update_data["status"] = "completed"
+        update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.onboarding_records.update_one(
+        {"onboarding_id": onboarding_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": f"Stage updated to {new_stage}"}
+
+
+@router.put("/records/{onboarding_id}/tasks/{task_id}")
+async def update_onboarding_task(onboarding_id: str, task_id: str, data: dict, request: Request):
+    """Update a specific task in an onboarding record"""
+    user = await get_current_user(request)
+    
+    record = await db.onboarding_records.find_one({"onboarding_id": onboarding_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Onboarding record not found")
+    
+    # Check access
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    is_owner = record.get("employee_id") == user.get("employee_id")
+    
+    if not (is_hr or is_owner):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Find and update the task
+    tasks = record.get("tasks", [])
+    task_found = False
+    
+    for task in tasks:
+        if task.get("task_id") == task_id:
+            task["completed"] = data.get("completed", False)
+            task["completed_at"] = data.get("completed_at") if data.get("completed") else None
+            task["completed_by"] = user.get("user_id") if data.get("completed") else None
+            task_found = True
+            break
+    
+    if not task_found:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    await db.onboarding_records.update_one(
+        {"onboarding_id": onboarding_id},
+        {"$set": {"tasks": tasks, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Task updated"}
+
+
 # ==================== EXIT MANAGEMENT ====================
 
 @router.get("/exit-requests")
