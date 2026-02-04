@@ -267,6 +267,31 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
+### Feb 4, 2026 - UI/UX Overhaul (Phase 1)
+1. ✅ **Dark Mode Support**
+   - ThemeProvider context with system preference detection
+   - Theme toggle button (Sun/Moon) in header
+   - Theme persists in localStorage
+   - All CSS variables updated for dark mode
+
+2. ✅ **Framer Motion Animations**
+   - Page transition animations (fade + slide)
+   - Staggered card animations on Dashboard
+   - Login page entrance animations
+   - Hover scale effects on stat cards
+
+3. ✅ **Design System Updates**
+   - New color palette (Deep Indigo primary)
+   - Glassmorphism effects for headers/cards
+   - Gradient backgrounds
+   - Skeleton loaders replacing spinners
+   - Modern stat-card styling with hover effects
+
+4. ✅ **Typography**
+   - Manrope font for headings
+   - Public Sans for body text
+   - Updated text hierarchy
+
 ### Feb 4, 2026 - Meeting Management System
 1. ✅ **Internal Meeting System**
    - Full CRUD for meetings with subject, date, time, location
