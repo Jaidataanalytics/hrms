@@ -1,6 +1,6 @@
 """Enhanced Payroll Calculation Module - Based on Salary Structure Template"""
 
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from calendar import monthrange
 import uuid
 
@@ -8,6 +8,36 @@ import uuid
 def get_calendar_days_in_month(year: int, month: int) -> int:
     """Get actual calendar days in a month"""
     return monthrange(year, month)[1]
+
+
+def get_working_days_in_month(year: int, month: int, holidays: list = None) -> dict:
+    """
+    Calculate working days breakdown for a month
+    Returns: {calendar_days, sundays, holidays, working_days}
+    """
+    total_days = monthrange(year, month)[1]
+    holiday_dates = set(h.get("date") for h in (holidays or []))
+    
+    sundays = 0
+    holiday_count = 0
+    
+    for day in range(1, total_days + 1):
+        d = date(year, month, day)
+        date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
+        
+        if d.weekday() == 6:  # Sunday
+            sundays += 1
+        elif date_str in holiday_dates:
+            holiday_count += 1
+    
+    working_days = total_days - sundays - holiday_count
+    
+    return {
+        "calendar_days": total_days,
+        "sundays": sundays,
+        "holidays": holiday_count,
+        "working_days": working_days
+    }
 
 
 def is_second_saturday(year: int, month: int, day: int) -> bool:
@@ -26,10 +56,96 @@ def is_second_saturday(year: int, month: int, day: int) -> bool:
     return saturday_count == 2
 
 
+def calculate_sunday_pay_status(attendance_records: list, year: int, month: int) -> dict:
+    """
+    Calculate Sunday pay status based on the rule:
+    - Sundays are PAID unless employee takes >2 leaves that week
+    - If >2 leaves in a week, that week's Sunday becomes unpaid
+    
+    Returns: {paid_sundays, unpaid_sundays, weekly_breakdown}
+    """
+    total_days = monthrange(year, month)[1]
+    
+    # Build attendance lookup by date
+    att_by_date = {}
+    for att in attendance_records:
+        att_by_date[att.get("date")] = att.get("status", "").lower()
+    
+    # Get leave types that are PAID (EL, CL, SL, ML)
+    paid_leave_types = ["el", "cl", "sl", "ml", "earned_leave", "casual_leave", "sick_leave", "maternity_leave"]
+    
+    # Analyze each week
+    paid_sundays = 0
+    unpaid_sundays = 0
+    weekly_breakdown = []
+    
+    # Get first day of month and iterate by weeks
+    first_day = date(year, month, 1)
+    
+    # Find all Sundays in the month
+    sundays_in_month = []
+    for day in range(1, total_days + 1):
+        d = date(year, month, day)
+        if d.weekday() == 6:  # Sunday
+            sundays_in_month.append(d)
+    
+    for sunday in sundays_in_month:
+        # Get the week (Mon-Sun) containing this Sunday
+        week_start = sunday - timedelta(days=6)  # Monday of this week
+        if week_start.month != month:
+            week_start = date(year, month, 1)  # Start from 1st if week spans months
+        
+        week_end = sunday
+        
+        # Count leaves taken in this week
+        leaves_this_week = 0
+        unpaid_leaves_this_week = 0
+        
+        current = week_start
+        while current <= week_end:
+            if current.month == month:  # Only count days in this month
+                date_str = current.strftime("%Y-%m-%d")
+                status = att_by_date.get(date_str, "")
+                
+                # Check if this is a leave day
+                if status in ["leave", "absent", "lop", "lwp", "loss_of_pay"]:
+                    leaves_this_week += 1
+                    # Check if it's unpaid leave (LOP)
+                    if status in ["lop", "lwp", "loss_of_pay", "absent"]:
+                        unpaid_leaves_this_week += 1
+            
+            current += timedelta(days=1)
+        
+        # Apply the rule: >2 leaves = Sunday unpaid
+        sunday_str = sunday.strftime("%Y-%m-%d")
+        if leaves_this_week > 2:
+            unpaid_sundays += 1
+            sunday_paid = False
+        else:
+            paid_sundays += 1
+            sunday_paid = True
+        
+        weekly_breakdown.append({
+            "sunday_date": sunday_str,
+            "week_start": week_start.strftime("%Y-%m-%d"),
+            "week_end": week_end.strftime("%Y-%m-%d"),
+            "leaves_in_week": leaves_this_week,
+            "sunday_paid": sunday_paid
+        })
+    
+    return {
+        "paid_sundays": paid_sundays,
+        "unpaid_sundays": unpaid_sundays,
+        "total_sundays": len(sundays_in_month),
+        "weekly_breakdown": weekly_breakdown
+    }
+
+
 def calculate_earned_days(
     office_days: float,
-    sundays_holidays: float,
-    leave_days: float,
+    paid_sundays: float,
+    paid_holidays: float,
+    paid_leave_days: float,
     wfh_days: float,
     half_day_count: float = 0,
     wfh_percentage: float = 50.0
@@ -37,11 +153,14 @@ def calculate_earned_days(
     """
     Calculate total earned days for salary proration
     
-    Formula: Total Earned Days = Office Days + Sundays/Holidays + (WFH Days * WFH%) + (Half Days * 0.5)
+    NEW Formula: 
+    Total Earned Days = Office Days + Paid Sundays + Paid Holidays + Paid Leave + (WFH Days * WFH%) + (Half Days * 0.5)
+    
+    Note: Only PAID leave (EL, CL, SL) counts. LOP does NOT count.
     """
     wfh_earned = wfh_days * (wfh_percentage / 100.0)
     half_day_earned = half_day_count * 0.5
-    return office_days + sundays_holidays + wfh_earned + half_day_earned
+    return office_days + paid_sundays + paid_holidays + paid_leave_days + wfh_earned + half_day_earned
 
 
 def prorate_component(fixed_amount: float, earned_days: float, total_days: int) -> float:
