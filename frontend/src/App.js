@@ -141,6 +141,8 @@ function AppRouter() {
         <Route path="insurance" element={<InsurancePage />} />
         <Route path="holidays" element={<HolidayManagementPage />} />
         <Route path="sop" element={<SOPPage />} />
+        <Route path="my-calendar" element={<MyCalendarPage />} />
+        <Route path="calendar" element={<MyCalendarPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
