@@ -467,14 +467,20 @@ async def create_sop(request: Request):
         sop_doc["file_type"] = file.content_type
         sop_doc["file_size"] = len(file_content)
         
-        # Parse Excel to extract metadata
-        parsed = await parse_sop_excel(file_content)
+        # Get employees list for name matching
+        employees_list = await db.employees.find(
+            {"is_active": {"$ne": False}},
+            {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1}
+        ).to_list(500)
+        
+        # Parse Excel with AI to extract metadata
+        parsed = await parse_sop_excel(file_content, employees_list)
         
         sop_doc["preview_data"] = parsed.get("preview_data", [])
         sop_doc["total_rows"] = parsed.get("total_rows", 0)
         sop_doc["total_cols"] = parsed.get("total_cols", 0)
         
-        # Auto-fill fields from parsed data if not provided
+        # Store all parsed data
         if parsed.get("sop_number"):
             sop_doc["sop_number"] = parsed["sop_number"]
         
@@ -484,11 +490,23 @@ async def create_sop(request: Request):
         if parsed.get("process_owner"):
             sop_doc["process_owner"] = parsed["process_owner"]
         
+        if parsed.get("created_by"):
+            sop_doc["document_created_by"] = parsed["created_by"]
+        
+        if parsed.get("department") and not departments:
+            sop_doc["parsed_department"] = parsed["department"]
+        
+        if parsed.get("version"):
+            sop_doc["document_version"] = parsed["version"]
+        
         if parsed.get("purpose"):
             sop_doc["purpose"] = parsed["purpose"]
         
         if parsed.get("scope"):
             sop_doc["scope"] = parsed["scope"]
+        
+        if parsed.get("procedure_summary"):
+            sop_doc["procedure_summary"] = parsed["procedure_summary"]
         
         if parsed.get("responsible_persons"):
             sop_doc["responsible_persons"] = parsed["responsible_persons"]
@@ -496,16 +514,36 @@ async def create_sop(request: Request):
         if parsed.get("reports"):
             sop_doc["reports"] = parsed["reports"]
         
+        if parsed.get("task_type") and not task_type:
+            sop_doc["task_type"] = parsed["task_type"]
+        
+        if parsed.get("stakeholders"):
+            sop_doc["stakeholders"] = parsed["stakeholders"]
+        
+        if parsed.get("key_activities"):
+            sop_doc["key_activities"] = parsed["key_activities"]
+        
+        if parsed.get("input_requirements"):
+            sop_doc["input_requirements"] = parsed["input_requirements"]
+        
+        if parsed.get("output_deliverables"):
+            sop_doc["output_deliverables"] = parsed["output_deliverables"]
+        
         # Try to auto-match process owner to employee
         if parsed.get("process_owner") and not main_responsible:
-            employees_list = await db.employees.find(
-                {"is_active": {"$ne": False}},
-                {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1}
-            ).to_list(500)
-            
             matched_id = await match_employee_name(parsed["process_owner"], employees_list)
             if matched_id:
                 sop_doc["main_responsible"] = [matched_id]
+        
+        # Try to match responsible persons to employees
+        if parsed.get("responsible_persons") and not also_involved:
+            matched_involved = []
+            for person in parsed["responsible_persons"]:
+                matched = await match_employee_name(person, employees_list)
+                if matched and matched not in sop_doc.get("main_responsible", []):
+                    matched_involved.append(matched)
+            if matched_involved:
+                sop_doc["also_involved"] = matched_involved
     
     await db.sops.insert_one(sop_doc)
     sop_doc.pop("_id", None)
