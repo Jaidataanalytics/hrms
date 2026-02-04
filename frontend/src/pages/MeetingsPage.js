@@ -556,7 +556,7 @@ const MeetingsPage = () => {
           ) : upcomingMeetings.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {upcomingMeetings.map(meeting => (
-                <MeetingCard key={meeting.meeting_id} meeting={meeting} />
+                <MeetingCard key={meeting.meeting_id} meeting={meeting} onOpenDetail={openMeetingDetail} />
               ))}
             </div>
           ) : (
@@ -576,7 +576,7 @@ const MeetingsPage = () => {
           {pastMeetings.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {pastMeetings.map(meeting => (
-                <MeetingCard key={meeting.meeting_id} meeting={meeting} />
+                <MeetingCard key={meeting.meeting_id} meeting={meeting} onOpenDetail={openMeetingDetail} />
               ))}
             </div>
           ) : (
