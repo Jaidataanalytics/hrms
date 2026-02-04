@@ -260,3 +260,225 @@
 [data-debug-wrapper="true"] {
     display: contents !important;
 }
+
+/* Glassmorphism utilities */
+.glass {
+    @apply backdrop-blur-md bg-white/70 dark:bg-slate-950/70 border border-white/20 dark:border-slate-800/50;
+}
+
+.glass-card {
+    @apply backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-700/50;
+}
+
+.glass-header {
+    @apply backdrop-blur-lg bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/50 dark:border-slate-800/50;
+}
+
+/* Gradient utilities */
+.gradient-primary {
+    @apply bg-gradient-to-br from-primary/10 to-transparent;
+}
+
+.gradient-shine {
+    @apply bg-gradient-to-tr from-white/5 to-white/20;
+}
+
+/* Shadow utilities */
+.shadow-soft {
+    box-shadow: 0 4px 20px -4px rgba(0,0,0,0.1);
+}
+
+.dark .shadow-soft {
+    box-shadow: 0 4px 20px -4px rgba(0,0,0,0.4);
+}
+
+.shadow-glow {
+    box-shadow: 0 0 15px rgba(79,70,229,0.3);
+}
+
+/* Stat card styles */
+.stat-card {
+    @apply relative overflow-hidden rounded-xl border bg-card p-6 transition-all duration-300;
+}
+
+.stat-card:hover {
+    @apply shadow-lg -translate-y-1;
+}
+
+.stat-card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-300;
+}
+
+.stat-card:hover::before {
+    @apply opacity-100;
+}
+
+/* Dark mode status badges */
+.dark .status-active {
+    @apply bg-emerald-950/50 text-emerald-400 border-emerald-800;
+}
+
+.dark .status-pending {
+    @apply bg-amber-950/50 text-amber-400 border-amber-800;
+}
+
+.dark .status-rejected {
+    @apply bg-red-950/50 text-red-400 border-red-800;
+}
+
+.dark .status-inactive {
+    @apply bg-slate-800 text-slate-400 border-slate-700;
+}
+
+/* Dark mode data table */
+.dark .data-table thead {
+    @apply bg-slate-800/50 border-b border-slate-700;
+}
+
+.dark .data-table th {
+    @apply text-slate-400;
+}
+
+.dark .data-table td {
+    @apply border-b border-slate-800;
+}
+
+.dark .data-table tbody tr:hover {
+    @apply bg-slate-800/50;
+}
+
+/* Dark mode form elements */
+.dark .form-label {
+    @apply text-slate-300;
+}
+
+/* Dark mode empty states */
+.dark .empty-state-icon {
+    @apply text-slate-600;
+}
+
+.dark .empty-state-title {
+    @apply text-slate-300;
+}
+
+.dark .empty-state-description {
+    @apply text-slate-500;
+}
+
+/* Loading skeleton shimmer */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton {
+    @apply rounded-md;
+    background: linear-gradient(
+        90deg,
+        hsl(var(--muted)) 0%,
+        hsl(var(--muted) / 0.5) 50%,
+        hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* Bento grid for dashboard */
+.bento-grid {
+    @apply grid gap-4;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(100px, auto);
+}
+
+.bento-grid .span-2 {
+    grid-column: span 2;
+}
+
+.bento-grid .span-3 {
+    grid-column: span 3;
+}
+
+.bento-grid .row-2 {
+    grid-row: span 2;
+}
+
+@media (max-width: 1024px) {
+    .bento-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .bento-grid .span-3 {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .bento-grid {
+        grid-template-columns: 1fr;
+    }
+    .bento-grid .span-2,
+    .bento-grid .span-3 {
+        grid-column: span 1;
+    }
+    .bento-grid .row-2 {
+        grid-row: span 1;
+    }
+}
+
+/* Pill button variant */
+.btn-pill {
+    @apply rounded-full px-6;
+}
+
+/* Interactive card with border highlight */
+.interactive-card {
+    @apply relative rounded-xl border bg-card p-6 transition-all duration-300 cursor-pointer;
+}
+
+.interactive-card:hover {
+    @apply border-primary/50 shadow-lg;
+}
+
+.interactive-card::after {
+    content: '';
+    @apply absolute left-0 top-0 h-full w-1 bg-primary rounded-l-xl scale-y-0 transition-transform duration-300 origin-center;
+}
+
+.interactive-card:hover::after {
+    @apply scale-y-100;
+}
+
+/* Page header styling */
+.page-header {
+    @apply mb-8;
+}
+
+.page-title {
+    @apply text-3xl font-bold tracking-tight text-foreground;
+    font-family: 'Manrope', sans-serif;
+}
+
+.page-description {
+    @apply text-muted-foreground mt-1;
+}
+
+/* Smooth page transitions */
+.page-enter {
+    animation: pageEnter 0.3s ease-out;
+}
+
+@keyframes pageEnter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
