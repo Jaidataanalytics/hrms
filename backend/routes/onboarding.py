@@ -356,7 +356,7 @@ async def update_onboarding_stage(onboarding_id: str, data: dict, request: Reque
 
 
 @router.put("/records/{onboarding_id}/tasks/{task_id}")
-async def update_onboarding_task(onboarding_id: str, task_id: str, data: dict, request: Request):
+async def update_onboarding_record_task(onboarding_id: str, task_id: str, data: dict, request: Request):
     """Update a specific task in an onboarding record"""
     user = await get_current_user(request)
     
