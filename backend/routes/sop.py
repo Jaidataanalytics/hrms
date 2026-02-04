@@ -774,6 +774,58 @@ async def delete_sop(sop_id: str, request: Request):
     return {"message": "SOP deleted"}
 
 
+@router.post("/{sop_id}/reparse")
+async def reparse_sop(sop_id: str, request: Request):
+    """Re-parse an existing SOP file with improved AI extraction"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    sop = await db.sops.find_one({"sop_id": sop_id})
+    if not sop:
+        raise HTTPException(status_code=404, detail="SOP not found")
+    
+    if not sop.get("file_data"):
+        raise HTTPException(status_code=400, detail="No file attached to this SOP")
+    
+    # Decode and re-parse the file
+    file_content = base64.b64decode(sop["file_data"])
+    
+    # Get employees list for name matching
+    employees_list = await db.employees.find(
+        {"is_active": {"$ne": False}},
+        {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1}
+    ).to_list(500)
+    
+    # Re-parse with improved AI
+    parsed = await parse_sop_excel(file_content, employees_list)
+    
+    # Update SOP with new parsed data
+    update_data = {
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "reparsed_at": datetime.now(timezone.utc).isoformat(),
+        "reparsed_by": user["user_id"]
+    }
+    
+    # Update all parsed fields
+    for key in ["sop_number", "title", "process_owner", "document_created_by", "parsed_department",
+                "document_version", "purpose", "scope", "procedure_summary", "task_type",
+                "input_requirements", "output_deliverables", "revision_date"]:
+        if parsed.get(key):
+            update_data[key] = parsed[key]
+    
+    for key in ["responsible_persons", "reports", "stakeholders", "key_activities", "process_flow_steps"]:
+        if parsed.get(key) and isinstance(parsed[key], list):
+            update_data[key] = parsed[key]
+    
+    await db.sops.update_one({"sop_id": sop_id}, {"$set": update_data})
+    
+    # Return updated SOP
+    updated = await db.sops.find_one({"sop_id": sop_id}, {"_id": 0, "file_data": 0})
+    return updated
+
+
+
 @router.get("/{sop_id}/download")
 async def download_sop_file(sop_id: str, request: Request):
     """Download the SOP Excel file"""
