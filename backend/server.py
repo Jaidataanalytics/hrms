@@ -3520,6 +3520,7 @@ from routes.data_management import router as data_management_router, set_db as s
 from routes.biometric import router as biometric_router, set_db as set_biometric_db
 from routes.helpdesk import router as helpdesk_router
 from routes.sop import router as sop_router
+from routes.calendar import router as calendar_router
 from services.biometric_sync import set_db as set_biometric_sync_db
 
 # Set database for data management and biometric sync
