@@ -548,6 +548,12 @@ async def create_sop(request: Request):
         if parsed.get("output_deliverables"):
             sop_doc["output_deliverables"] = parsed["output_deliverables"]
         
+        if parsed.get("process_flow_steps"):
+            sop_doc["process_flow_steps"] = parsed["process_flow_steps"]
+        
+        if parsed.get("revision_date"):
+            sop_doc["revision_date"] = parsed["revision_date"]
+        
         # Try to auto-match process owner to employee
         if parsed.get("process_owner") and not main_responsible:
             matched_id = await match_employee_name(parsed["process_owner"], employees_list)
