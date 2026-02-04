@@ -418,14 +418,128 @@ const Dashboard = () => {
                   View Attendance
                 </Button>
               </Link>
-              <Link to="/dashboard/employees" className="block">
-                <Button variant="outline" className="w-full justify-start gap-2" data-testid="quick-directory">
-                  <Users className="w-4 h-4" />
-                  Employee Directory
+              <Link to="/dashboard/tours" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" data-testid="quick-tour-request">
+                  <Plane className="w-4 h-4" />
+                  Tour Request
+                </Button>
+              </Link>
+              <Link to="/dashboard/expenses" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" data-testid="quick-expense-claim">
+                  <Receipt className="w-4 h-4" />
+                  Expense Claim
                 </Button>
               </Link>
             </CardContent>
           </Card>
+
+          {/* My Assets Card */}
+          {myAssets && (
+            <Card data-testid="my-assets-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  <Package className="w-5 h-5 text-blue-600" />
+                  My Assets
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={`p-3 rounded-lg text-center ${myAssets.laptop ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50'}`}>
+                    <Laptop className={`w-5 h-5 mx-auto mb-1 ${myAssets.laptop ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    <p className="text-xs font-medium">Laptop</p>
+                    <p className={`text-xs ${myAssets.laptop ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {myAssets.laptop ? 'Assigned' : 'N/A'}
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-lg text-center ${myAssets.mobile_charger ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50'}`}>
+                    <Smartphone className={`w-5 h-5 mx-auto mb-1 ${myAssets.mobile_charger ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    <p className="text-xs font-medium">Mobile</p>
+                    <p className={`text-xs ${myAssets.mobile_charger ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {myAssets.mobile_charger ? 'Assigned' : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+                {myAssets.sdpl_number && (
+                  <div className="p-2 bg-blue-50 rounded text-xs">
+                    <span className="text-blue-600 font-medium">SDPL#:</span> {myAssets.sdpl_number}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* My Tours Card */}
+          {myTours.length > 0 && (
+            <Card data-testid="my-tours-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    <MapPin className="w-5 h-5 text-purple-600" />
+                    My Tours
+                  </CardTitle>
+                  <Link to="/dashboard/tours">
+                    <Button variant="ghost" size="sm">View All</Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {myTours.slice(0, 2).map((tour, idx) => (
+                  <div key={idx} className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-purple-900 text-sm">{tour.destination}</p>
+                      <Badge className={
+                        tour.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                        tour.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-100 text-slate-600'
+                      }>
+                        {tour.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-purple-600">
+                      {tour.from_date} - {tour.to_date}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* My Expenses Card */}
+          {myExpenses.length > 0 && (
+            <Card data-testid="my-expenses-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    <Receipt className="w-5 h-5 text-orange-600" />
+                    My Expenses
+                  </CardTitle>
+                  <Link to="/dashboard/expenses">
+                    <Button variant="ghost" size="sm">View All</Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {myExpenses.slice(0, 2).map((expense, idx) => (
+                  <div key={idx} className="p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-orange-900 text-sm">{expense.category || expense.description}</p>
+                      <Badge className={
+                        expense.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                        expense.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                        expense.status === 'reimbursed' ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-600'
+                      }>
+                        {expense.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-orange-600">
+                      ₹{expense.amount?.toLocaleString('en-IN')} • {expense.date}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Pending Actions for Managers/HR */}
           {(isHR || user?.role === 'manager') && stats?.pending_leaves > 0 && (
