@@ -267,27 +267,21 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
-### Feb 4, 2026 - UI/UX Overhaul (Phase 1)
-1. ✅ **Dark Mode Support**
-   - ThemeProvider context with system preference detection
-   - Theme toggle button (Sun/Moon) in header
-   - Theme persists in localStorage
-   - All CSS variables updated for dark mode
-
-2. ✅ **Framer Motion Animations**
+### Feb 4, 2026 - UI/UX Improvements (Light Mode)
+1. ✅ **Framer Motion Animations**
    - Page transition animations (fade + slide)
    - Staggered card animations on Dashboard
    - Login page entrance animations
    - Hover scale effects on stat cards
 
-3. ✅ **Design System Updates**
-   - New color palette (Deep Indigo primary)
-   - Glassmorphism effects for headers/cards
-   - Gradient backgrounds
+2. ✅ **Design Refinements**
+   - Gradient backgrounds on Login page
+   - Improved stat-card styling with hover effects
    - Skeleton loaders replacing spinners
-   - Modern stat-card styling with hover effects
+   - Clean white card design
+   - Better shadows and spacing
 
-4. ✅ **Typography**
+3. ✅ **Typography**
    - Manrope font for headings
    - Public Sans for body text
    - Updated text hierarchy
