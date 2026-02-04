@@ -88,6 +88,11 @@ const DashboardLayout = () => {
       icon: Clock 
     },
     { 
+      name: 'My Calendar', 
+      path: '/dashboard/my-calendar', 
+      icon: CalendarDays 
+    },
+    { 
       name: 'Leave', 
       path: '/dashboard/leave', 
       icon: Calendar 
