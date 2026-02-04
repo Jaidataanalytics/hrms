@@ -267,6 +267,29 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
+### Feb 4, 2026 - SOP Upload Enhancement
+1. ✅ **Excel Auto-Parsing**
+   - Auto-detects SOP Number, Title, Process Owner from uploaded Excel template
+   - Extracts Purpose, Scope, and responsible persons from file content
+   - Matches "Process Owner" name to existing employees automatically
+
+2. ✅ **Advanced Search & Filtering**
+   - Full-text search across title, SOP number, owner name, content
+   - Filter by Department, Status, Owner
+   - Search by employee involvement (owner or responsible)
+
+3. ✅ **Grouping Options**
+   - Group by Department
+   - Group by Owner
+   - Group by Task Type/Category
+   - Group by Status (Draft/Published)
+
+4. ✅ **Full SOP Editing**
+   - Click any SOP to open edit dialog
+   - All fields editable: title, description, SOP number, task type
+   - Change departments, main responsible, involved employees
+   - Upload new file version
+
 ### Feb 4, 2026 - UI/UX Improvements (Light Mode)
 1. ✅ **Framer Motion Animations**
    - Page transition animations (fade + slide)
