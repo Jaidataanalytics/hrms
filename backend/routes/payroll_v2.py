@@ -453,11 +453,7 @@ def generate_payroll_export_data(payslips: list, month: int, year: int) -> list:
     """
     Generate data for Excel export in the same format as the salary structure template
     
-    Columns: Emp Code, Name, BASIC, DA, HRA, Conveyance, GRADE PAY, OTHER ALLOW, Med./Spl. Allow,
-             Total Salary (FIXED), Work from office, Sunday + Holiday, Leave Days, Work from Home @50%,
-             Late Deduction, Basic+DA (Earned), HRA (Earned), Conveyance (Earned), GRADE PAY (Earned),
-             OTHER ALLOW (Earned), Med./Spl. Allow (Earned), Total Earned Days, Total Salary Earned,
-             EPF Employees, ESI Employees, SEWA, Sewa Advance, Other Deduction, Total Deduction, NET PAYABLE
+    NEW: Added Total Working Days, Paid/Unpaid Sundays, Paid/Unpaid Leave columns
     """
     export_data = []
     
@@ -466,6 +462,7 @@ def generate_payroll_export_data(payslips: list, month: int, year: int) -> list:
         att = slip.get("attendance", {})
         earn = slip.get("earnings", {})
         ded = slip.get("deductions", {})
+        working_info = att.get("working_days_info", {})
         
         row = {
             "Emp Code": slip.get("emp_code", ""),
@@ -478,19 +475,43 @@ def generate_payroll_export_data(payslips: list, month: int, year: int) -> list:
             "OTHER ALLOW": fc.get("other_allowance", 0),
             "Med./Spl. Allow": fc.get("medical_allowance", 0),
             "Total Salary (FIXED)": fc.get("total_fixed", 0),
+            
+            # NEW: Working Days Breakdown
+            "Calendar Days": att.get("total_days_in_month", working_info.get("calendar_days", 31)),
+            "Total Working Days": working_info.get("working_days", 0),
+            
+            # Attendance breakdown
             "Work from office": att.get("office_days", 0),
-            "Sunday + Holiday Leave Days": att.get("sundays_holidays", 0),
-            "Leave Days": att.get("leave_days", 0),
             "Work from Home @50%": att.get("wfh_days", 0),
+            "Half Day Count": att.get("half_day_count", 0),
+            
+            # NEW: Sunday breakdown
+            "Paid Sundays": att.get("paid_sundays", 0),
+            "Unpaid Sundays": att.get("unpaid_sundays", 0),
+            
+            # NEW: Holiday count
+            "Paid Holidays": att.get("paid_holidays", 0),
+            
+            # NEW: Leave breakdown (CRITICAL)
+            "Paid Leave (EL/CL/SL)": att.get("paid_leave_days", 0),
+            "Unpaid Leave (LOP)": att.get("unpaid_leave_days", 0),
+            "Total Leave Days": att.get("total_leave_days", 0),
+            
+            # Calculation results
+            "Total Earned Days": att.get("total_earned_days", 0),
+            "Late Count": att.get("late_count", 0),
             "Late Deduction": earn.get("late_deduction", 0),
+            
+            # Earnings
             "Basic+DA (Earned)": earn.get("basic_da_earned", 0),
             "HRA (Earned)": earn.get("hra_earned", 0),
             "Conveyance (Earned)": earn.get("conveyance_earned", 0),
             "GRADE PAY (Earned)": earn.get("grade_pay_earned", 0),
             "OTHER ALLOW (Earned)": earn.get("other_allowance_earned", 0),
             "Med./Spl. Allow (Earned)": earn.get("medical_allowance_earned", 0),
-            "Total Earned Days": att.get("total_earned_days", 0),
             "Total Salary Earned": slip.get("gross_salary", 0),
+            
+            # Deductions
             "EPF Employees": ded.get("epf", 0),
             "ESI Employees": ded.get("esi", 0),
             "SEWA": ded.get("sewa", 0),
