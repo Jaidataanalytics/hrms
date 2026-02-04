@@ -71,16 +71,10 @@ def calculate_sunday_pay_status(attendance_records: list, year: int, month: int)
     for att in attendance_records:
         att_by_date[att.get("date")] = att.get("status", "").lower()
     
-    # Get leave types that are PAID (EL, CL, SL, ML)
-    paid_leave_types = ["el", "cl", "sl", "ml", "earned_leave", "casual_leave", "sick_leave", "maternity_leave"]
-    
     # Analyze each week
     paid_sundays = 0
     unpaid_sundays = 0
     weekly_breakdown = []
-    
-    # Get first day of month and iterate by weeks
-    first_day = date(year, month, 1)
     
     # Find all Sundays in the month
     sundays_in_month = []
