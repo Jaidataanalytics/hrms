@@ -208,11 +208,12 @@ async def parse_sop_excel(file_content: bytes, employees_list: list = None) -> d
         if "error" not in ai_result:
             # Merge AI results into our result
             for key in ["sop_number", "title", "process_owner", "created_by", "department", 
-                       "version", "purpose", "scope", "procedure_summary", "task_type"]:
+                       "version", "purpose", "scope", "procedure_summary", "task_type",
+                       "input_requirements", "output_deliverables", "revision_date"]:
                 if ai_result.get(key):
                     result[key] = ai_result[key]
             
-            for key in ["responsible_persons", "reports", "stakeholders", "key_activities"]:
+            for key in ["responsible_persons", "reports", "stakeholders", "key_activities", "process_flow_steps"]:
                 if ai_result.get(key) and isinstance(ai_result[key], list):
                     result[key] = ai_result[key]
         else:
