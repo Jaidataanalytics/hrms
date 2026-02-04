@@ -312,6 +312,63 @@ async def get_my_sops(request: Request):
     }
 
 
+@router.get("/by-employee/{employee_id}")
+async def get_sops_by_employee(employee_id: str, request: Request):
+    """Get all SOPs where an employee is owner or involved"""
+    await get_current_user(request)  # Auth check
+    
+    # SOPs where employee is main responsible (owner)
+    owner_sops = await db.sops.find(
+        {"is_active": True, "main_responsible": employee_id},
+        {"_id": 0, "file_data": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # SOPs where employee is involved
+    involved_sops = await db.sops.find(
+        {"is_active": True, "also_involved": employee_id, "main_responsible": {"$ne": employee_id}},
+        {"_id": 0, "file_data": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Get employee's department and designation for indirect involvement
+    employee = await db.employees.find_one(
+        {"employee_id": employee_id},
+        {"_id": 0, "department_id": 1, "designation_id": 1, "first_name": 1, "last_name": 1}
+    )
+    
+    dept_sops = []
+    desig_sops = []
+    if employee:
+        if employee.get("department_id"):
+            dept_sops = await db.sops.find(
+                {
+                    "is_active": True,
+                    "departments": employee["department_id"],
+                    "main_responsible": {"$ne": employee_id},
+                    "also_involved": {"$ne": employee_id}
+                },
+                {"_id": 0, "file_data": 0}
+            ).to_list(50)
+        
+        if employee.get("designation_id"):
+            desig_sops = await db.sops.find(
+                {
+                    "is_active": True,
+                    "designations": employee["designation_id"],
+                    "main_responsible": {"$ne": employee_id},
+                    "also_involved": {"$ne": employee_id}
+                },
+                {"_id": 0, "file_data": 0}
+            ).to_list(50)
+    
+    return {
+        "employee": employee,
+        "as_owner": owner_sops,
+        "directly_involved": involved_sops,
+        "via_department": dept_sops,
+        "via_designation": desig_sops
+    }
+
+
 @router.post("/create")
 async def create_sop(request: Request):
     """Create a new SOP with Excel file upload and auto-parsing"""
