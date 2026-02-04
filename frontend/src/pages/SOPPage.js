@@ -285,7 +285,10 @@ const SOPPage = () => {
     try {
       const response = await fetch(`${API_URL}/sop/${sopId}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
         credentials: 'include'
       });
 
@@ -293,10 +296,37 @@ const SOPPage = () => {
         toast.success('SOP deleted');
         fetchSOPs();
       } else {
-        toast.error('Failed to delete SOP');
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.detail || 'Failed to delete SOP');
       }
     } catch (error) {
       toast.error('Failed to delete SOP');
+    }
+  };
+
+  const handleReparse = async (sopId) => {
+    setReparsing(true);
+    try {
+      const response = await fetch(`${API_URL}/sop/${sopId}/reparse`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedSOP(data);
+        toast.success('SOP re-parsed with improved AI extraction');
+      } else {
+        toast.error('Failed to re-parse SOP');
+      }
+    } catch (error) {
+      toast.error('Failed to re-parse SOP');
+    } finally {
+      setReparsing(false);
     }
   };
 
