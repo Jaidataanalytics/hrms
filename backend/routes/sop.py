@@ -432,7 +432,7 @@ async def get_sop(sop_id: str, request: Request):
 
 @router.put("/{sop_id}")
 async def update_sop(sop_id: str, request: Request):
-    """Update SOP details"""
+    """Update SOP details - all fields are editable"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -444,20 +444,40 @@ async def update_sop(sop_id: str, request: Request):
         "updated_by": user["user_id"]
     }
     
-    if form.get("title"):
+    # All editable fields
+    if form.get("title") is not None:
         update_data["title"] = form.get("title")
     if form.get("description") is not None:
         update_data["description"] = form.get("description")
     if form.get("status"):
         update_data["status"] = form.get("status")
+    if form.get("task_type") is not None:
+        update_data["task_type"] = form.get("task_type")
+    if form.get("sop_number") is not None:
+        update_data["sop_number"] = form.get("sop_number")
+    if form.get("process_owner") is not None:
+        update_data["process_owner"] = form.get("process_owner")
+    if form.get("purpose") is not None:
+        update_data["purpose"] = form.get("purpose")
+    if form.get("scope") is not None:
+        update_data["scope"] = form.get("scope")
     
+    # Handle array fields
     departments = form.getlist("departments")
-    if departments:
-        update_data["departments"] = departments if isinstance(departments, list) else [departments]
+    if departments is not None:
+        update_data["departments"] = [d for d in departments if d] if isinstance(departments, list) else [departments] if departments else []
     
     designations = form.getlist("designations")
-    if designations:
-        update_data["designations"] = designations if isinstance(designations, list) else [designations]
+    if designations is not None:
+        update_data["designations"] = [d for d in designations if d] if isinstance(designations, list) else [designations] if designations else []
+    
+    main_responsible = form.getlist("main_responsible")
+    if main_responsible is not None:
+        update_data["main_responsible"] = [m for m in main_responsible if m] if isinstance(main_responsible, list) else [main_responsible] if main_responsible else []
+    
+    also_involved = form.getlist("also_involved")
+    if also_involved is not None:
+        update_data["also_involved"] = [a for a in also_involved if a] if isinstance(also_involved, list) else [also_involved] if also_involved else []
     
     # Handle new file upload
     file = form.get("file")
@@ -472,30 +492,25 @@ async def update_sop(sop_id: str, request: Request):
         existing = await db.sops.find_one({"sop_id": sop_id}, {"version": 1})
         update_data["version"] = (existing.get("version", 0) if existing else 0) + 1
         
-        # Parse Excel for preview
-        try:
-            import io
-            import openpyxl
-            wb = openpyxl.load_workbook(io.BytesIO(file_content))
-            ws = wb.active
-            
-            preview_data = []
-            for row_idx, row in enumerate(ws.iter_rows(values_only=True)):
-                if row_idx >= 50:
-                    break
-                preview_data.append([str(cell) if cell is not None else "" for cell in row])
-            
-            update_data["preview_data"] = preview_data
-            update_data["total_rows"] = ws.max_row
-            update_data["total_cols"] = ws.max_column
-        except Exception:
-            pass
+        # Re-parse Excel
+        parsed = await parse_sop_excel(file_content)
+        update_data["preview_data"] = parsed.get("preview_data", [])
+        update_data["total_rows"] = parsed.get("total_rows", 0)
+        update_data["total_cols"] = parsed.get("total_cols", 0)
+        
+        # Update extracted fields if not explicitly set
+        if parsed.get("sop_number") and "sop_number" not in update_data:
+            update_data["sop_number"] = parsed["sop_number"]
+        if parsed.get("process_owner") and "process_owner" not in update_data:
+            update_data["process_owner"] = parsed["process_owner"]
     
     result = await db.sops.update_one({"sop_id": sop_id}, {"$set": update_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="SOP not found")
     
-    return {"message": "SOP updated"}
+    # Return updated SOP
+    updated = await db.sops.find_one({"sop_id": sop_id}, {"_id": 0, "file_data": 0})
+    return updated
 
 
 @router.put("/{sop_id}/publish")
