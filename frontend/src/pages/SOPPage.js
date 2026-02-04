@@ -536,6 +536,119 @@ const SOPPage = () => {
           </div>
         </div>
       )}
+
+      {/* AI Extracted Data Display */}
+      {isEdit && selectedSOP && (
+        <div className="space-y-4 border rounded-lg p-4 bg-blue-50/50">
+          <Label className="text-blue-700 font-semibold">AI Extracted Information</Label>
+          
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {selectedSOP.process_owner && (
+              <div>
+                <span className="text-slate-500">Process Owner:</span>
+                <p className="font-medium">{selectedSOP.process_owner}</p>
+              </div>
+            )}
+            {selectedSOP.document_created_by && (
+              <div>
+                <span className="text-slate-500">Document Created By:</span>
+                <p className="font-medium">{selectedSOP.document_created_by}</p>
+              </div>
+            )}
+            {selectedSOP.parsed_department && (
+              <div>
+                <span className="text-slate-500">Detected Department:</span>
+                <p className="font-medium">{selectedSOP.parsed_department}</p>
+              </div>
+            )}
+            {selectedSOP.document_version && (
+              <div>
+                <span className="text-slate-500">Document Version:</span>
+                <p className="font-medium">{selectedSOP.document_version}</p>
+              </div>
+            )}
+          </div>
+
+          {selectedSOP.purpose && (
+            <div>
+              <span className="text-slate-500 text-sm">Purpose:</span>
+              <p className="text-sm bg-white p-2 rounded border mt-1">{selectedSOP.purpose}</p>
+            </div>
+          )}
+
+          {selectedSOP.scope && (
+            <div>
+              <span className="text-slate-500 text-sm">Scope:</span>
+              <p className="text-sm bg-white p-2 rounded border mt-1">{selectedSOP.scope}</p>
+            </div>
+          )}
+
+          {selectedSOP.procedure_summary && (
+            <div>
+              <span className="text-slate-500 text-sm">Procedure Summary:</span>
+              <p className="text-sm bg-white p-2 rounded border mt-1">{selectedSOP.procedure_summary}</p>
+            </div>
+          )}
+
+          {selectedSOP.input_requirements && (
+            <div>
+              <span className="text-slate-500 text-sm">Input Requirements:</span>
+              <p className="text-sm bg-white p-2 rounded border mt-1">{selectedSOP.input_requirements}</p>
+            </div>
+          )}
+
+          {selectedSOP.output_deliverables && (
+            <div>
+              <span className="text-slate-500 text-sm">Output/Deliverables:</span>
+              <p className="text-sm bg-white p-2 rounded border mt-1">{selectedSOP.output_deliverables}</p>
+            </div>
+          )}
+
+          {selectedSOP.responsible_persons?.length > 0 && (
+            <div>
+              <span className="text-slate-500 text-sm">Responsible Persons/Roles:</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {selectedSOP.responsible_persons.map((person, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{person}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedSOP.stakeholders?.length > 0 && (
+            <div>
+              <span className="text-slate-500 text-sm">Stakeholders:</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {selectedSOP.stakeholders.map((s, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{s}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedSOP.key_activities?.length > 0 && (
+            <div>
+              <span className="text-slate-500 text-sm">Key Activities:</span>
+              <ul className="text-sm list-disc list-inside mt-1 bg-white p-2 rounded border">
+                {selectedSOP.key_activities.slice(0, 10).map((activity, i) => (
+                  <li key={i}>{activity}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {selectedSOP.reports?.length > 0 && (
+            <div>
+              <span className="text-slate-500 text-sm">Reports:</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {selectedSOP.reports.map((report, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">{report}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
