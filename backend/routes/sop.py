@@ -5,6 +5,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 import base64
+import re
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
@@ -20,6 +21,141 @@ async def get_current_user(request: Request) -> dict:
     return await auth_get_user(request)
 
 
+async def match_employee_name(name: str, employees_cache: list) -> Optional[str]:
+    """Match a name string to an employee_id"""
+    if not name or not name.strip():
+        return None
+    
+    name_clean = name.strip().lower()
+    
+    # Try exact match first
+    for emp in employees_cache:
+        full_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip().lower()
+        if full_name == name_clean:
+            return emp.get('employee_id')
+    
+    # Try partial match (first name or last name)
+    for emp in employees_cache:
+        first = emp.get('first_name', '').lower()
+        last = emp.get('last_name', '').lower()
+        if first and first in name_clean:
+            return emp.get('employee_id')
+        if last and last in name_clean:
+            return emp.get('employee_id')
+    
+    return None
+
+
+async def parse_sop_excel(file_content: bytes) -> dict:
+    """Parse SOP Excel file and extract metadata + content"""
+    import io
+    import openpyxl
+    
+    result = {
+        "sop_number": None,
+        "title": None,
+        "process_owner": None,
+        "created_by": None,
+        "department": None,
+        "version": None,
+        "purpose": None,
+        "scope": None,
+        "procedure_steps": [],
+        "responsible_persons": [],
+        "reports": [],
+        "preview_data": [],
+        "total_rows": 0,
+        "total_cols": 0
+    }
+    
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file_content))
+        ws = wb.active
+        
+        result["total_rows"] = ws.max_row
+        result["total_cols"] = ws.max_column
+        
+        # Extract all cell data for searching
+        all_text = []
+        for row_idx, row in enumerate(ws.iter_rows(values_only=True)):
+            row_data = [str(cell) if cell is not None else "" for cell in row]
+            all_text.extend(row_data)
+            
+            if row_idx < 100:  # Preview first 100 rows
+                result["preview_data"].append(row_data)
+        
+        # Join all text for pattern matching
+        full_text = " ".join(all_text)
+        
+        # Extract SOP Number (patterns like SDPL/SOP/8, SOP-8, etc.)
+        sop_patterns = [
+            r'SDPL/SOP/[A-Z]*/?\d+',
+            r'SOP[-/]\d+',
+            r'PROCEDURE NO\.?\s*:?\s*([A-Z]+/[A-Z]+/[A-Z]*/?\d+)',
+        ]
+        for pattern in sop_patterns:
+            match = re.search(pattern, full_text, re.IGNORECASE)
+            if match:
+                result["sop_number"] = match.group(0).strip()
+                break
+        
+        # Extract Process Owner
+        owner_patterns = [
+            r'PROCESS OWNER\s*:?\s*([A-Za-z\s]+?)(?=\n|DATE|VERSION|PROCEDURE)',
+            r'CREATED BY\s*:?\s*([A-Za-z\s]+?)(?=\n|DATE|PROCEDURE)',
+        ]
+        for pattern in owner_patterns:
+            match = re.search(pattern, full_text, re.IGNORECASE)
+            if match:
+                result["process_owner"] = match.group(1).strip()
+                break
+        
+        # Extract Title/Process Name
+        title_patterns = [
+            r'PROCESS NAME\s*/?.*?:?\s*([A-Za-z\s,&]+?)(?=\n|VERSION|DATE)',
+            r'Process Flow Chart\s*([A-Za-z\s,&]+?)(?=\n|APPENDIX)',
+        ]
+        for pattern in title_patterns:
+            match = re.search(pattern, full_text, re.IGNORECASE)
+            if match:
+                result["title"] = match.group(1).strip()
+                break
+        
+        # Extract Purpose
+        purpose_match = re.search(r'PURPOSE OF PROCESS\s*:?\s*(.+?)(?=SCOPE|INPUT|$)', full_text, re.IGNORECASE | re.DOTALL)
+        if purpose_match:
+            result["purpose"] = purpose_match.group(1).strip()[:500]
+        
+        # Extract Scope
+        scope_match = re.search(r'SCOPE\s*:?\s*(.+?)(?=INPUT|OUTPUT|$)', full_text, re.IGNORECASE | re.DOTALL)
+        if scope_match:
+            result["scope"] = scope_match.group(1).strip()[:500]
+        
+        # Extract responsible persons from RESP/IN-CHARGE column
+        resp_patterns = [
+            r'RESP/?IN-CHARGE\s*:?\s*([A-Za-z,\s]+)',
+            r'Auditor|HOD|Manager|Supervisor|Executive',
+        ]
+        resp_persons = set()
+        for pattern in resp_patterns:
+            matches = re.findall(pattern, full_text, re.IGNORECASE)
+            for m in matches:
+                if isinstance(m, str) and len(m) > 2:
+                    resp_persons.add(m.strip())
+        result["responsible_persons"] = list(resp_persons)[:10]
+        
+        # Extract report information
+        report_match = re.search(r'REPORT NAME\s*:?\s*(.+?)(?=NUMBER|GENERATED|$)', full_text, re.IGNORECASE)
+        if report_match:
+            reports = re.split(r'[,\n]', report_match.group(1))
+            result["reports"] = [r.strip() for r in reports if r.strip()][:5]
+        
+    except Exception as e:
+        result["parse_error"] = str(e)
+    
+    return result
+
+
 # ==================== SOP CRUD ====================
 
 @router.get("/list")
@@ -27,20 +163,50 @@ async def list_sops(
     request: Request,
     department_id: Optional[str] = None,
     designation_id: Optional[str] = None,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    group_by: Optional[str] = None,
+    owner_id: Optional[str] = None,
+    involved_id: Optional[str] = None
 ):
-    """List all SOPs with optional filters"""
+    """List all SOPs with optional filters, search, and grouping"""
     await get_current_user(request)  # Auth check
     
     query = {"is_active": True}
-    if department_id:
-        query["$or"] = [{"departments": department_id}, {"departments": {"$size": 0}}]
+    
+    if department_id and department_id != 'all':
+        query["departments"] = department_id
+    
     if designation_id:
-        query["$or"] = [{"designations": designation_id}, {"designations": {"$size": 0}}]
-    if status:
+        query["designations"] = designation_id
+    
+    if status and status != 'all':
         query["status"] = status
     
-    sops = await db.sops.find(query, {"_id": 0, "file_data": 0}).sort("created_at", -1).to_list(100)
+    if owner_id:
+        query["main_responsible"] = owner_id
+    
+    if involved_id:
+        query["$or"] = [
+            {"main_responsible": involved_id},
+            {"also_involved": involved_id}
+        ]
+    
+    # Text search across multiple fields
+    if search:
+        search_regex = {"$regex": search, "$options": "i"}
+        query["$or"] = [
+            {"title": search_regex},
+            {"description": search_regex},
+            {"sop_id": search_regex},
+            {"sop_number": search_regex},
+            {"process_owner": search_regex},
+            {"purpose": search_regex},
+            {"scope": search_regex},
+            {"task_type": search_regex}
+        ]
+    
+    sops = await db.sops.find(query, {"_id": 0, "file_data": 0}).sort("created_at", -1).to_list(500)
     
     # Enrich with department, designation, and employee names
     dept_ids = set()
@@ -68,6 +234,28 @@ async def list_sops(
         sop["designation_names"] = [desig_map.get(d, d) for d in sop.get("designations", [])]
         sop["main_responsible_names"] = [emp_map.get(e, e) for e in sop.get("main_responsible", [])]
         sop["also_involved_names"] = [emp_map.get(e, e) for e in sop.get("also_involved", [])]
+    
+    # Handle grouping
+    if group_by:
+        grouped = {}
+        for sop in sops:
+            if group_by == "department":
+                keys = sop.get("department_names", ["Unassigned"]) or ["Unassigned"]
+            elif group_by == "owner":
+                keys = sop.get("main_responsible_names", ["Unassigned"]) or ["Unassigned"]
+            elif group_by == "task_type":
+                keys = [sop.get("task_type", "Uncategorized") or "Uncategorized"]
+            elif group_by == "status":
+                keys = [sop.get("status", "draft")]
+            else:
+                keys = ["All"]
+            
+            for key in keys:
+                if key not in grouped:
+                    grouped[key] = []
+                grouped[key].append(sop)
+        
+        return {"grouped": True, "groups": grouped}
     
     return sops
 
