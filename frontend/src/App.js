@@ -41,6 +41,7 @@ import MeetingsPage from "./pages/MeetingsPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
