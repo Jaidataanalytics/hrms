@@ -388,17 +388,31 @@ def process_employee_salary(
             "total_fixed": round(total_fixed, 2)
         },
         
-        # Attendance
+        # Attendance - NEW STRUCTURE with working days breakdown
         "attendance": {
             "office_days": office_days,
-            "sundays_holidays": sundays_holidays,
-            "leave_days": leave_days,
             "wfh_days": wfh_days,
             "half_day_count": half_day_count,
             "second_saturday_count": second_saturday_count,
             "late_count": late_count,
             "total_earned_days": round(total_earned_days, 2),
-            "total_days_in_month": total_days
+            "total_days_in_month": total_days,
+            
+            # NEW: Sunday pay status
+            "paid_sundays": paid_sundays,
+            "unpaid_sundays": unpaid_sundays,
+            "total_sundays": total_sundays,
+            
+            # NEW: Holiday breakdown
+            "paid_holidays": paid_holidays,
+            
+            # NEW: Leave breakdown (CRITICAL)
+            "paid_leave_days": paid_leave_days,      # EL, CL, SL - counted in earned days
+            "unpaid_leave_days": unpaid_leave_days,  # LOP, absent - NOT counted
+            "total_leave_days": total_leave_days,
+            
+            # NEW: Working days summary
+            "working_days_info": working_days_info
         },
         
         # Earned amounts (prorated)
