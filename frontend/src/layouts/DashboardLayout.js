@@ -55,16 +55,9 @@ import NotificationBell from '../components/NotificationBell';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('sidebar-collapsed') === 'true';
-    }
-    return false;
-  });
   const [searchOpen, setSearchOpen] = useState(false);
   
   // Check if user is HR/Admin for search
