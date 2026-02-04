@@ -432,7 +432,14 @@ const DashboardLayout = () => {
 
         {/* Page Content */}
         <main className="p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            <Outlet />
+          </motion.div>
         </main>
       </div>
       
