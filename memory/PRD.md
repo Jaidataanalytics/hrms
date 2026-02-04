@@ -1,7 +1,7 @@
 # Sharda HR System - Product Requirements Document
 
 ## Overview
-Comprehensive HR management system for Sharda Diesels with employee management, attendance tracking, payroll, leave management, insurance, helpdesk, contract labour, SOP management, and tour modules.
+Comprehensive HR management system for Sharda Diesels with employee management, attendance tracking, payroll, leave management, insurance, helpdesk, contract labour, SOP management, meetings, and tour modules.
 
 ## Core Modules
 
@@ -9,7 +9,7 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Employee directory with search and filters
 - Bulk import/export functionality
 - Role-Based Access: Only HR/Admin can access Employees page
-- **Edit Profile** - HR can edit employee details via profile dialog (NEW Jan 29)
+- **Edit Profile** - HR can edit employee details via profile dialog
 
 ### 2. Attendance Management
 - Organization-wide attendance view (HR/Admin only)
@@ -17,101 +17,36 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Late Marking: Arrival after 10:00 AM is marked as LATE
 - Biometric API Integration: Auto-sync every 3 hours
 - Calendar View: Daily attendance stats with drill-down
-- **HR Attendance Editing** - Edit records tab, manual entry, audit trail (NEW Jan 28)
+- **HR Attendance Editing** - Edit records tab, manual entry, audit trail
+- **Attendance Grid View** - Matrix display with inline editing
 
 ### 3. Leave Management
 - Leave balance management
 - Configurable Leave Policy Rules: Annual quotas, carry forward, Sunday penalty rules
 
-### 4. Payroll Management (ENHANCED - Feb 2026)
-
-**Salary Structure Template Format:**
+### 4. Payroll Management
+**Features:**
 - Fixed Components: Basic, DA, HRA, Conveyance, Grade Pay, Other Allowance, Medical Allowance
-- Calculation: Uses calendar days (28-31), pro-rates each component
 - WFH at 50% (configurable)
 - Late deduction: 2 lates in a week = half day deduction
 - Deductions: EPF (12% capped at ₹15,000), ESI (0.75% if Gross ≤ ₹21,000), SEWA (2%)
-- Professional Tax: EXCLUDED
-
-**NEW - Feb 4, 2026: Sunday Pay Rule & Leave Type Distinction**
-- **Sunday Pay Rule**: Sundays are PAID unless >2 leaves taken that week
-  - If employee takes >2 leaves (Mon-Sat), that Sunday becomes UNPAID
-  - Evaluated on weekly basis (each week calculated separately)
-- **Paid Leave Types**: EL, CL, SL, ML - these COUNT towards earned days
-- **Unpaid Leave (LOP)**: Does NOT count towards earned days
-- **New Export Columns**: Calendar Days, Total Working Days, Paid/Unpaid Sundays, Paid/Unpaid Leave
-
-**Features:**
+- Sunday Pay Rule: Sundays PAID unless >2 leaves that week
 - SEWA Advance Management
 - One-time Deductions (Loan EMI, Advance Recovery, etc.)
 - Payslip Editing Before Lock
-- Export to Excel in Template Format (with new breakdown columns)
-- **DELETE PAYROLL** - Can delete both processed AND locked payrolls
-- **PAYSLIP PDF DOWNLOAD** - Employees can download their payslips as PDF (NEW Jan 28)
+- Export to Excel in Template Format
+- DELETE PAYROLL capability
+- **PAYSLIP PDF DOWNLOAD** - Employees can download their payslips as PDF
 
 ### 5. Asset Management
 - Asset Inventory with individual asset tracking
 - Employee Assignment view
 - Edit, Delete, Reassign, Unassign operations
-- **Fixed asset lookup** - Now resolves employee_id to emp_code correctly (Jan 29)
 
-### 6. Helpdesk Module (OVERHAULED - Jan 28, 2026)
-
-**Tab 1: Complaints**
-- Submit and track workplace issues
-- Categories: General, Payroll, Leave, Harassment, Workplace, Benefits, IT Support, Policy
-- Priority Levels: Low, Medium, High, Critical (NEW)
-- Status tracking: Open, In Progress, Resolved, Closed
-- Anonymous submission option
-
-**Tab 2: Anonymous Suggestions (NEW)**
-- Employees can submit suggestions/ideas
-- Anonymous to HR (super_admin can see submitter identity)
-- HR can respond (response visible only to submitter)
-- Status: Submitted, Under Review, Acknowledged, Implemented, Rejected
-
-**Tab 3: Surveys (NEW - Major Feature)**
-
-*Survey Types:*
-- Poll
-- Text Survey
-- Satisfaction Survey
-- Employee Engagement
-- Colleague/360 Feedback
-- Pulse Check
-- Custom
-
-*Survey Targeting:*
-- All Employees
-- Select Individuals (searchable)
-- By Department
-- By Location
-
-*Question Types:*
-- Rating (1-5 scale)
-- NPS (0-10 scale)
-- Yes/No
-- Single Choice
-- Multiple Choice
-- Short Text
-- Long Text
-
-*Built-in Templates:*
-1. Employee Satisfaction Survey
-2. Employee Engagement Survey
-3. Weekly Pulse Check
-4. New Employee Onboarding Survey
-5. Exit Interview Survey
-6. 360 Degree Feedback
-
-*Features:*
-- Anonymous or identified responses
-- Deadline/due date
-- Mandatory vs optional
-- Allow editing responses until deadline
-- In-app notifications
-- Response tracking
-- Analytics dashboard with charts
+### 6. Helpdesk Module
+**Tab 1: Complaints** - Submit and track workplace issues with priority levels
+**Tab 2: Anonymous Suggestions** - Anonymous to HR (visible to super_admin)
+**Tab 3: Surveys** - Complete survey system with 7 types, 7 question types, and templates
 
 ### 7. Insurance Module
 - Employee Insurance Tab (ESIC, PMJJBY, Accidental)
@@ -121,122 +56,61 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 - Global search bar (Cmd+K) - HR/Admin only
 - Comprehensive employee profile page
 
-### 9. Contract Labour Management (OVERHAULED - Jan 29, 2026)
+### 9. Contract Labour Management
+Mini HR System for Contract Workers:
+- Contractors Master List
+- Workers List with detail view (Profile, Attendance, Payroll, Documents tabs)
 
-**Mini HR System for Contract Workers:**
-- Contractors Master List (add/edit/delete contractors)
-- Workers List with click-to-view details
-- **Worker Detail View with 4 Tabs:**
-  1. **Profile Tab**: Personal info, contractor assignment, daily wage, emergency contact
-  2. **Attendance Tab**: Calendar-based attendance marking (present/half-day/absent)
-  3. **Payroll Tab**: Monthly calculation (daily wage × days worked)
-  4. **Documents Tab**: Upload Aadhar, PAN, contracts, certificates
-
-**Data Model:**
-- Workers have: name, phone, address, aadhar_number, contractor_id, daily_wage, joining_date, contract_end_date
-- Contractors have: name, company_name, contact_person, phone, contract period
-- Attendance tracked via biometric (same as employees)
-- Documents stored with base64 encoding
-
-### 10. Tour Management & Remote Check-in (NEW - Jan 28, 2026)
-
-**Features:**
+### 10. Tour Management & Remote Check-in
 - Tour request submission and approval workflow
 - GPS-based remote check-in for approved tours
-- Field employee designation (can check-in remotely without tour approval)
-- Remote check-in creates attendance record with location data
+- Field employee designation
 
-**Tabs:**
-1. My Tours - View own tour requests
-2. Remote Check-in - GPS punch in/out
-3. All Requests (HR) - Approve/reject tours
-4. Field Employees (HR) - Manage field employee status
-
-### 11. SOP Management (ENHANCED - Jan 29, 2026)
-
+### 11. SOP Management (AI-POWERED) ✅
 **Standard Operating Procedures System:**
 - Create SOPs with Excel file upload
-- **Main Responsible (max 3)** - Primary employees responsible for the SOP
-- **Also Involved** - Additional employees who follow the SOP
-- Link SOPs to departments and/or designations (auto-links to Also Involved)
+- **AI-Powered Parsing** - Automatically extracts:
+  - SOP Number, Title, Process Owner
+  - Purpose, Scope, Procedure Summary
+  - Responsible Persons, Stakeholders
+  - Key Activities, Reports
+  - Task Type/Category
+- **Auto-match Process Owner** to employees in system
+- Main Responsible (max 3) - Primary employees responsible
+- Also Involved - Additional employees who follow the SOP
+- Link to departments and/or designations
 - Excel content parsed and shown as table preview
 - Download original Excel file
 - Draft/Published workflow
-- **Notifications sent** on publish to all linked employees
+- **Notifications sent** on publish
 
-**Employee Integration:**
+**Advanced Features:**
+- Full-text search across all fields
+- Filter by Department, Status, Owner
+- Group by Department, Owner, Task Type, Status
+- Full editing of all SOP fields
 - "My SOPs" card on employee dashboard
-- Split view: "Main Responsible" vs "Also Involved" SOPs
 
-### 12. Attendance Grid View (NEW - Jan 29, 2026)
-
-**Matrix Display of Attendance:**
-- Employee rows vs Date columns view
-- Color-coded status cells:
-  - P (green) = Present
-  - L (orange) = Late
-  - A (red) = Absent
-  - W (blue) = WFH
-  - LV (purple) = Leave
-  - HD (orange) = Half Day
-  - H = Holiday, – = Sunday
-- Summary columns: Present, Absent, Late counts per employee
+### 12. Meeting Management System ✅
+**Purpose:** Track organizational meetings, discussions, and follow-ups
 
 **Features:**
-- Date range filter (From Date, To Date)
-- Department filter
-- Employee search
-- **Inline Editing** - Click any cell to edit attendance status
-- **Export to Excel** - Download grid as spreadsheet
-- Sundays and holidays marked as non-editable
-
-### 13. Meeting Management System (NEW - Feb 4, 2026)
-
-**Purpose:** Track organizational meetings, discussions, and follow-ups with automatic scheduling.
-
-**Meeting Structure:**
-- Subject/Title
-- Date, Start Time, End Time
-- Location (Conference room / Online)
-- Participants (multi-select employees)
+- Meeting CRUD with subject, date, time, location, participants
 - Agenda / Things to Focus On
-- Discussion Notes (with edit tracking)
-- Follow-up Points for Next Meeting
+- Discussion Notes with edit tracking
+- Follow-up Points with assignment & completion tracking
+- Auto-Schedule Follow-up meeting
+- Meeting series linking
+- **In-App Notifications** via bell icon (invitations, reminders)
+- **Analytics Dashboard** (HR/Admin) - totals, frequency, completion rate
 
-**Key Features:**
-
-*Meeting Creation & Tracking:*
-- Create new meetings with all details
-- Add/remove participants (invitees get notifications)
-- Link meetings in series (follow-up chain)
-- View full meeting history for a topic
-
-*Edit Tracking:*
-- All changes logged with timestamp and user name
-- Discussion notes track: "John added a note at 10:30 AM"
-- Edit history preserved for notes
-
-*Follow-up System:*
-- Add follow-up points with assignment to employees
-- Toggle completion status (pending/completed)
-- **Auto-Schedule Follow-up**: Creates new meeting with follow-up points as agenda
-
-*In-App Notifications (Bell Icon):*
-- Meeting invitations
-- Morning reminder at 9:00 AM
-- 1 hour before reminder
-- Meeting cancellation notifications
-
-*Analytics Dashboard (HR/Admin Only):*
-- Total meetings per employee/department
-- Meeting frequency trends (by day of week)
-- Follow-up completion rate
-- Average time between meetings in a series
-- Top organizers and top attendees
-
-**Access Control:**
-- Participants: View/edit meetings they organize or are invited to
-- HR/Admin: Access to all meetings + analytics
+### 13. UI/UX Overhaul (Light Mode) ✅
+- Framer Motion animations
+- Gradient backgrounds on Login
+- Improved stat-card styling
+- Skeleton loaders
+- Clean white card design
+- Manrope/Public Sans typography
 
 ## Authentication & Security
 
@@ -247,17 +121,12 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 | Organization Attendance | ✅ | ❌ |
 | Edit Attendance Records | ✅ | ❌ |
 | Survey Management | ✅ | ❌ (view assigned only) |
-| Anonymous Suggestion Submitter | ✅ super_admin only | ❌ |
 | SEWA Advances | ✅ | ❌ |
 | Payslip Edit | ✅ Before lock | ❌ |
 | Delete Payroll | ✅ | ❌ |
 | Tour Approvals | ✅ | ❌ |
-| Field Employee Management | ✅ | ❌ |
 | SOP Management | ✅ | ❌ (view assigned only) |
 | Contract Labour | ✅ | ❌ |
-| Remote Check-in | ✅ (if eligible) | ✅ (if eligible) |
-| Download Own Payslip PDF | ✅ | ✅ |
-| Download Any Payslip PDF | ✅ | ❌ |
 | Meeting Management | ✅ | ✅ (own meetings) |
 | Meeting Analytics | ✅ | ❌ |
 
@@ -267,217 +136,64 @@ Comprehensive HR management system for Sharda Diesels with employee management, 
 
 ## Recent Changes
 
-### Feb 4, 2026 - SOP Upload Enhancement
-1. ✅ **Excel Auto-Parsing**
-   - Auto-detects SOP Number, Title, Process Owner from uploaded Excel template
-   - Extracts Purpose, Scope, and responsible persons from file content
-   - Matches "Process Owner" name to existing employees automatically
-
-2. ✅ **Advanced Search & Filtering**
-   - Full-text search across title, SOP number, owner name, content
-   - Filter by Department, Status, Owner
-   - Search by employee involvement (owner or responsible)
-
-3. ✅ **Grouping Options**
-   - Group by Department
-   - Group by Owner
-   - Group by Task Type/Category
-   - Group by Status (Draft/Published)
-
-4. ✅ **Full SOP Editing**
-   - Click any SOP to open edit dialog
-   - All fields editable: title, description, SOP number, task type
-   - Change departments, main responsible, involved employees
-   - Upload new file version
-
-### Feb 4, 2026 - UI/UX Improvements (Light Mode)
-1. ✅ **Framer Motion Animations**
-   - Page transition animations (fade + slide)
-   - Staggered card animations on Dashboard
-   - Login page entrance animations
-   - Hover scale effects on stat cards
-
-2. ✅ **Design Refinements**
-   - Gradient backgrounds on Login page
-   - Improved stat-card styling with hover effects
-   - Skeleton loaders replacing spinners
-   - Clean white card design
-   - Better shadows and spacing
-
-3. ✅ **Typography**
-   - Manrope font for headings
-   - Public Sans for body text
-   - Updated text hierarchy
+### Feb 4, 2026 - SOP AI Enhancement Verified
+1. ✅ AI-powered parsing working - extracts all fields from Excel
+2. ✅ Advanced search, filtering, grouping functional
+3. ✅ Full SOP editing capability
+4. ✅ Fixed admin employee record for meeting analytics
 
 ### Feb 4, 2026 - Meeting Management System
-1. ✅ **Internal Meeting System**
-   - Full CRUD for meetings with subject, date, time, location
-   - Multi-participant support with employee search
-   - Agenda / Things to Focus On section
-   - Discussion notes with edit tracking
-   - Follow-up points with assignment & completion tracking
+1. ✅ Full CRUD for meetings
+2. ✅ Discussion notes with edit tracking
+3. ✅ Follow-up points with completion tracking
+4. ✅ In-App Notification System
+5. ✅ Meeting Analytics Dashboard
 
-2. ✅ **Meeting Linking & Series**
-   - Meetings linked as series (follow-up chain)
-   - Auto-schedule follow-up: copies follow-up points as agenda
-   - View full meeting history
+### Feb 4, 2026 - UI/UX Improvements
+1. ✅ Framer Motion animations
+2. ✅ Clean light-mode design
+3. ✅ Improved typography
 
-3. ✅ **In-App Notification System**
-   - Bell icon in header with unread badge
-   - Meeting invitation notifications
-   - Morning (9 AM) and 1-hour-before reminders
-   - Background service for scheduled notifications
+## Upcoming Tasks
 
-4. ✅ **Meeting Analytics (HR/Admin)**
-   - Total meetings, avg/day, completion rate
-   - Frequency by day of week
-   - Top organizers and attendees
-   - Follow-up completion rate
+### Phase 2 - UI/UX Completion (P1)
+1. 🟠 Apply light-mode design to remaining pages (Employees, Attendance, Payroll, Onboarding, SOP)
 
-### Jan 30, 2026 - Employee Profile Enhancements
-1. ✅ **Attendance Tab Fix**
-   - Replaced placeholder with inline attendance data
-   - Added month/year selectors for filtering
-   - Shows summary cards (Present, Absent, WFH, Leave, Late)
-   - Displays attendance table with all records
-2. ✅ **Assets Tab Added**
-   - New tab showing assigned assets (Mobile, Laptop, System, Printer)
-   - Displays SDPL Number, Tag, and SIM/Mobile info
-   - Shows "Not Assigned" status when no assets
+### Phase 2 - Helpdesk Enhancements (P1)
+1. 🟠 Survey analytics dashboard
+2. 🟠 360-degree colleague feedback surveys
 
-### Jan 29, 2026 - SOP Enhancements & Attendance Grid View
-1. ✅ **SOP Enhancements**
-   - Added "Main Responsible" field (max 3 employees)
-   - Added "Also Involved" field for additional employees
-   - SOP list table displays main responsible names
-   - Notifications sent to all linked employees on publish
-2. ✅ **Attendance Grid View** - New tab in Attendance page
-   - Matrix view: Employees vs Dates
-   - Color-coded status cells (P, L, A, WFH, Leave, HD)
-   - Sundays and holidays properly marked
-   - Inline editing (click cell to edit with reason)
-   - Export to Excel functionality
-   - Filters: Date range, Department, Employee search
+## Future Tasks (Backlog)
+1. 🔴 Deploy to Production (CRITICAL - 3+ forks behind)
+2. Bulk import for contract workers
+3. Salary spreadsheet download
+4. Add 100+ missing employees from biometric
+5. SOP version history tracking
+6. Mobile application (limited scope)
 
-### Jan 29, 2026 - Bug Fixes, Contract Labour Overhaul & SOP Management
-1. ✅ **Bug Fixes**
-   - Asset lookup now resolves employee_id to emp_code correctly
-   - Attendance lookup now searches by both employee_id and emp_code
-   - Edit Profile button now opens functional dialog with save capability
-2. ✅ **Contract Labour Overhaul** - Complete mini HR system
-   - Contractors master list management
-   - Workers list with detail view
-   - 4 tabs: Profile, Attendance (calendar), Payroll (daily wage calc), Documents
-   - Document upload (Aadhar, PAN, etc.)
-3. ✅ **SOP Management System** - New module
-   - Create SOPs with Excel file upload
-   - Link to departments and designations
-   - Table preview of Excel content
-   - Download capability
-   - "My SOPs" card on employee dashboard
+## 3rd Party Integrations
+- `emergentintegrations` with Emergent LLM Key (AI SOP parsing)
+- Custom Biometric API
+- Emergent-managed Google Auth
+- `openpyxl` (Excel parsing)
+- `reportlab` (PDF generation)
+- `Framer Motion` (animations)
 
-### Jan 28, 2026 - HR Attendance Editing, Tour Management & Payslip PDF Download
-1. ✅ **HR Attendance Editing** - Complete system for HR to edit attendance records
-   - Edit Records tab on Attendance page
-   - Load records by date with edit buttons
-   - Edit dialog with status, in/out time, remarks
-   - Audit trail for all changes
-   - Add Manual Entry dialog for new records
-2. ✅ **Tour Management System** - Replaced Travel page with comprehensive tour system
-   - My Tours tab - View own tour requests
-   - Remote Check-in tab - GPS-based punch in/out
-   - All Requests tab (HR) - Manage tour approvals
-   - Field Employees tab (HR) - Designate field employees
-   - Field employees can remote check-in without tour approval
-3. ✅ **Payslip PDF Download** - Employees can download their payslips as PDF
-   - PDF button on My Payslips tab
-   - Professional PDF with company header, earnings, deductions
-   - Endpoint: GET /api/payroll/payslip/{id}/pdf
+## Key API Endpoints
 
-### Jan 28, 2026 - Helpdesk Overhaul (Phase 1)
-1. ✅ **Complaints with Priority Levels** - Low, Medium, High, Critical badges
-2. ✅ **Anonymous Suggestions** - Anonymous to HR, visible to super_admin
-3. ✅ **Survey System** - Complete implementation with:
-   - 7 survey types
-   - 4 targeting options
-   - 7 question types
-   - 6 built-in templates
-   - Analytics dashboard
-4. ✅ **Delete Payroll** - Can delete processed AND locked payrolls
+### SOP Management
+- `POST /api/sop/create` - Upload SOP with AI parsing
+- `GET /api/sop/list` - List with search, filters, grouping
+- `GET /api/sop/{id}` - Get SOP with AI-extracted data
+- `PUT /api/sop/{id}` - Update SOP
+- `PUT /api/sop/{id}/publish` - Publish and notify
+- `GET /api/sop/my-sops` - User's SOPs
 
-### Jan 22, 2026 - Payroll Overhaul
-- New calculation logic using calendar days
-- SEWA Advance Management
-- One-time Deductions
-- Payslip Editing
-- Template format export
+### Meeting Management
+- `POST /api/meetings` - Create meeting
+- `GET /api/meetings/analytics` - Analytics dashboard
+- `POST /api/meetings/{id}/schedule-followup` - Schedule follow-up
 
-## Upcoming Tasks (Phase 2 & 3)
-
-### Phase 2 - Advanced Surveys
-1. 🟠 Colleague/360 Feedback with HR-assigned or employee-choice targets
-2. 🟠 Survey Templates management (save/load custom templates)
-3. 🟠 Scheduled Surveys (auto-send on specific dates)
-4. 🟠 Recurring Surveys (weekly, monthly, quarterly pulse checks)
-
-### Phase 3 - Analytics & Extras
-1. 🟡 Pulse Surveys - Quick recurring check-ins
-2. 🟡 Follow-up Actions - Link survey results to action items
-3. 🟡 Benchmark Comparison - Compare results over time
-4. 🟡 Conditional Questions - Show/hide based on previous answers
-5. 🟡 Survey Drafts - Save incomplete surveys
-
-## Future Tasks
-1. Deploy to Production (CRITICAL - 3+ forks behind)
-2. Add Missing Employees (100+ unmatched from biometric)
-3. Meeting Management & Task Tracking
-4. AI-powered Shift Scheduling
-5. Mobile application (limited scope)
-6. HR Download all employee salaries as spreadsheet
-
-## API Endpoints
-
-### Attendance Grid View (NEW - Jan 29, 2026)
-- `GET /api/attendance/grid?from_date=X&to_date=Y&department_id=Z&search=Q` - Get attendance matrix data
-
-### SOP Management (ENHANCED - Jan 29, 2026)
-- `POST /api/sop/create` - Create SOP with main_responsible and also_involved
-- `GET /api/sop/list` - List SOPs with main_responsible_names column
-- `PUT /api/sop/{id}/publish` - Publish SOP and send notifications
-- `GET /api/sop/my-sops` - Get user's SOPs split by main_responsible vs also_involved
-
-### HR Attendance Editing (NEW)
-- `GET /api/attendance/daily?date=YYYY-MM-DD` - Load attendance records for a date
-- `PUT /api/attendance/{id}` - Edit attendance record (with audit trail)
-- `GET /api/attendance/{id}/history` - Get edit history for a record
-- `POST /api/attendance/manual` - Add manual attendance entry
-
-### Tour Management (NEW)
-- `GET/POST /api/travel/requests` - List/create tour requests
-- `PUT /api/travel/requests/{id}/approve` - Approve tour request
-- `PUT /api/travel/requests/{id}/reject` - Reject tour request
-- `GET /api/travel/my-active-tour` - Check if user has active tour or is field employee
-- `POST /api/travel/remote-check-in` - GPS-based remote punch in/out
-- `GET /api/travel/remote-check-ins` - List remote check-ins
-- `GET /api/travel/field-employees` - List field employees (HR)
-- `PUT /api/travel/field-employees/{id}` - Toggle field employee status (HR)
-
-### Payslip PDF Download (NEW)
-- `GET /api/payroll/payslip/{id}/pdf` - Download payslip as PDF
-- `GET /api/payroll/my-payslip/{month}/{year}/pdf` - Download own payslip by month/year
-
-### Helpdesk (NEW)
-- `GET/POST /api/helpdesk/suggestions` - List/create suggestions
-- `PUT /api/helpdesk/suggestions/{id}/respond` - HR responds to suggestion
-- `GET/POST /api/helpdesk/surveys` - List/create surveys
-- `POST /api/helpdesk/surveys/{id}/activate` - Activate draft survey
-- `POST /api/helpdesk/surveys/{id}/close` - Close active survey
-- `POST /api/helpdesk/surveys/{id}/respond` - Submit survey response
-- `GET /api/helpdesk/surveys/{id}/analytics` - Get survey analytics
-- `GET /api/helpdesk/survey-templates` - Get built-in templates
-- `GET /api/helpdesk/departments` - Get departments for targeting
-- `GET /api/helpdesk/locations` - Get locations for targeting
-- `GET /api/helpdesk/employees-for-selection` - Get employees for targeting
-
-### Payroll
-- `DELETE /api/payroll/runs/{id}` - Delete payroll run and payslips (NEW)
+### Notifications
+- `GET /api/notifications` - List notifications
+- `POST /api/notifications/mark-all-read` - Mark all read
