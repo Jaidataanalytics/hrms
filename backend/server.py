@@ -3994,11 +3994,44 @@ async def delete_business_insurance(business_insurance_id: str, request: Request
 
 @api_router.get("/employee-assets")
 async def get_all_employee_assets(request: Request):
-    """Get all employee assets records"""
+    """Get all employee assets (HR only)"""
     user = await get_current_user(request)
+    
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "it_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
     
     records = await db.employee_assets.find({}, {"_id": 0}).to_list(1000)
     return records
+
+
+@api_router.get("/employee-assets/my-assets")
+async def get_my_assets(request: Request):
+    """Get assets assigned to the current logged-in employee"""
+    user = await get_current_user(request)
+    
+    emp_code = user.get("emp_code")
+    employee_id = user.get("employee_id")
+    
+    # Try by emp_code first
+    if emp_code:
+        record = await db.employee_assets.find_one({"emp_code": emp_code}, {"_id": 0})
+        if record:
+            return record
+    
+    # Try by employee_id
+    if employee_id:
+        record = await db.employee_assets.find_one({"employee_id": employee_id}, {"_id": 0})
+        if record:
+            return record
+        
+        # Look up employee to get emp_code
+        employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0, "emp_code": 1})
+        if employee and employee.get("emp_code"):
+            record = await db.employee_assets.find_one({"emp_code": employee["emp_code"]}, {"_id": 0})
+            if record:
+                return record
+    
+    return None
 
 
 @api_router.get("/employee-assets/{identifier}")
