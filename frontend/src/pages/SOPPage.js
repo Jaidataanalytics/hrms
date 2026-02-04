@@ -704,7 +704,7 @@ const SOPPage = () => {
               <span className="text-slate-500 text-sm">Stakeholders:</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {selectedSOP.stakeholders.map((s, i) => (
-                  <Badge key={i} variant="outline" className="text-xs">{s}</Badge>
+                  <Badge key={i} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">{s}</Badge>
                 ))}
               </div>
             </div>
@@ -731,6 +731,13 @@ const SOPPage = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Process Flow Chart */}
+      {isEdit && selectedSOP?.process_flow_steps?.length > 0 && (
+        <div className="border rounded-lg p-4 bg-gradient-to-br from-slate-50 to-white">
+          <ProcessFlowChart steps={selectedSOP.process_flow_steps} />
         </div>
       )}
     </div>
