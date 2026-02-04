@@ -3515,7 +3515,7 @@ from routes.reports import router as reports_router
 from routes.labour import router as labour_router
 from routes.user_management import router as user_management_router
 from routes.training import router as training_router
-from routes.travel import router as travel_router
+from routes.travel import router as travel_router, tours_router
 from routes.data_management import router as data_management_router, set_db as set_data_management_db
 from routes.biometric import router as biometric_router, set_db as set_biometric_db
 from routes.helpdesk import router as helpdesk_router
