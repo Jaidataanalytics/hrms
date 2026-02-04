@@ -114,21 +114,27 @@ Return ONLY valid JSON, no other text or explanation."""
             system_message=system_prompt
         ).with_model("openai", "gpt-4o-mini")
         
-        # Truncate content if too long
-        max_chars = 15000
+        # Truncate content if too long - increased limit for better extraction
+        max_chars = 20000
         if len(text_content) > max_chars:
             text_content = text_content[:max_chars] + "\n...[Content truncated]"
         
         user_message = UserMessage(
-            text=f"""Parse this SOP document content and extract all relevant information:
+            text=f"""Parse this SOP document content and extract ALL information thoroughly.
+Pay special attention to:
+1. PROCESS STAKEHOLDERS section
+2. RESP/IN-CHARGE column for each process step
+3. Complete PURPOSE and SCOPE text
+4. All process flow steps with their descriptions
 
+SOP CONTENT:
 ---
 {text_content}
 ---
 
-Available employees in the system for name matching: {', '.join(employee_names[:50])}
+Available employees for matching: {', '.join(employee_names[:50])}
 
-Return the extracted data as valid JSON only."""
+Return comprehensive JSON with all extracted data."""
         )
         
         response = await chat.send_message(user_message)
