@@ -158,10 +158,12 @@ function AppRouter() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRouter />
-        <Toaster position="top-right" richColors />
-      </AuthProvider>
+      <ThemeProvider defaultTheme="light" storageKey="sharda-hr-theme">
+        <AuthProvider>
+          <AppRouter />
+          <Toaster position="top-right" richColors />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
