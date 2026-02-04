@@ -537,7 +537,7 @@ const SOPPage = () => {
           <User className="w-4 h-4" />
           Main Responsible / SOP Owner
         </Label>
-        <p className="text-xs text-slate-500">Auto-matched from "Process Owner" in Excel</p>
+        <p className="text-xs text-slate-500">Auto-matched from &quot;Process Owner&quot; in Excel</p>
         <ScrollArea className="h-[100px] border rounded-lg p-2">
           <div className="flex flex-wrap gap-2">
             {employees.filter(e => e.is_active !== false).slice(0, 100).map(emp => (
