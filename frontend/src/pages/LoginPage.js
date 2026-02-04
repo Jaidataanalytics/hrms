@@ -245,7 +245,7 @@ const LoginPage = () => {
               </Button>
             </motion.form>
 
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-slate-500">
               Contact HR administrator if you need access
             </p>
           </CardContent>
