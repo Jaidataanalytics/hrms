@@ -19,7 +19,13 @@ import {
   Megaphone,
   RefreshCw,
   FileSpreadsheet,
-  Download
+  Download,
+  Package,
+  Laptop,
+  Smartphone,
+  MapPin,
+  Receipt,
+  Plane
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
@@ -31,6 +37,9 @@ const Dashboard = () => {
   const [employeeDashboard, setEmployeeDashboard] = useState(null);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [mySops, setMySops] = useState([]);
+  const [myAssets, setMyAssets] = useState(null);
+  const [myTours, setMyTours] = useState([]);
+  const [myExpenses, setMyExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAttendance, setMarkingAttendance] = useState(false);
 
@@ -41,11 +50,14 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const authHeaders = getAuthHeaders();
-      const [statsRes, empDashRes, leaveTypesRes, sopsRes] = await Promise.all([
+      const [statsRes, empDashRes, leaveTypesRes, sopsRes, assetsRes, toursRes, expensesRes] = await Promise.all([
         fetch(`${API_URL}/dashboard/stats`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/dashboard/employee`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/sop/my-sops`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/sop/my-sops`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/employee-assets/my-assets`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/tours/my-tours`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/expenses/my-expenses`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (statsRes.ok) {
@@ -66,6 +78,21 @@ const Dashboard = () => {
       if (sopsRes.ok) {
         const sopsData = await sopsRes.json();
         setMySops(sopsData);
+      }
+
+      if (assetsRes.ok) {
+        const assetsData = await assetsRes.json();
+        setMyAssets(assetsData);
+      }
+
+      if (toursRes.ok) {
+        const toursData = await toursRes.json();
+        setMyTours(toursData);
+      }
+
+      if (expensesRes.ok) {
+        const expensesData = await expensesRes.json();
+        setMyExpenses(expensesData);
       }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
