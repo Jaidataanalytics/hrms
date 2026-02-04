@@ -231,8 +231,8 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{stats.total_employees}</p>
+                    <p className="text-sm font-medium text-slate-500">Total Employees</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total_employees}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Users className="w-6 h-6 text-primary" />
@@ -247,15 +247,15 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Present Today</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{stats.present_today}</p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                    <p className="text-sm font-medium text-slate-500">Present Today</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.present_today}</p>
+                    <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3" />
                       {stats.attendance_percentage}% attendance
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                   </div>
                 </div>
               </CardContent>
@@ -267,11 +267,11 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">On Leave Today</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{stats.on_leave_today}</p>
+                    <p className="text-sm font-medium text-slate-500">On Leave Today</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.on_leave_today}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Calendar className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                  <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Calendar className="w-6 h-6 text-amber-600" />
                   </div>
                 </div>
               </CardContent>
@@ -283,11 +283,11 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Pending Approvals</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{stats.pending_leaves}</p>
+                    <p className="text-sm font-medium text-slate-500">Pending Approvals</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.pending_leaves}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
                   </div>
                 </div>
               </CardContent>
