@@ -1012,7 +1012,7 @@ const SOPPage = () => {
 
       {/* Edit SOP Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit SOP</DialogTitle>
             <DialogDescription>
@@ -1020,13 +1020,24 @@ const SOPPage = () => {
             </DialogDescription>
           </DialogHeader>
           <SOPForm isEdit={true} />
-          <DialogFooter className="flex justify-between">
+          <DialogFooter className="flex flex-col sm:flex-row justify-between gap-2">
             <div className="flex gap-2">
               {selectedSOP?.file_name && (
-                <Button variant="outline" onClick={() => handleDownload(selectedSOP.sop_id)}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download File
-                </Button>
+                <>
+                  <Button variant="outline" onClick={() => handleDownload(selectedSOP.sop_id)}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleReparse(selectedSOP.sop_id)}
+                    disabled={reparsing}
+                    title="Re-extract data with improved AI"
+                  >
+                    {reparsing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+                    Re-parse AI
+                  </Button>
+                </>
               )}
             </div>
             <div className="flex gap-2">
