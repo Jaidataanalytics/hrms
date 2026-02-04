@@ -46,9 +46,11 @@ import {
   Fingerprint,
   Shield,
   Search,
-  FileSpreadsheet
+  FileSpreadsheet,
+  UsersRound
 } from 'lucide-react';
 import GlobalSearch from '../components/GlobalSearch';
+import NotificationBell from '../components/NotificationBell';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
