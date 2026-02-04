@@ -84,6 +84,18 @@ async def mark_all_as_read(request: Request):
     return {"message": f"Marked {result.modified_count} notifications as read"}
 
 
+@router.delete("/clear-all")
+async def clear_all_notifications(request: Request):
+    """Clear all notifications for the current user"""
+    user = await get_current_user(request)
+    
+    result = await db.notifications.delete_many({
+        "user_id": user.get("user_id")
+    })
+    
+    return {"message": f"Deleted {result.deleted_count} notifications"}
+
+
 @router.delete("/{notification_id}")
 async def delete_notification(notification_id: str, request: Request):
     """Delete a notification"""
@@ -98,15 +110,3 @@ async def delete_notification(notification_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Notification not found")
     
     return {"message": "Notification deleted"}
-
-
-@router.delete("/clear-all")
-async def clear_all_notifications(request: Request):
-    """Clear all notifications for the current user"""
-    user = await get_current_user(request)
-    
-    result = await db.notifications.delete_many({
-        "user_id": user.get("user_id")
-    })
-    
-    return {"message": f"Deleted {result.deleted_count} notifications"}
