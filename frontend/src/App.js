@@ -37,6 +37,7 @@ import InsurancePage from "./pages/InsurancePage";
 import HolidayManagementPage from "./pages/HolidayManagementPage";
 import SOPPage from "./pages/SOPPage";
 import MyCalendarPage from "./pages/MyCalendarPage";
+import MeetingsPage from "./pages/MeetingsPage";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
