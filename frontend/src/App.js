@@ -143,6 +143,7 @@ function AppRouter() {
         <Route path="holidays" element={<HolidayManagementPage />} />
         <Route path="sop" element={<SOPPage />} />
         <Route path="my-calendar" element={<MyCalendarPage />} />
+        <Route path="meetings" element={<MeetingsPage />} />
         <Route path="calendar" element={<MyCalendarPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
