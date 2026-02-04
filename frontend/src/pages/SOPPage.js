@@ -976,6 +976,7 @@ const SOPPage = () => {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="text-center py-8">
               <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto mb-4" />
