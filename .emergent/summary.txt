@@ -1,74 +1,94 @@
 <analysis>**original_problem_statement:**
-The user's initial high-level goals were to overhaul the company's HR systems, including payroll, helpdesk, and attendance.
+The user's initial goal was to overhaul the company's HR systems. This has evolved through multiple feature requests, bug fixes, and UI/UX improvements.
 
-Throughout the sessions, this evolved into a series of feature requests and bug fixes:
-1.  **SOP Enhancements:** Differentiate between a main responsible employee and also involved employees for SOPs. (COMPLETED)
-2.  **Attendance Grid View:** Change the attendance calendar into a table/grid format with inline editing and an export option. (COMPLETED)
-3.  **UI/UX Refinement:** Remove the now-redundant Edit Records tab from the Attendance page after implementing the grid view. (COMPLETED)
-4.  **Bug Fixes:** Address issues on the employee profile page where assigned assets were not showing, and the attendance tab was not displaying the current month's data inline. (COMPLETED)
-5.  **Payroll Calculation Overhaul:** Analyze and fix discrepancies between software-generated and manual payroll calculations, specifically regarding how paid leaves and Sundays are counted towards earned days. (COMPLETED)
-6.  **Employee Self-Service:** Add sections to the employee dashboard for them to view their own assigned assets, tour requests, and expense claims. (COMPLETED)
-7.  **Onboarding Redesign:** Rebuild the employee onboarding page from a simple list into a comprehensive, multi-step wizard/pipeline view. (COMPLETED)
-8.  **Personal Calendar:** Create a new page for employees to view a personal calendar showing their attendance, holidays, and allow them to schedule tasks and meetings. (IN PROGRESS)
-9.  **UI/UX Overhaul:** A global request to upgrade the entire application's design using ,  for animations, and implementing dark mode, to be done after all functional features are complete. (NOT STARTED)
+The most recent user requests were:
+1.  **Internal Meeting Management System:** The user wanted to abandon a complex external calendar integration in favor of a self-contained system within the app. This system needed to support creating meetings, tracking discussions and follow-ups, sending in-app notifications, and providing analytics. (COMPLETED)
+2.  **App-wide UI/UX Overhaul:** A global request to modernize the app's design. This was initially planned with dark mode, but the user rejected the implementation and requested a simplified, clean light-mode-only design with better animations and layout. (IN PROGRESS)
+3.  **Advanced SOP Management:** The user provided an Excel template for Standard Operating Procedures (SOPs) and requested a robust upload feature. The initial rigid parser was insufficient, leading to a requirement to use AI to intelligently extract data from varied SOP formats. The user also requested advanced search, filtering, grouping, and full editing capabilities on the SOP page. (IN PROGRESS)
 
 **User's preferred language**: English
 
 **what currently exists?**
-The project is a comprehensive full-stack HR management system built with a React frontend and FastAPI backend. The latest session introduced several major features and fixes:
--   **Advanced Payroll Logic:** A new  module accurately calculates salaries based on complex rules for paid/unpaid leaves and weekly Sunday pay.
--   **SOP Enhancements:** The SOP creation form and backend now support separate fields for main responsible and also involved employees.
--   **Attendance Grid:** The attendance page features a powerful data grid showing employees vs. dates, with inline editing, filtering, and Excel export, replacing the old separate editing tab.
--   **Revamped Employee Profile:** The employee profile page now correctly displays a list of assigned assets and an inline view of their monthly attendance records.
--   **Employee Dashboard:** The main dashboard for employees now includes quick-access cards and links for viewing their assets, tours, and expenses.
--   **Onboarding Pipeline:** A completely new onboarding page () provides a Kanban-style pipeline view to track new hires through various stages (Pre-Joining, Day 1, Week 1, etc.).
--   **Personal Calendar (V1):** A new My Calendar page () has been created, which successfully displays an employee's attendance data (Present, Late, Leave) and company holidays on a calendar grid. Backend routes exist but functionality for adding tasks/meetings is pending.
+The application is a full-stack HR management system (React/FastAPI). Key recent additions include:
+-   **Internal Meeting Management System:** A complete, self-contained feature for scheduling, tracking, and analyzing internal meetings. It includes backend logic, frontend pages, and an in-app notification system via a bell icon in the header.
+-   **Refined UI (Light Mode):** The UI overhaul was partially implemented. Dark mode was built and subsequently removed per user feedback. The Login, Dashboard, and Meetings pages now feature a cleaner light-mode design with  animations, improved layouts, and a consistent visual language.
+-   **AI-Powered SOP Parsing:** The backend () has been enhanced to use the  library and an LLM to intelligently parse uploaded SOP Excel files. This extracts various fields like title, owner, purpose, and key activities automatically.
+-   **Enhanced SOP Page:** The frontend () has been completely rewritten to support the new AI backend. It features a sophisticated UI with a search bar, filters (Department, Status, Owner), grouping options (Department, Owner, etc.), and a detailed dialog for uploading and editing SOPs that displays AI-extracted information.
 
 **Last working item**:
--   **Last item agent was working:** The agent was discussing calendar integration methods with the user. After presenting the plan for a full Microsoft Graph API integration (for Outlook/Teams), the user asked for a simpler alternative that doesn't require API keys and Azure setup. The agent proposed two simpler options: generating downloadable  files or using Add to Calendar deeplinks.
+-   **Last item agent was working:** Implementing and testing the AI-powered SOP parsing functionality. The agent successfully integrated the  library, updated the backend  to call the AI service, and ran a test script to confirm that it correctly extracted detailed information from a sample Excel file. The agent took screenshots showing the auto-populated fields in the frontend upload dialog.
 -   **Status:** USER VERIFICATION PENDING
--   **Agent Testing Done:** N/A
--   **Which testing method agent to use?** N/A
+-   **Agent Testing Done:** Y
+-   **Which testing method agent to use?** frontend testing agent
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-There are no pending bugs; all reported issues in this session have been fixed.
+-   **Issue 1:** Admin user name appears as Unknown in meeting analytics (P2)
+-   **Issue 2:** The  endpoint returns a 404 error (P2)
+-   **Issue 3:** The deployed version of the application is critically outdated (P0 - Blocker for production)
+
+**Issues Detail:**
+-   **Issue 1: Admin user name appears as Unknown in meeting analytics (P2)**
+    -   **Attempted fixes:** The agent identified the root cause is a missing employee record for the admin's  () but deferred the fix, classifying it as a minor data issue.
+    -   **Next debug checklist:**
+        1.  Connect to the database and insert a new record into the  collection for  with the admin's details.
+        2.  Alternatively, modify the analytics endpoint in  to fall back to the user's email if an employee record is not found.
+    -   **Why fix this issue and what will be achieved with the fix?** To ensure data integrity and correct display of information in the meeting analytics dashboard.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on other issue:** None
+
+-   **Issue 2: The  endpoint returns a 404 error (P2)**
+    -   **Attempted fixes:** None in this session. This is a carry-over issue. A workaround () exists.
+    -   **Next debug checklist:** Investigate the FastAPI router in  and the  route file to understand why this specific endpoint is not registered correctly.
+    -   **Why fix this issue and what will be achieved with the fix?** To restore full functionality to the leave management system and remove the need for a workaround.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on other issue:** None
+
+-   **Issue 3: The deployed version of the application is critically outdated (P0 - Blocker for production)**
+    -   **Attempted fixes:** None. This is a recurring issue across forks.
+    -   **Next debug checklist:** This is not a code issue. The agent needs to get approval from the user to initiate a deployment.
+    -   **Why fix this issue and what will be achieved with the fix?** To make all the new features and bug fixes available to end-users.
+    -   **Status:** BLOCKED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** N/A
+    -   **Blocked on other issue:** User approval for deployment.
 
 **In progress Task List**:
--   **Task 1: Implement Calendar Meeting/Task Scheduling (P0)**
-    -   **Where to resume:** The agent is awaiting the user's decision on how to implement meeting scheduling. The choice is between a full Microsoft Graph API integration or a simpler method like generating  files or using deeplinks. Once the user decides, the agent needs to implement the chosen solution.
-    -   **What will be achieved with this?** Employees will be able to use the Add Task and Schedule Meeting buttons on the My Calendar page to manage their schedule and invite colleagues.
-    -   **Status:** BLOCKED
-    -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** User's decision on the integration method.
+-   **Task 1: AI-Powered SOP Upload & Management (P0)**
+    -   **Where to resume:** The agent has tested the AI parsing via a script. The immediate next step is to perform a final check by verifying the fully parsed SOP data was correctly saved to the database. After that, present the complete, working feature to the user for final verification.
+    -   **What will be achieved with this?** A robust and flexible SOP upload system that significantly improves data entry accuracy and user efficiency.
+    -   **Status:** USER VERIFICATION PENDING
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on something:** User feedback.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P0: App-wide UI/UX & Animation Overhaul:** After all functionality is complete, refactor the entire application to meet the user's detailed design specifications. This includes integrating  components, using  for animations, implementing dark mode, improving visual hierarchy, and replacing loading spinners with skeleton loaders.
+    -   **P0: App-wide UI/UX Overhaul (Phase 2):** Apply the new, clean, light-mode design system (animations, spacing, skeleton loaders, consistent components) to all remaining pages, including Employees, Attendance, Payroll, Onboarding, and the SOP page itself.
     -   **P1: Helpdesk Enhancements (Phase 2):** Build a survey analytics dashboard and implement Colleague Feedback (360-degree) surveys.
 
 -   **Future Tasks:**
-    -   Add a bulk import feature (Excel upload) for contract workers.
-    -   Meeting Management & Task Tracking module (scope needs to be clarified post-calendar implementation).
+    -   Add a bulk import feature for contract workers.
     -   Allow HR to download a spreadsheet of all employee salaries.
     -   Add over 100 missing employees to the database.
     -   Helpdesk Enhancements (Phase 3): Implement in-app notifications and deadline reminders.
     -   Deploy the application to production.
 
 **Completed work in this session**
--   **Payroll Calculation Fix:** Implemented new logic in  to correctly handle paid/unpaid leaves and a weekly Sunday pay rule. Added a Total Working Days column to the payroll export.
--   **SOP Enhancements:** Completed the UI and backend logic to distinguish between main responsible and also involved employees.
--   **Attendance Grid View:** Built the grid view with inline editing and removed the redundant Edit Records tab from the .
--   **Employee Profile Fixes:** Fixed the  page to correctly display assigned assets and inline monthly attendance data.
--   **Employee Self-Service Features:** Added My Assets, My Tours, and My Expenses sections to the employee .
--   **Onboarding Page Redesign:** Replaced the old list view with a new, multi-step Kanban-style wizard in .
--   **Personal Calendar (V1):** Created the  and associated backend routes () to display an employee's attendance and holidays.
+-   **Internal Meeting Management System:** A full-featured internal meeting scheduler with creation, tracking, notifications, and analytics was built and tested.
+-   **UI/UX Improvements (Phase 1):** Implemented a refined light-mode-only design with  animations on the Login and Dashboard pages after the user rejected the initial dark mode version.
+-   **Advanced SOP Management (V1):** Replaced a rigid Excel parser with a flexible, AI-powered solution to intelligently extract data. Rewrote the SOP page UI to support advanced search, filtering, grouping, and editing.
 
 **Earlier issues found/mentioned but not fixed**
--    endpoint returns 404: This issue from a previous handoff remains unresolved. A workaround () exists, but the root cause has not been investigated.
+-   The  endpoint returns a 404 error.
+-   The deployed version of the application is critically outdated.
+-   The admin user's name shows as Unknown in meeting analytics due to a missing employee data record.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork:** Deployed version is outdated. This remains a critical issue, as all new features and fixes are only in the preview environment.
+-   **Issue recurrence in previous fork:** Deployed version is outdated.
 -   **Recurrence count:** 3+
 -   **Status:** BLOCKED (on user approval for deployment).
 
@@ -76,80 +96,76 @@ There are no pending bugs; all reported issues in this session have been fixed.
 
 
 **Key Technical Concepts**
--   **Modular Backend Logic:** Encapsulated complex payroll rules into a new, dedicated  module to improve maintainability.
--   **Frontend State Refactoring:** Successfully refactored large components like  to remove redundant features and integrate new ones (Grid View) while cleaning up unused state and functions.
--   **Employee-Scoped APIs:** Created dedicated my-* endpoints (, , ) that are automatically filtered for the logged-in user, simplifying frontend logic.
--   **Dynamic UI Generation:** Built a feature-rich calendar grid from scratch using  and custom logic to display various event types with color-coding.
--   **Complex UI Implementation:** Created a multi-step Kanban-style wizard for the onboarding process, managing state for drag-and-drop functionality and stage transitions.
+-   **AI-Powered Data Extraction:** Using  and an LLM to parse unstructured data from Excel files, replacing brittle regex-based methods.
+-   **UI/UX Overhaul:** Systematically updating the application's frontend using  for animations and a custom design system defined in global CSS to create a modern, clean, and consistent user experience.
+-   **Real-time Notifications:** A backend notification system () coupled with a frontend polling component () to provide users with timely in-app updates.
+-   **Component-Driven Frontend:** Refactoring UI, like moving  out of , to improve code organization and reusability.
 
 **key DB schema**
 -   **New Collections:**
     -   : 
     -   : 
 -   **Modified Collections:**
-    -   : The  field in payslip documents now contains new data points from the  calculation, such as  and .
+    -   : Schema enhanced with fields like , , and  to support AI extraction and advanced role assignment.
 
 **All files of reference**
--   **/app/backend/routes/payroll_v2.py** (New)
--   **/app/frontend/src/pages/OnboardingPage.js** (Rewritten)
--   **/app/frontend/src/pages/MyCalendarPage.js** (New)
--   **/app/backend/routes/calendar.py** (New)
--   **/app/frontend/src/pages/AttendancePage.js** (Modified)
--   **/app/frontend/src/pages/EmployeeProfile.js** (Modified)
--   **/app/frontend/src/pages/Dashboard.js** (Modified)
--   **/app/memory/PRD.md** (Updated)
+-   
+-   
+-   
+-   
+-   
+-   
+-   
+-   
+-   
+-   
 
 **Areas that need refactoring**:
--   The user has explicitly requested a full UI/UX overhaul as a final step, which will involve refactoring nearly all frontend components to use a consistent design system (, ).
--   The deprecated , , and  files (and their corresponding backend routes) should be deleted to clean up the codebase.
+-   The UI/UX overhaul needs to be completed for all remaining pages (e.g., , , ) to match the new light-mode design.
+-   Deprecated pages and routes (, , ) should be deleted to clean up the codebase.
 
 **key api endpoints**
--   : Triggers the new, enhanced payroll calculation logic.
--   : Returns attendance data in a matrix format for the grid view.
--   : Retrieves all records for the new onboarding pipeline view.
--   : Fetches all events (attendance, holidays, tasks, meetings) for the logged-in user's calendar.
--   : Creates a new task for the user.
--   : Gets assets assigned to the logged-in employee.
--   : Gets tours requested by the logged-in employee.
--   : Gets expenses claimed by the logged-in employee.
+-   : Uploads an SOP Excel file and uses AI to parse its content.
+-   : Gets all SOPs associated with an employee.
+-   : Creates a new internal meeting.
+-   : Returns analytics data for meetings.
+-   : Gets unread notifications for the user.
+-   : Marks all user notifications as read.
 
 **Critical Info for New Agent**
--   Your first priority is to **resolve the user's question about the Calendar integration**. They want to avoid a complex Microsoft API setup. You must clearly present the simpler alternatives (generating  files or using Add to Calendar links), get their approval, and then implement the meeting/task scheduling functionality based on their choice.
--   The **app-wide UI/UX overhaul is the next major task**, but it should only be started *after* the calendar functionality is complete, as per the user's explicit instructions.
--   Be aware that the core payroll logic now resides in . Any future modifications to salary calculations should be made there.
+-   Your first priority is to **get user approval for the AI-powered SOP upload feature**. Before asking, perform a final check to ensure the AI-parsed data is correctly saved to the database. The user was previously unhappy with a rigid solution, so confirming this new flexible approach works is critical.
+-   The user has **explicitly rejected dark mode**. All future UI work should follow the established clean, light-mode design. The next major task, after the SOP feature is approved, is to apply this design consistently across the rest of the application.
+-   Be aware of the minor data issue causing the admin's name to be Unknown in meeting analytics. While not a blocker, it is a known bug.
 
 **documents and test reports created in this job**
 -   
 -   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks to fix the completely wrong onboarding page, adds requests for employees to see their own assets/tours/expenses, and requests a new personal calendar feature for attendance, tasks, and meetings with email integration.
-2.  **Agent:** Asks for confirmation on a detailed plan covering the onboarding redesign and the calendar feature with Microsoft integration options.
-3.  **User:** Confirms the plan, clarifies the Sunday payroll rule, and provides detailed UI/UX requirements for the entire app (shadcn, Framer Motion, dark mode). Sets the priority order: Payroll fix -> Onboarding -> Calendar -> Self-service access -> UI/UX overhaul last.
-4.  **Agent:** Asks if the Sunday rule is weekly or monthly.
-5.  **User:** weekly basis . (COMPLETED - Payroll fix is done).
-6.  **Agent:** After implementing several features, asks for approval to proceed with Microsoft Graph API integration for the calendar.
-7.  **User:** yes (APPROVAL GIVEN).
-8.  **Agent:** Provides the Microsoft Graph API playbook and asks for the necessary credentials (Tenant ID, Client ID, etc.).
-9.  **User:** is there a way to do it without api integration ?? (NEW REQUIREMENT - Seeking simpler alternative).
-10. **Agent:** Proposes simpler alternatives (ICS files, deeplinks) and awaits the user's decision. (PENDING)
+1.  **User:**  (Status: IN PROGRESS)
+2.  **User:**  (Status: RESOLVED)
+3.  **User:**  (in response to what was wrong with dark mode, meaning All of the above) (Status: RESOLVED)
+4.  **User:**  (Initiated the SOP feature request) (Status: IN PROGRESS)
+5.  **User:**  (Provided clarifications for the SOP feature) (Status: RESOLVED)
+6.  **User:**  (Gave negative feedback on the initial SOP parser and requested an AI solution) (Status: RESOLVED, new solution is pending verification)
 
 **Project Health Check:**
--   **Broken:** The deployed production application is significantly outdated and does not reflect any of the recent feature additions or bug fixes.
+-   **Broken:** The deployed production application is significantly outdated and lacks all recently developed features.
 -   **Mocked:** None.
 
 **3rd Party Integrations**
+-    with Emergent LLM Key (for AI-powered SOP parsing)
 -   Custom Biometric API
 -   Emergent-managed Google Auth
--    (for Excel parsing)
--    (for PDF generation)
--    (frontend library for calendar logic)
--   **Pending Decision:** A calendar integration for scheduling meetings. The choice is between the Microsoft Graph API and a simpler, non-API-based solution like generating  files.
+-   
+-   
+-   
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, for the SOP and Attendance Grid features.
+-   **Testing agent used after significant changes:** YES (for the Meeting Management system).
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** 
+-   **Test files created:** []
 -   **Known regressions:** None.
 
 **Credentials to test flow:**
@@ -157,4 +173,5 @@ There are no pending bugs; all reported issues in this session have been fixed.
 -   **Employee:**  / 
 
 **What agent forgot to execute**
--   The agent has correctly followed the user's shifting priorities and has not forgotten any tasks. The global UI/UX overhaul remains in the backlog, as per the user's request to complete all functionality first.</analysis>
+-   The agent did not fix the minor data issue causing the admin's name to appear as Unknown in meeting analytics.
+-   The agent was about to perform the final validation step for the AI-powered SOP feature (checking the database) before being interrupted. This step is required to confirm the end-to-end flow is complete.</analysis>
