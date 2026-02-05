@@ -383,7 +383,9 @@ const DocumentsPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents.length > 0 ? documents.map((doc) => {
+              {documents.length > 0 ? documents
+                .filter(doc => !searchTerm || doc.name?.toLowerCase().includes(searchTerm.toLowerCase()) || doc.description?.toLowerCase().includes(searchTerm.toLowerCase()))
+                .map((doc) => {
                 const TypeIcon = getTypeIcon(doc.type);
                 return (
                   <TableRow key={doc.document_id}>
@@ -413,11 +415,18 @@ const DocumentsPage = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Download className="w-4 h-4" />
+                        {doc.file_name && (
+                          <>
+                            <Button size="sm" variant="ghost" title="View" onClick={() => handleDownload(doc.document_id, doc.file_name)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" title="Download" onClick={() => handleDownload(doc.document_id, doc.file_name)}>
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" title="Delete" onClick={() => handleDelete(doc.document_id)}>
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                         {isHR && !doc.is_verified && (
                           <Button size="sm" onClick={() => handleVerify(doc.document_id)}>
