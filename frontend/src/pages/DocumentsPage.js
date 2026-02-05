@@ -42,8 +42,11 @@ import {
   File,
   FileImage,
   FileBadge,
-  Plus
+  Plus,
+  Trash2,
+  Search
 } from 'lucide-react';
+import { getAuthHeaders } from '../utils/api';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -54,12 +57,14 @@ const DocumentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [filterType, setFilterType] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
     type: '',
     description: '',
-    file_url: ''
+    file: null
   });
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
