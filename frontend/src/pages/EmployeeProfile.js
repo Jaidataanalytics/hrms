@@ -864,40 +864,51 @@ const EmployeeProfile = () => {
                     </div>
                   )}
                   
-                  {/* Quick Overview Cards (old format) */}
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-600 mb-3">Quick Overview</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="p-4 border rounded-lg text-center">
-                        <Smartphone className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm font-medium">Mobile & Charger</p>
-                        <Badge className={assets.mobile_charger ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                          {assets.mobile_charger ? 'Assigned' : 'Not Assigned'}
-                        </Badge>
+                  {/* Quick Overview - derives status from BOTH old boolean format AND assigned_items */}
+                  {(() => {
+                    // Check assigned_items for each type
+                    const assignedTypes = (assets.assigned_items || []).map(a => a.asset_type?.toLowerCase());
+                    const hasMobile = assets.mobile_charger || assignedTypes.includes('mobile');
+                    const hasLaptop = assets.laptop || assignedTypes.includes('laptop');
+                    const hasSystem = assets.system || assignedTypes.includes('system') || assignedTypes.includes('desktop');
+                    const hasPrinter = assets.printer || assignedTypes.includes('printer');
+                    
+                    return (
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-600 mb-3">Quick Overview</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="p-4 border rounded-lg text-center">
+                            <Smartphone className={`w-8 h-8 mx-auto mb-2 ${hasMobile ? 'text-green-500' : 'text-slate-400'}`} />
+                            <p className="text-sm font-medium">Mobile & Charger</p>
+                            <Badge className={hasMobile ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                              {hasMobile ? 'Assigned' : 'Not Assigned'}
+                            </Badge>
+                          </div>
+                          <div className="p-4 border rounded-lg text-center">
+                            <Laptop className={`w-8 h-8 mx-auto mb-2 ${hasLaptop ? 'text-blue-500' : 'text-slate-400'}`} />
+                            <p className="text-sm font-medium">Laptop</p>
+                            <Badge className={hasLaptop ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                              {hasLaptop ? 'Assigned' : 'Not Assigned'}
+                            </Badge>
+                          </div>
+                          <div className="p-4 border rounded-lg text-center">
+                            <Package className={`w-8 h-8 mx-auto mb-2 ${hasSystem ? 'text-purple-500' : 'text-slate-400'}`} />
+                            <p className="text-sm font-medium">System</p>
+                            <Badge className={hasSystem ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                              {hasSystem ? 'Assigned' : 'Not Assigned'}
+                            </Badge>
+                          </div>
+                          <div className="p-4 border rounded-lg text-center">
+                            <Printer className={`w-8 h-8 mx-auto mb-2 ${hasPrinter ? 'text-orange-500' : 'text-slate-400'}`} />
+                            <p className="text-sm font-medium">Printer</p>
+                            <Badge className={hasPrinter ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                              {hasPrinter ? 'Assigned' : 'Not Assigned'}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-4 border rounded-lg text-center">
-                        <Laptop className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm font-medium">Laptop</p>
-                        <Badge className={assets.laptop ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                          {assets.laptop ? 'Assigned' : 'Not Assigned'}
-                        </Badge>
-                      </div>
-                      <div className="p-4 border rounded-lg text-center">
-                        <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm font-medium">System</p>
-                        <Badge className={assets.system ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                          {assets.system ? 'Assigned' : 'Not Assigned'}
-                        </Badge>
-                      </div>
-                      <div className="p-4 border rounded-lg text-center">
-                        <Printer className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm font-medium">Printer</p>
-                        <Badge className={assets.printer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                          {assets.printer ? 'Assigned' : 'Not Assigned'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                   
                   {/* Additional Details */}
                   {(assets.sdpl_number || assets.tag || assets.sim_mobile_no) && (
