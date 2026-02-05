@@ -1,8 +1,9 @@
 """Documents, Assets & Expenses API Routes"""
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
 from typing import Optional
 from datetime import datetime, timezone
 import uuid
+import base64
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
@@ -31,7 +32,7 @@ async def list_documents(request: Request, employee_id: Optional[str] = None, ty
     elif employee_id:
         query["employee_id"] = employee_id
     
-    if type:
+    if type and type != 'all':
         query["type"] = type
     
     docs = await db.documents.find(query, {"_id": 0}).sort("uploaded_at", -1).to_list(100)
@@ -52,6 +53,91 @@ async def upload_document(data: dict, request: Request):
     await db.documents.insert_one(data)
     data.pop('_id', None)
     return data
+
+
+@router.post("/documents/upload")
+async def upload_document_with_file(
+    request: Request,
+    name: str = Form(...),
+    type: str = Form(...),
+    description: str = Form(None),
+    employee_id: str = Form(None),
+    file: UploadFile = File(None)
+):
+    """Upload document with file attachment"""
+    user = await get_current_user(request)
+    
+    doc_data = {
+        "document_id": f"doc_{uuid.uuid4().hex[:12]}",
+        "name": name,
+        "type": type,
+        "description": description or "",
+        "employee_id": employee_id or user.get("employee_id"),
+        "uploaded_by": user["user_id"],
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "is_verified": False
+    }
+    
+    if file:
+        # Read and store file content as base64
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:  # 10MB limit
+            raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+        
+        doc_data["file_name"] = file.filename
+        doc_data["file_type"] = file.content_type
+        doc_data["file_data"] = base64.b64encode(content).decode('utf-8')
+        doc_data["file_size"] = len(content)
+    
+    await db.documents.insert_one(doc_data)
+    doc_data.pop('_id', None)
+    doc_data.pop('file_data', None)  # Don't return file data in response
+    return doc_data
+
+
+@router.delete("/documents/{document_id}")
+async def delete_document(document_id: str, request: Request):
+    """Delete a document"""
+    user = await get_current_user(request)
+    
+    # Find the document first
+    doc = await db.documents.find_one({"document_id": document_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Check permissions - only owner or HR can delete
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        if doc.get("employee_id") != user.get("employee_id"):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this document")
+    
+    await db.documents.delete_one({"document_id": document_id})
+    return {"message": "Document deleted"}
+
+
+@router.get("/documents/{document_id}/download")
+async def download_document(document_id: str, request: Request):
+    """Download document file"""
+    user = await get_current_user(request)
+    
+    doc = await db.documents.find_one({"document_id": document_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Check permissions
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        if doc.get("employee_id") != user.get("employee_id"):
+            raise HTTPException(status_code=403, detail="Not authorized")
+    
+    if not doc.get("file_data"):
+        raise HTTPException(status_code=404, detail="No file attached")
+    
+    from fastapi.responses import Response
+    content = base64.b64decode(doc["file_data"])
+    return Response(
+        content=content,
+        media_type=doc.get("file_type", "application/octet-stream"),
+        headers={"Content-Disposition": f"attachment; filename={doc.get('file_name', 'document')}"}
+    )
 
 
 @router.put("/documents/{document_id}/verify")
