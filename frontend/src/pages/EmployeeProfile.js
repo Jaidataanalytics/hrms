@@ -586,20 +586,138 @@ const EmployeeProfile = () => {
 
         <TabsContent value="documents">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                Documents
+                Documents ({documents.length})
               </CardTitle>
+              <Button size="sm" onClick={() => setShowDocUpload(true)}>
+                <Upload className="w-4 h-4 mr-1" />
+                Upload
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">No documents uploaded yet</p>
-                <Button variant="outline" className="mt-4">Upload Document</Button>
-              </div>
+              {documents.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50">
+                      <TableHead>Document</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Uploaded</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {documents.map((doc) => (
+                      <TableRow key={doc.document_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-slate-400" />
+                            <div>
+                              <p className="font-medium text-sm">{doc.name}</p>
+                              {doc.description && <p className="text-xs text-slate-500">{doc.description}</p>}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {documentTypes.find(t => t.type_id === doc.type)?.name || doc.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-500">
+                          {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('en-IN') : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={doc.is_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
+                            {doc.is_verified ? 'Verified' : 'Pending'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {doc.file_url && (
+                              <Button size="sm" variant="ghost" onClick={() => window.open(doc.file_url, '_blank')}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteDocument(doc.document_id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">No documents uploaded yet</p>
+                  <Button variant="outline" className="mt-4" onClick={() => setShowDocUpload(true)}>
+                    <Upload className="w-4 h-4 mr-1" />
+                    Upload Document
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
+          
+          {/* Document Upload Dialog */}
+          <Dialog open={showDocUpload} onOpenChange={setShowDocUpload}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload Document</DialogTitle>
+                <DialogDescription>Upload a document for {employee?.first_name}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Document Name *</Label>
+                  <Input
+                    value={docForm.name}
+                    onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+                    placeholder="e.g., PAN Card, Aadhaar"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Document Type *</Label>
+                  <Select value={docForm.type} onValueChange={(v) => setDocForm({ ...docForm, type: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {documentTypes.map(type => (
+                        <SelectItem key={type.type_id} value={type.type_id}>{type.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Input
+                    value={docForm.description}
+                    onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
+                    placeholder="Optional notes"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>File</Label>
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    onChange={(e) => setDocForm({ ...docForm, file: e.target.files?.[0] || null })}
+                  />
+                  <p className="text-xs text-slate-500">Supported: PDF, JPG, PNG, DOC up to 10MB</p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDocUpload(false)}>Cancel</Button>
+                <Button onClick={handleDocUpload} disabled={uploadingDoc}>
+                  {uploadingDoc ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                  Upload
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="attendance">
