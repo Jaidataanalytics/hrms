@@ -147,23 +147,30 @@ Mini HR System for Contract Workers:
 
 ## Recent Changes
 
-### Feb 4, 2026 - SOP AI Enhancement Verified
-1. ✅ AI-powered parsing working - extracts all fields from Excel
-2. ✅ Advanced search, filtering, grouping functional
-3. ✅ Full SOP editing capability
-4. ✅ Fixed admin employee record for meeting analytics
+### Recent Changes - Feb 5, 2026
 
-### Feb 4, 2026 - Meeting Management System
-1. ✅ Full CRUD for meetings
-2. ✅ Discussion notes with edit tracking
-3. ✅ Follow-up points with completion tracking
-4. ✅ In-App Notification System
-5. ✅ Meeting Analytics Dashboard
+#### Bug Fixes
+1. **Documents Tab in Employee Profile** - FIXED
+   - Added file upload with actual file attachment
+   - Delete button for each document
+   - Backend endpoints: POST /documents/upload, DELETE /documents/{id}, GET /documents/{id}/download
 
-### Feb 4, 2026 - UI/UX Improvements
-1. ✅ Framer Motion animations
-2. ✅ Clean light-mode design
-3. ✅ Improved typography
+2. **Documents Page** - Enhanced
+   - Added search filter
+   - Added delete button
+   - Proper file upload with file input
+
+3. **Assets in Employee Profile** - FIXED
+   - Fetches from both `employee_assets` (boolean flags) and `assets` (individual records)
+   - Shows "Assigned Items" for individual assets
+   - Shows "Quick Overview" for boolean flags
+
+### Feb 4, 2026 - SOP Improvements
+1. ✅ Enhanced table with Responsible Persons & Stakeholders columns
+2. ✅ Process Flow Chart visualization
+3. ✅ Re-parse AI button for improved extraction
+4. ✅ Fixed delete button
+5. ✅ Fixed admin employee record for meeting analytics
 
 ## Upcoming Tasks
 
