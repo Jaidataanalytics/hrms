@@ -194,6 +194,83 @@ const EmployeeProfile = () => {
     }
   };
 
+  const fetchDocuments = async (employeeId) => {
+    try {
+      const authHeaders = getAuthHeaders();
+      const response = await fetch(`${API_URL}/documents?employee_id=${employeeId}`, {
+        credentials: 'include',
+        headers: authHeaders
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    }
+  };
+
+  const handleDocUpload = async () => {
+    if (!docForm.name || !docForm.type) {
+      toast.error('Please fill required fields');
+      return;
+    }
+
+    setUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append('name', docForm.name);
+      formData.append('type', docForm.type);
+      formData.append('description', docForm.description || '');
+      formData.append('employee_id', employee.employee_id);
+      if (docForm.file) {
+        formData.append('file', docForm.file);
+      }
+
+      const response = await fetch(`${API_URL}/documents/upload`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+        body: formData
+      });
+
+      if (response.ok) {
+        toast.success('Document uploaded successfully');
+        setShowDocUpload(false);
+        setDocForm({ name: '', type: '', description: '', file: null });
+        fetchDocuments(employee.employee_id);
+      } else {
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.detail || 'Failed to upload document');
+      }
+    } catch (error) {
+      toast.error('Failed to upload document');
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/documents/${docId}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        toast.success('Document deleted');
+        fetchDocuments(employee.employee_id);
+      } else {
+        toast.error('Failed to delete document');
+      }
+    } catch (error) {
+      toast.error('Failed to delete document');
+    }
+  };
+
   // Attendance helpers
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
