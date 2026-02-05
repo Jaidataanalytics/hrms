@@ -44,7 +44,11 @@ import {
   Home,
   Laptop,
   Smartphone,
-  Printer
+  Printer,
+  Upload,
+  Download,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import {
   Table,
