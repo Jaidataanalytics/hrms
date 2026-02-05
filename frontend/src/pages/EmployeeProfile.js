@@ -112,12 +112,18 @@ const EmployeeProfile = () => {
         setEmployee(empData);
         // Fetch assets after getting employee data
         fetchAssets(empData.employee_id, empData.emp_code);
+        // Fetch documents
+        fetchDocuments(empData.employee_id);
       } else {
         toast.error('Employee not found');
       }
 
       if (deptRes.ok) setDepartments(await deptRes.json());
       if (desigRes.ok) setDesignations(await desigRes.json());
+      
+      // Fetch document types
+      const docTypesRes = await fetch(`${API_URL}/document-types`, { credentials: 'include', headers: authHeaders });
+      if (docTypesRes.ok) setDocumentTypes(await docTypesRes.json());
     } catch (error) {
       console.error('Error fetching employee:', error);
       toast.error('Failed to load employee data');
