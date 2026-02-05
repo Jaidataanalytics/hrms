@@ -81,6 +81,13 @@ const EmployeeProfile = () => {
   // Assets state
   const [assets, setAssets] = useState(null);
 
+  // Documents state
+  const [documents, setDocuments] = useState([]);
+  const [documentTypes, setDocumentTypes] = useState([]);
+  const [showDocUpload, setShowDocUpload] = useState(false);
+  const [docForm, setDocForm] = useState({ name: '', type: '', description: '', file: null });
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+
   useEffect(() => {
     fetchEmployeeData();
   }, [id]);
