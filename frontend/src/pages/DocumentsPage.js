@@ -79,8 +79,8 @@ const DocumentsPage = () => {
       if (filterType !== 'all') url += `type=${filterType}`;
 
       const [docsRes, typesRes] = await Promise.all([
-        fetch(url, { credentials: 'include' }),
-        fetch(`${API_URL}/document-types`, { credentials: 'include' })
+        fetch(url, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/document-types`, { credentials: 'include', headers: getAuthHeaders() })
       ]);
 
       if (docsRes.ok) setDocuments(await docsRes.json());
@@ -98,22 +98,82 @@ const DocumentsPage = () => {
       return;
     }
 
+    setUploading(true);
     try {
-      const response = await fetch(`${API_URL}/documents`, {
+      const formData = new FormData();
+      formData.append('name', form.name);
+      formData.append('type', form.type);
+      formData.append('description', form.description || '');
+      if (form.file) {
+        formData.append('file', form.file);
+      }
+
+      const response = await fetch(`${API_URL}/documents/upload`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
-        body: JSON.stringify(form)
+        body: formData
       });
 
       if (response.ok) {
         toast.success('Document uploaded');
         setShowUpload(false);
-        setForm({ name: '', type: '', description: '', file_url: '' });
+        setForm({ name: '', type: '', description: '', file: null });
         fetchData();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.detail || 'Failed to upload');
       }
     } catch (error) {
       toast.error('Failed to upload');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (documentId) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/documents/${documentId}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        toast.success('Document deleted');
+        fetchData();
+      } else {
+        toast.error('Failed to delete document');
+      }
+    } catch (error) {
+      toast.error('Failed to delete');
+    }
+  };
+
+  const handleDownload = async (documentId, fileName) => {
+    try {
+      const response = await fetch(`${API_URL}/documents/${documentId}/download`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName || 'document';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+      } else {
+        toast.error('Failed to download');
+      }
+    } catch (error) {
+      toast.error('Failed to download');
     }
   };
 
