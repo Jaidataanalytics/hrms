@@ -75,6 +75,7 @@ Mini HR System for Contract Workers:
   - Responsible Persons, Stakeholders
   - Key Activities, Reports
   - Task Type/Category
+  - **Process Flow Steps** with descriptions & responsibilities
 - **Auto-match Process Owner** to employees in system
 - Main Responsible (max 3) - Primary employees responsible
 - Also Involved - Additional employees who follow the SOP
@@ -90,6 +91,16 @@ Mini HR System for Contract Workers:
 - Group by Department, Owner, Task Type, Status
 - Full editing of all SOP fields
 - "My SOPs" card on employee dashboard
+- **Re-parse AI** button to re-extract data with improved prompts
+- **Process Flow Chart** visualization with step-by-step boxes
+
+**Enhanced Table Columns:**
+- SOP Number
+- Title (with Task Type badge)
+- Owner (blue badge)
+- Responsible Persons (amber badges)
+- Stakeholders (purple badges)
+- Status
 
 ### 12. Meeting Management System ✅
 **Purpose:** Track organizational meetings, discussions, and follow-ups
