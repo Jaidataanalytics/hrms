@@ -627,51 +627,87 @@ const EmployeeProfile = () => {
             </CardHeader>
             <CardContent>
               {assets ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 border rounded-lg text-center">
-                    <Smartphone className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p className="text-sm font-medium">Mobile & Charger</p>
-                    <Badge className={assets.mobile_charger ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                      {assets.mobile_charger ? 'Assigned' : 'Not Assigned'}
-                    </Badge>
-                  </div>
-                  <div className="p-4 border rounded-lg text-center">
-                    <Laptop className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p className="text-sm font-medium">Laptop</p>
-                    <Badge className={assets.laptop ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                      {assets.laptop ? 'Assigned' : 'Not Assigned'}
-                    </Badge>
-                  </div>
-                  <div className="p-4 border rounded-lg text-center">
-                    <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p className="text-sm font-medium">System</p>
-                    <Badge className={assets.system ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                      {assets.system ? 'Assigned' : 'Not Assigned'}
-                    </Badge>
-                  </div>
-                  <div className="p-4 border rounded-lg text-center">
-                    <Printer className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p className="text-sm font-medium">Printer</p>
-                    <Badge className={assets.printer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                      {assets.printer ? 'Assigned' : 'Not Assigned'}
-                    </Badge>
-                  </div>
-                  {assets.sdpl_number && (
-                    <div className="p-4 border rounded-lg col-span-2">
-                      <p className="text-sm text-slate-500 mb-1">SDPL Number</p>
-                      <p className="font-medium">{assets.sdpl_number}</p>
+                <div className="space-y-6">
+                  {/* Individual Assigned Assets from assets collection */}
+                  {assets.assigned_items && assets.assigned_items.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-600 mb-3">Assigned Items</h4>
+                      <div className="space-y-2">
+                        {assets.assigned_items.map((asset) => (
+                          <div key={asset.asset_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                            <div className="flex items-center gap-3">
+                              {asset.asset_type === 'laptop' ? <Laptop className="w-5 h-5 text-blue-500" /> :
+                               asset.asset_type === 'mobile' ? <Smartphone className="w-5 h-5 text-green-500" /> :
+                               asset.asset_type === 'printer' ? <Printer className="w-5 h-5 text-orange-500" /> :
+                               <Package className="w-5 h-5 text-slate-500" />}
+                              <div>
+                                <p className="font-medium text-sm">{asset.description || asset.asset_type || 'Asset'}</p>
+                                <p className="text-xs text-slate-500">Tag: {asset.asset_tag || 'N/A'}</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-emerald-100 text-emerald-700">Assigned</Badge>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {assets.tag && (
-                    <div className="p-4 border rounded-lg">
-                      <p className="text-sm text-slate-500 mb-1">Tag</p>
-                      <p className="font-medium">{assets.tag}</p>
+                  
+                  {/* Quick Overview Cards (old format) */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-600 mb-3">Quick Overview</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-4 border rounded-lg text-center">
+                        <Smartphone className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm font-medium">Mobile & Charger</p>
+                        <Badge className={assets.mobile_charger ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                          {assets.mobile_charger ? 'Assigned' : 'Not Assigned'}
+                        </Badge>
+                      </div>
+                      <div className="p-4 border rounded-lg text-center">
+                        <Laptop className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm font-medium">Laptop</p>
+                        <Badge className={assets.laptop ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                          {assets.laptop ? 'Assigned' : 'Not Assigned'}
+                        </Badge>
+                      </div>
+                      <div className="p-4 border rounded-lg text-center">
+                        <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm font-medium">System</p>
+                        <Badge className={assets.system ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                          {assets.system ? 'Assigned' : 'Not Assigned'}
+                        </Badge>
+                      </div>
+                      <div className="p-4 border rounded-lg text-center">
+                        <Printer className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm font-medium">Printer</p>
+                        <Badge className={assets.printer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
+                          {assets.printer ? 'Assigned' : 'Not Assigned'}
+                        </Badge>
+                      </div>
                     </div>
-                  )}
-                  {assets.sim_mobile_no && (
-                    <div className="p-4 border rounded-lg">
-                      <p className="text-sm text-slate-500 mb-1">SIM/Mobile No</p>
-                      <p className="font-medium">{assets.sim_mobile_no}</p>
+                  </div>
+                  
+                  {/* Additional Details */}
+                  {(assets.sdpl_number || assets.tag || assets.sim_mobile_no) && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {assets.sdpl_number && (
+                        <div className="p-4 border rounded-lg">
+                          <p className="text-sm text-slate-500 mb-1">SDPL Number</p>
+                          <p className="font-medium">{assets.sdpl_number}</p>
+                        </div>
+                      )}
+                      {assets.tag && (
+                        <div className="p-4 border rounded-lg">
+                          <p className="text-sm text-slate-500 mb-1">Tag</p>
+                          <p className="font-medium">{assets.tag}</p>
+                        </div>
+                      )}
+                      {assets.sim_mobile_no && (
+                        <div className="p-4 border rounded-lg">
+                          <p className="text-sm text-slate-500 mb-1">SIM/Mobile No</p>
+                          <p className="font-medium">{assets.sim_mobile_no}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
