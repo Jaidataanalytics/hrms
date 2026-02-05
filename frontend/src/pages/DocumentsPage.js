@@ -278,16 +278,20 @@ const DocumentsPage = () => {
               </div>
               <div className="space-y-2">
                 <Label>File</Label>
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-primary/50 cursor-pointer transition-colors">
-                  <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">Click to upload or drag and drop</p>
-                  <p className="text-xs text-slate-400">PDF, JPG, PNG up to 10MB</p>
-                </div>
+                <Input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={(e) => setForm({...form, file: e.target.files?.[0] || null})}
+                />
+                <p className="text-xs text-slate-400">PDF, JPG, PNG, DOC up to 10MB</p>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowUpload(false)}>Cancel</Button>
-              <Button onClick={handleUpload}>Upload</Button>
+              <Button onClick={handleUpload} disabled={uploading}>
+                {uploading ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                Upload
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
