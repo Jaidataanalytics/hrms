@@ -141,16 +141,37 @@ const EmployeeProfile = () => {
   const fetchAssets = async (employeeId, empCode) => {
     try {
       const authHeaders = getAuthHeaders();
-      // Try with emp_code first (most common), then employee_id
+      
+      // First try the employee_assets endpoint (old format)
       let response = await fetch(`${API_URL}/employee-assets/${empCode || employeeId}`, { 
         credentials: 'include', 
         headers: authHeaders 
       });
       
+      let oldAssets = null;
       if (response.ok) {
-        const data = await response.json();
-        setAssets(data);
+        oldAssets = await response.json();
       }
+      
+      // Also fetch from the new assets collection
+      const assetsResponse = await fetch(`${API_URL}/assets?search=${empCode}`, {
+        credentials: 'include',
+        headers: authHeaders
+      });
+      
+      let assignedAssets = [];
+      if (assetsResponse.ok) {
+        const assetsData = await assetsResponse.json();
+        assignedAssets = (assetsData.assets || []).filter(a => 
+          a.emp_code === empCode && a.status === 'assigned'
+        );
+      }
+      
+      // Combine both data sources
+      setAssets({
+        ...oldAssets,
+        assigned_items: assignedAssets
+      });
     } catch (error) {
       console.error('Error fetching assets:', error);
     }
