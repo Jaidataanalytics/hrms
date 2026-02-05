@@ -336,8 +336,17 @@ const DocumentsPage = () => {
         </Card>
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-4">
+      {/* Filter & Search */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search documents..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All Types" />
@@ -349,6 +358,9 @@ const DocumentsPage = () => {
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={fetchData}>
+          <RefreshCw className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Documents Table */}
