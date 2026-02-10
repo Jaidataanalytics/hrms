@@ -206,15 +206,20 @@ const Dashboard = () => {
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="section-pill mono-accent">// Dashboard</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Welcome back, {user?.name?.split(' ')[0]}!
+            Welcome back, {user?.name?.split(' ')[0]}
           </h1>
-          <p className="text-slate-600 mt-1">
+          <p className="text-slate-500 mt-1.5 text-sm">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
+          <div className="header-accent-line mt-3 max-w-[200px]" />
         </div>
       </motion.div>
 
