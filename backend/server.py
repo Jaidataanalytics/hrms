@@ -3522,6 +3522,7 @@ from routes.helpdesk import router as helpdesk_router
 from routes.sop import router as sop_router
 from routes.calendar import router as calendar_router
 from routes.meetings import router as meetings_router
+from routes.events import router as events_router
 from routes.notifications import router as notifications_router
 from services.biometric_sync import set_db as set_biometric_sync_db
 
