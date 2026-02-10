@@ -127,34 +127,68 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative Elements */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-100 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"></div>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: 'hsl(222.2 84% 4.9%)' }}>
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute w-[600px] h-[600px] rounded-full"
+          style={{ background: 'radial-gradient(circle, hsl(243 75% 49% / 0.12) 0%, transparent 70%)', top: '-10%', left: '-10%' }}
+          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute w-[500px] h-[500px] rounded-full"
+          style={{ background: 'radial-gradient(circle, hsl(243 75% 49% / 0.08) 0%, transparent 70%)', bottom: '-15%', right: '-10%' }}
+          animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        />
+        {/* Glowing arc */}
+        <motion.div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-[500px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.3 }}>
+          <svg viewBox="0 0 500 120" fill="none">
+            <defs>
+              <linearGradient id="loginArc" x1="0" y1="60" x2="500" y2="60">
+                <stop offset="0%" stopColor="hsl(243 75% 49%)" stopOpacity="0" />
+                <stop offset="30%" stopColor="hsl(243 75% 49%)" stopOpacity="0.3" />
+                <stop offset="50%" stopColor="hsl(243 75% 49%)" stopOpacity="0.5" />
+                <stop offset="70%" stopColor="hsl(243 75% 49%)" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="hsl(243 75% 49%)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <motion.path d="M0 110 Q125 10, 250 10 Q375 10, 500 110" stroke="url(#loginArc)" strokeWidth="1.5" fill="none" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.2, delay: 0.5 }} />
+          </svg>
+        </motion.div>
+        {/* Noise overlay */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")", backgroundRepeat: 'repeat', backgroundSize: '256px' }} />
+      </div>
       
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative w-full max-w-md"
+        initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+        className="relative w-full max-w-md z-10"
       >
-        <Card className="shadow-xl border-slate-200/60 bg-white">
+        <Card className="shadow-2xl border-white/[0.08] bg-white/[0.04] backdrop-blur-xl" style={{ background: 'hsl(222.2 60% 8% / 0.8)', borderColor: 'hsl(0 0% 100% / 0.08)' }}>
           <CardHeader className="text-center pb-4">
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+              initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }}
             >
-              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <img src="/logo.png" alt="Sharda HR" className="h-10 w-10 object-contain" />
+              <div className="relative h-16 w-16 mx-auto mb-5">
+                <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
+                <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-white/10">
+                  <img src="/logo.png" alt="Sharda HR" className="h-10 w-10 object-contain" />
+                </div>
               </div>
             </motion.div>
-            <CardTitle className="text-2xl font-bold text-slate-900">
-              Welcome Back
-            </CardTitle>
-            <CardDescription className="text-slate-500">
-              Sign in to your Sharda HR account
-            </CardDescription>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+              <CardTitle className="text-2xl font-bold text-white">
+                Welcome Back
+              </CardTitle>
+              <CardDescription className="text-slate-400 mt-1">
+                Sign in to your Sharda HR account
+              </CardDescription>
+            </motion.div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Google Sign In */}
