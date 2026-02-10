@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import { ScrollArea } from '../components/ui/scroll-area';
-import { Badge } from '../components/ui/badge';
 import {
   LayoutDashboard,
   Users,
@@ -22,7 +21,6 @@ import {
   Megaphone,
   Settings,
   LogOut,
-  Bell,
   Menu,
   X,
   ChevronRight,
@@ -43,7 +41,6 @@ import {
   GraduationCap,
   Plane,
   Database,
-  Fingerprint,
   Shield,
   Search,
   FileSpreadsheet,
@@ -52,6 +49,18 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalSearch from '../components/GlobalSearch';
 import NotificationBell from '../components/NotificationBell';
+import LoadingScreen from '../components/LoadingScreen';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 16, filter: 'blur(4px)' },
+  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  exit: { opacity: 0, y: -8, filter: 'blur(2px)' }
+};
+
+const pageTransition = {
+  duration: 0.35,
+  ease: [0.4, 0, 0.2, 1]
+};
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -59,11 +68,16 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [appReady, setAppReady] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
   
-  // Check if user is HR/Admin for search
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
-  // Keyboard shortcut for search (Cmd+K or Ctrl+K)
+  const handleLoadingComplete = useCallback(() => {
+    setShowLoader(false);
+    setTimeout(() => setAppReady(true), 100);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k' && isHR) {
@@ -71,66 +85,23 @@ const DashboardLayout = () => {
         setSearchOpen(true);
       }
     };
-    
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isHR]);
 
-  // Base menu items for all users
   const baseMenuItems = [
-    { 
-      name: 'Dashboard', 
-      path: '/dashboard', 
-      icon: LayoutDashboard,
-      exact: true
-    },
-    { 
-      name: 'Attendance', 
-      path: '/dashboard/attendance', 
-      icon: Clock 
-    },
-    { 
-      name: 'My Calendar', 
-      path: '/dashboard/my-calendar', 
-      icon: CalendarDays 
-    },
-    { 
-      name: 'Meetings', 
-      path: '/dashboard/meetings', 
-      icon: UsersRound 
-    },
-    { 
-      name: 'Leave', 
-      path: '/dashboard/leave', 
-      icon: Calendar 
-    },
-    { 
-      name: 'Payroll', 
-      path: '/dashboard/payroll', 
-      icon: CreditCard 
-    },
-    { 
-      name: 'Performance', 
-      path: '/dashboard/performance', 
-      icon: Target 
-    },
-    { 
-      name: 'Announcements', 
-      path: '/dashboard/announcements', 
-      icon: Megaphone 
-    },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
+    { name: 'Attendance', path: '/dashboard/attendance', icon: Clock },
+    { name: 'My Calendar', path: '/dashboard/my-calendar', icon: CalendarDays },
+    { name: 'Meetings', path: '/dashboard/meetings', icon: UsersRound },
+    { name: 'Leave', path: '/dashboard/leave', icon: Calendar },
+    { name: 'Payroll', path: '/dashboard/payroll', icon: CreditCard },
+    { name: 'Performance', path: '/dashboard/performance', icon: Target },
+    { name: 'Announcements', path: '/dashboard/announcements', icon: Megaphone },
   ];
 
-  // HR-only menu items
-  const hrMenuItems = [
-    { 
-      name: 'Employees', 
-      path: '/dashboard/employees', 
-      icon: Users 
-    },
-  ];
+  const hrMenuItems = [{ name: 'Employees', path: '/dashboard/employees', icon: Users }];
 
-  // Combine menu items based on role
   const menuItems = isHR 
     ? [baseMenuItems[0], ...hrMenuItems, ...baseMenuItems.slice(1)] 
     : baseMenuItems;
@@ -158,9 +129,7 @@ const DashboardLayout = () => {
   ];
 
   const isActive = (path, exact = false) => {
-    if (exact) {
-      return location.pathname === path;
-    }
+    if (exact) return location.pathname === path;
     return location.pathname.startsWith(path);
   };
 
@@ -169,17 +138,40 @@ const DashboardLayout = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = async () => { await logout(); };
+
+  const NavLink = ({ item, mobile }) => {
+    const active = isActive(item.path, item.exact);
+    return (
+      <Link
+        to={item.path}
+        className={`sidebar-link ${active ? 'active' : ''}`}
+        onClick={() => mobile && setSidebarOpen(false)}
+        data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        <item.icon className="w-[18px] h-[18px]" />
+        <span>{item.name}</span>
+        {active && (
+          <motion.div
+            layoutId="activeIndicator"
+            className="absolute right-2 w-1.5 h-1.5 rounded-full bg-white/80"
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          />
+        )}
+      </Link>
+    );
   };
 
   const Sidebar = ({ mobile = false }) => (
     <div className={`flex flex-col h-full sidebar ${mobile ? '' : ''}`}>
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-slate-800">
-        <Link to="/dashboard" className="flex items-center gap-2">
-          <img src="/logo.png" alt="Sharda HR" className="h-9 w-9 object-contain" />
-          <span className="font-semibold text-lg text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+      <div className="h-16 flex items-center px-4 border-b border-white/[0.06]">
+        <Link to="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="relative">
+            <img src="/logo.png" alt="Sharda HR" className="h-9 w-9 object-contain relative z-10" />
+            <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          </div>
+          <span className="font-bold text-lg text-white tracking-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Sharda HR
           </span>
         </Link>
@@ -187,7 +179,7 @@ const DashboardLayout = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto text-slate-400 hover:text-white hover:bg-slate-800"
+            className="ml-auto text-slate-400 hover:text-white hover:bg-white/10"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="w-5 h-5" />
@@ -197,70 +189,42 @@ const DashboardLayout = () => {
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
-        <nav className="space-y-1">
+        <nav className="space-y-0.5">
           {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`sidebar-link ${isActive(item.path, item.exact) ? 'active' : ''}`}
-              onClick={() => mobile && setSidebarOpen(false)}
-              data-testid={`nav-${item.name.toLowerCase()}`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{item.name}</span>
-            </Link>
+            <NavLink key={item.path} item={item} mobile={mobile} />
           ))}
         </nav>
 
-        {/* Admin Section */}
         {(user?.role === 'super_admin' || user?.role === 'hr_admin') && (
-          <div className="mt-6 pt-6 border-t border-slate-800">
-            <p className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Administration
+          <div className="mt-6 pt-5 border-t border-white/[0.06]">
+            <p className="px-3 mb-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.12em]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+              // Administration
             </p>
-            <nav className="space-y-1">
+            <nav className="space-y-0.5">
               {adminMenuItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`sidebar-link ${isActive(item.path) ? 'active' : ''}`}
-                  onClick={() => mobile && setSidebarOpen(false)}
-                  data-testid={`nav-${item.name.toLowerCase()}`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.name}</span>
-                </Link>
+                <NavLink key={item.path} item={item} mobile={mobile} />
               ))}
             </nav>
           </div>
         )}
 
-        {/* Settings */}
-        <div className="mt-6 pt-6 border-t border-slate-800">
-          <Link
-            to="/dashboard/settings"
-            className={`sidebar-link ${isActive('/dashboard/settings') ? 'active' : ''}`}
-            onClick={() => mobile && setSidebarOpen(false)}
-            data-testid="nav-settings"
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </Link>
+        <div className="mt-6 pt-5 border-t border-white/[0.06]">
+          <NavLink item={{ name: 'Settings', path: '/dashboard/settings', icon: Settings }} mobile={mobile} />
         </div>
       </ScrollArea>
 
       {/* User Profile */}
-      <div className="p-3 border-t border-slate-800">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-slate-800/50">
-          <Avatar className="h-9 w-9">
+      <div className="p-3 border-t border-white/[0.06]">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-colors duration-200">
+          <Avatar className="h-9 w-9 ring-2 ring-white/10">
             <AvatarImage src={user?.picture} />
-            <AvatarFallback className="bg-primary text-white text-sm">
+            <AvatarFallback className="bg-primary/80 text-white text-sm font-semibold">
               {getInitials(user?.name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-            <p className="text-xs text-slate-400 truncate">{user?.role?.replace('_', ' ')}</p>
+            <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
+            <p className="text-xs text-slate-400 truncate capitalize">{user?.role?.replace('_', ' ')}</p>
           </div>
         </div>
       </div>
@@ -268,148 +232,156 @@ const DashboardLayout = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-64 lg:overflow-y-auto">
-        <Sidebar />
-      </aside>
-
-      {/* Mobile Sidebar Overlay */}
+    <>
+      {/* Loading Screen */}
       <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+        {showLoader && <LoadingScreen onComplete={handleLoadingComplete} />}
       </AnimatePresence>
 
-      {/* Mobile Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar mobile />
-      </aside>
+      <div className={`min-h-screen bg-slate-50/80 noise-bg transition-opacity duration-500 ${appReady ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-64 lg:overflow-y-auto">
+          <Sidebar />
+        </aside>
 
-      {/* Main Content */}
-      <div className="lg:pl-64">
-        {/* Top Navigation */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
-          <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-              data-testid="mobile-menu-btn"
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
+        {/* Mobile Sidebar Overlay */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/60 lg:hidden backdrop-blur-sm"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+        </AnimatePresence>
 
-            {/* Breadcrumb */}
-            <div className="hidden sm:flex items-center gap-2 text-sm">
-              <Link to="/dashboard" className="text-slate-500 hover:text-slate-700">
-                Dashboard
-              </Link>
-              {location.pathname !== '/dashboard' && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-900 font-medium capitalize">
-                    {location.pathname.split('/').pop().replace('-', ' ')}
-                  </span>
-                </>
-              )}
-            </div>
+        {/* Mobile Sidebar */}
+        <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <Sidebar mobile />
+        </aside>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-3">
-              {/* Global Search Button (HR/Admin only) */}
-              {isHR && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hidden sm:flex items-center gap-2 text-slate-500 hover:text-slate-700 border border-slate-200 px-3"
-                  onClick={() => setSearchOpen(true)}
-                  data-testid="global-search-btn"
-                >
-                  <Search className="w-4 h-4" />
-                  <span className="text-sm">Search...</span>
-                  <kbd className="ml-2 pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-slate-100 px-1.5 font-mono text-xs text-slate-600">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
-                </Button>
-              )}
-              
-              {/* Mobile Search Button */}
-              {isHR && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="sm:hidden"
-                  onClick={() => setSearchOpen(true)}
-                  data-testid="global-search-btn-mobile"
-                >
-                  <Search className="w-5 h-5" />
-                </Button>
-              )}
+        {/* Main Content */}
+        <div className="lg:pl-64">
+          {/* Top Navigation */}
+          <header className="sticky top-0 z-30 glass border-b border-slate-200/60">
+            <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+                data-testid="mobile-menu-btn"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
 
-              {/* Notifications */}
-              <NotificationBell />
+              {/* Breadcrumb */}
+              <div className="hidden sm:flex items-center gap-2 text-sm">
+                <Link to="/dashboard" className="text-slate-400 hover:text-slate-600 transition-colors">
+                  Dashboard
+                </Link>
+                {location.pathname !== '/dashboard' && (
+                  <>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                    <span className="text-slate-800 font-semibold capitalize">
+                      {location.pathname.split('/').pop().replace(/-/g, ' ')}
+                    </span>
+                  </>
+                )}
+              </div>
 
-              {/* User Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 px-2" data-testid="user-menu-btn">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.picture} />
-                      <AvatarFallback className="bg-primary text-white text-sm">
-                        {getInitials(user?.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="hidden sm:block text-sm font-medium">{user?.name}</span>
+              {/* Right Actions */}
+              <div className="flex items-center gap-2">
+                {isHR && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hidden sm:flex items-center gap-2 text-slate-400 hover:text-slate-600 border border-slate-200/80 px-3 rounded-lg hover:border-slate-300 transition-all"
+                    onClick={() => setSearchOpen(true)}
+                    data-testid="global-search-btn"
+                  >
+                    <Search className="w-4 h-4" />
+                    <span className="text-sm">Search...</span>
+                    <kbd className="ml-2 pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-slate-100/80 px-1.5 font-mono text-[10px] text-slate-500">
+                      <span>⌘</span>K
+                    </kbd>
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col">
-                      <span>{user?.name}</span>
-                      <span className="text-xs font-normal text-slate-500">{user?.email}</span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600" data-testid="logout-btn">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </header>
+                )}
+                
+                {isHR && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="sm:hidden"
+                    onClick={() => setSearchOpen(true)}
+                    data-testid="global-search-btn-mobile"
+                  >
+                    <Search className="w-5 h-5" />
+                  </Button>
+                )}
 
-        {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-          >
-            <Outlet />
-          </motion.div>
-        </main>
+                <NotificationBell />
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="gap-2 px-2 rounded-lg hover:bg-slate-100" data-testid="user-menu-btn">
+                      <Avatar className="h-8 w-8 ring-2 ring-slate-100">
+                        <AvatarImage src={user?.picture} />
+                        <AvatarFallback className="bg-primary text-white text-sm font-semibold">
+                          {getInitials(user?.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="hidden sm:block text-sm font-medium text-slate-700">{user?.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{user?.name}</span>
+                        <span className="text-xs font-normal text-slate-500">{user?.email}</span>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600" data-testid="logout-btn">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            {/* Accent line */}
+            <div className="header-accent-line" />
+          </header>
+
+          {/* Page Content */}
+          <main className="p-4 sm:p-6 lg:p-8 relative z-[1]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={pageTransition}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
+        
+        {/* Global Search Dialog */}
+        <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
       </div>
-      
-      {/* Global Search Dialog */}
-      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
-    </div>
+    </>
   );
 };
 
