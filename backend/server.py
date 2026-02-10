@@ -3553,6 +3553,7 @@ api_router.include_router(sop_router)
 api_router.include_router(calendar_router)
 api_router.include_router(meetings_router)
 api_router.include_router(notifications_router)
+api_router.include_router(events_router)
 
 # CORS Configuration - when credentials are used, origins must be explicit
 cors_origins_env = os.environ.get('CORS_ORIGINS', '')
