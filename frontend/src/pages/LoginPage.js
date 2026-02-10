@@ -192,14 +192,10 @@ const LoginPage = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Google Sign In */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
               <Button 
                 variant="outline" 
-                className="w-full h-11 gap-3 hover:bg-slate-50"
+                className="w-full h-11 gap-3 border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08] hover:border-white/20 transition-all duration-300"
                 onClick={handleGoogleLogin}
                 data-testid="google-login-btn"
               >
@@ -214,8 +210,8 @@ const LoginPage = () => {
             </motion.div>
 
             <div className="relative">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-slate-400">
+              <Separator className="bg-white/10" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-3 text-xs text-slate-500" style={{ background: 'hsl(222.2 60% 8%)' }}>
                 or continue with email
               </span>
             </div>
@@ -224,39 +220,37 @@ const LoginPage = () => {
             <motion.form 
               onSubmit={handleSubmit} 
               className="space-y-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
             >
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-700">Email</Label>
+                <Label htmlFor="email" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="you@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-slate-500 focus:border-primary/50 focus:bg-white/[0.08] h-11"
                     data-testid="email-input"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-slate-700">Password</Label>
-                </div>
+                <Label htmlFor="password" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     id="password"
                     type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-slate-500 focus:border-primary/50 focus:bg-white/[0.08] h-11"
                     data-testid="password-input"
                   />
                 </div>
@@ -264,7 +258,7 @@ const LoginPage = () => {
 
               <Button 
                 type="submit" 
-                className="w-full h-11 font-semibold" 
+                className="w-full h-11 font-semibold rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300" 
                 disabled={loading}
                 data-testid="login-submit-btn"
               >
