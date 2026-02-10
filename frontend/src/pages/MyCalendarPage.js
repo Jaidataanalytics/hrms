@@ -865,12 +865,12 @@ const MyCalendarPage = () => {
               </div>
               <div className="space-y-2">
                 <Label>Assign To (Optional)</Label>
-                <Select value={taskForm.assigned_to} onValueChange={(v) => setTaskForm({ ...taskForm, assigned_to: v })}>
+                <Select value={taskForm.assigned_to || "self"} onValueChange={(v) => setTaskForm({ ...taskForm, assigned_to: v === "self" ? "" : v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Self" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Self</SelectItem>
+                    <SelectItem value="self">Self</SelectItem>
                     {employees.slice(0, 50).map(emp => (
                       <SelectItem key={emp.employee_id} value={emp.employee_id}>
                         {emp.first_name} {emp.last_name}
