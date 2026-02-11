@@ -365,7 +365,7 @@ const DashboardLayout = () => {
           </header>
 
           {/* Page Content */}
-          <main className="p-4 sm:p-6 lg:p-8 relative z-[1]">
+          <main className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 relative z-[1]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
@@ -380,6 +380,9 @@ const DashboardLayout = () => {
             </AnimatePresence>
           </main>
         </div>
+
+        {/* Mobile Bottom Navigation */}
+        <BottomNav onMorePress={() => setSidebarOpen(true)} />
         
         {/* Global Search Dialog */}
         <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
