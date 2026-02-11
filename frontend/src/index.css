@@ -169,14 +169,19 @@ input::placeholder, textarea::placeholder {
     color: hsl(215 20% 40%) !important;
 }
 
-/* ------- DIALOGS / MODALS ------- */
+/* ------- DIALOGS / MODALS — Glass ------- */
 [data-state="open"][role="dialog"],
 [data-state="open"][data-slot="dialog-content"] {
-    animation: dialogOpen 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
-    border-radius: 16px;
+    animation: dialogOpen 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+    border-radius: 20px;
+    background: hsl(240 20% 8% / 0.95) !important;
+    backdrop-filter: blur(40px) saturate(150%);
+    border: 1px solid hsl(210 40% 98% / 0.1);
     box-shadow:
-        0 24px 64px hsl(220 40% 10% / 0.15),
-        0 8px 24px hsl(220 40% 10% / 0.1);
+        0 32px 80px hsl(0 0% 0% / 0.5),
+        0 0 60px hsl(var(--primary) / 0.08),
+        inset 0 1px 0 hsl(210 40% 98% / 0.06);
+    color: hsl(210 40% 98%);
 }
 
 @keyframes dialogOpen {
