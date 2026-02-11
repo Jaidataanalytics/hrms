@@ -601,6 +601,12 @@ const MyCalendarPage = () => {
                             {meeting.start_time} {meeting.title}
                           </div>
                         ))}
+                        {dayData.celebrations && dayData.celebrations.slice(0, 1).map((cel, i) => (
+                          <div key={`cel-${i}`} className="text-[10px] text-pink-600 truncate flex items-center gap-0.5">
+                            {cel.event_type === 'birthday' ? '🎂' : cel.event_type === 'work_anniversary' ? '🌟' : '💝'}
+                            {' '}{cel.employee_name || cel.emp_code}
+                          </div>
+                        ))}
                         {(dayData.tasks.length > 2 || dayData.meetings.length > 1) && (
                           <div className="text-[10px] text-slate-400">
                             +{dayData.tasks.length - 2 + dayData.meetings.length - 1} more
