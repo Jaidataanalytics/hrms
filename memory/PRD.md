@@ -30,32 +30,61 @@ Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
 - Dashboard CelebrationBanner with confetti + themed banners
 - Calendar integration showing celebration markers
 
-### Attendance Data Integrity Fixes
-- Fixed duplicate records appearing for employees with multiple ID formats (EMP* vs S00*)
-- Added robust name-based employee matching in attendance lookup (handles split-name differences)
-- Added date-based deduplication in attendance API response
-- Enhanced biometric sync to check both employee_id and emp_code for existing records
-- Improved date formatting and monospace time display in employee profile
-- Fixed employee profile attendance lookup with emp_code fallback
+### Dynamic Dashboard Theming (NEW - Feb 11, 2026)
+- Dashboard appearance dynamically changes based on today's employee celebration events
+- Birthday theme: Warm amber/gold shimmer bar + card accents
+- Work Anniversary theme: Blue/indigo shimmer bar + card accents
+- Marriage Anniversary theme: Rose/pink shimmer bar + card accents
+- Custom Event theme: Emerald/teal shimmer bar + card accents
+- CelebrationBanner communicates theme type via `onThemeDetected` callback
 
-### Bug Fixes
-- Calendar "Add Task" crash: Fixed `<SelectItem value="">` to `value="self"`
+### Helpdesk Phase 2: 360-Degree Feedback System (COMPLETE - Feb 11, 2026)
+- **Backend**: Full CRUD for feedback cycles (`/api/helpdesk/feedback-cycles`)
+- **Backend**: Assignment system, submission, analytics endpoints
+- **Backend**: My feedback summary, per-employee analytics
+- **Frontend**: FeedbackTab component with:
+  - Create/manage feedback cycles (HR)
+  - Assign reviewers with employee picker dialog
+  - Feedback submission dialog with rating + text responses
+  - Analytics dialog with category scores, employee rankings, text responses
+- **Frontend**: Integrated as "360 Feedback" tab in HelpdeskPage
+
+### Helpdesk Phase 2: Enhanced Survey Analytics (COMPLETE - Feb 11, 2026)
+- **Backend**: Detailed analytics endpoint with department breakdown, timeline
+- **Backend**: Excel export for survey responses
+- **Frontend**: SurveyAnalyticsDashboard component with:
+  - Summary cards (Recipients, Responses, Rate, Score)
+  - SVG response rate gauge
+  - Department response breakdown with animated bars
+  - Question-level analytics (rating distributions, choice counts, text responses)
+  - Response timeline chart
+  - Export to Excel button
+
+### Attendance Data Integrity Fixes
+- Fixed duplicate records for employees with multiple ID formats
+- Robust name-based employee matching with fallbacks
+- Date-based deduplication in attendance API
 
 ### Previous Implementations
 - AI-Powered SOP Management (flowchart, re-parse, columns)
 - Employee Profile Documents & Assets tab fixes
 - Documents page search/filter/delete
 - Internal Meeting System
+- Leave management with employee name enrichment
+- Dynamic CORS for custom domains
+- Full employee list endpoint for selection dropdowns
 
 ---
 
 ## Key Database Issues
-- **Duplicate employee records**: Some employees exist under multiple IDs (biometric ID like `EMP1709423C` and directory ID like `EMP0E3993E5`) with different name splits
-- **Incomplete biometric data**: Some days only have IN or OUT punch, marked as "present"
+- **Duplicate employee records**: Some employees exist under multiple IDs
+- **Incomplete biometric data**: Some days only have IN or OUT punch
 
 ## Prioritized Backlog
+### P0
+- All P0 items completed
+
 ### P1
-- [ ] Helpdesk Phase 2: Survey analytics, 360-degree feedback
 - [ ] Production deployment
 - [ ] Admin "Unknown" name in meeting analytics
 
@@ -63,3 +92,4 @@ Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
 - [ ] Bulk import for contract workers, salary download, add 100+ employees
 - [ ] Helpdesk Phase 3, dual asset schema migration
 - [ ] Employee record deduplication cleanup
+- [ ] HelpdeskPage.js refactoring (1500+ lines, break into smaller components)
