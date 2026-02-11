@@ -1259,6 +1259,27 @@ async def get_attendance(
     
     attendance = await db.attendance.find(query, {"_id": 0}).sort("date", -1).to_list(500)
     
+    # Deduplicate by employee_id + date (keep the most complete record)
+    seen = {}
+    deduped = []
+    for att in attendance:
+        key = (att.get("employee_id"), att.get("date"))
+        if key in seen:
+            # Keep the record with more data (has both first_in and last_out)
+            existing = seen[key]
+            existing_score = (1 if existing.get("first_in") else 0) + (1 if existing.get("last_out") else 0) + (1 if existing.get("total_hours") else 0)
+            new_score = (1 if att.get("first_in") else 0) + (1 if att.get("last_out") else 0) + (1 if att.get("total_hours") else 0)
+            if new_score > existing_score:
+                # Replace with more complete record
+                deduped = [a for a in deduped if (a.get("employee_id"), a.get("date")) != key]
+                deduped.append(att)
+                seen[key] = att
+        else:
+            seen[key] = att
+            deduped.append(att)
+    
+    attendance = deduped
+    
     # Enrich with employee info
     if attendance:
         emp_ids = list(set(a.get("employee_id") for a in attendance if a.get("employee_id")))
