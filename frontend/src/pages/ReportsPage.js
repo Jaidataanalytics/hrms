@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { toast } from 'sonner';
 import { BarChart3, Users, TrendingDown, IndianRupee, Calendar, RefreshCw, Download, PieChart, ArrowUp, ArrowDown } from 'lucide-react';
 
+import { getAuthHeaders } from '../utils/api';
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const ReportsPage = () => {
@@ -28,11 +29,11 @@ const ReportsPage = () => {
     setLoading(true);
     try {
       const [hcRes, attrRes, prRes, attRes, lvRes] = await Promise.all([
-        fetch(`${API_URL}/reports/headcount`, { credentials: 'include' }),
-        fetch(`${API_URL}/reports/attrition?year=${selectedYear}`, { credentials: 'include' }),
-        fetch(`${API_URL}/reports/payroll-cost?year=${selectedYear}`, { credentials: 'include' }),
-        fetch(`${API_URL}/reports/attendance`, { credentials: 'include' }),
-        fetch(`${API_URL}/reports/leave?year=${selectedYear}`, { credentials: 'include' })
+        fetch(`${API_URL}/reports/headcount`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/attrition?year=${selectedYear}`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/payroll-cost?year=${selectedYear}`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/attendance`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/leave?year=${selectedYear}`, { credentials: 'include', headers: getAuthHeaders() })
       ]);
       if (hcRes.ok) setHeadcount(await hcRes.json());
       if (attrRes.ok) setAttrition(await attrRes.json());

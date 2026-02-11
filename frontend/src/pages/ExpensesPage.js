@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
+import { getAuthHeaders } from '../utils/api';
   Dialog,
   DialogContent,
   DialogDescription,
@@ -71,7 +72,7 @@ const ExpensesPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch(`${API_URL}/employees`, { credentials: 'include' });
+      const res = await fetch(`${API_URL}/employees`, { credentials: 'include', headers: getAuthHeaders() });
       if (res.ok) setEmployees(await res.json());
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -86,8 +87,8 @@ const ExpensesPage = () => {
       if (filterEmployee !== 'all') url += `employee_id=${filterEmployee}&`;
 
       const [expensesRes, categoriesRes] = await Promise.all([
-        fetch(url, { credentials: 'include' }),
-        fetch(`${API_URL}/expense-categories`, { credentials: 'include' })
+        fetch(url, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/expense-categories`, { credentials: 'include', headers: getAuthHeaders() })
       ]);
 
       if (expensesRes.ok) setExpenses(await expensesRes.json());
@@ -108,7 +109,7 @@ const ExpensesPage = () => {
     try {
       const response = await fetch(`${API_URL}/expenses`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({
           ...form,
@@ -134,7 +135,7 @@ const ExpensesPage = () => {
     try {
       const response = await fetch(`${API_URL}/expenses/${claimId}/approve`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({})
       });
@@ -155,7 +156,7 @@ const ExpensesPage = () => {
     try {
       const response = await fetch(`${API_URL}/expenses/${claimId}/reject`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ reason })
       });

@@ -12,6 +12,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { Plane, Plus, RefreshCw, MapPin, Calendar, IndianRupee, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
 
+import { getAuthHeaders } from '../utils/api';
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const TravelPage = () => {
@@ -34,7 +35,7 @@ const TravelPage = () => {
     try {
       let url = `${API_URL}/travel/requests?`;
       if (filterStatus !== 'all') url += `status=${filterStatus}`;
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) setRequests(await response.json());
     } catch (error) {
       console.error('Error:', error);
@@ -51,7 +52,7 @@ const TravelPage = () => {
     try {
       const response = await fetch(`${API_URL}/travel/requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(form)
       });
@@ -72,7 +73,7 @@ const TravelPage = () => {
     try {
       const response = await fetch(`${API_URL}/travel/requests/${requestId}/approve`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ approved_budget: selectedRequest?.estimated_budget })
       });
@@ -90,7 +91,7 @@ const TravelPage = () => {
     try {
       const response = await fetch(`${API_URL}/travel/requests/${requestId}/reject`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ reason })
       });

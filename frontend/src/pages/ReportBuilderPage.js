@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Checkbox } from '../components/ui/checkbox';
 import {
+import { getAuthHeaders } from '../utils/api';
   Select,
   SelectContent,
   SelectItem,
@@ -70,7 +71,7 @@ const ReportBuilderPage = () => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch(`${API_URL}/departments`, { credentials: 'include' });
+      const response = await fetch(`${API_URL}/departments`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) setDepartments(await response.json());
     } catch (error) {
       console.error('Error:', error);
@@ -190,7 +191,7 @@ const ReportBuilderPage = () => {
       if (config.filters.date_from) url += `start_date=${config.filters.date_from}&`;
       if (config.filters.date_to) url += `end_date=${config.filters.date_to}&`;
 
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setReportData(Array.isArray(data) ? data : data.by_department || data.daily || [data]);

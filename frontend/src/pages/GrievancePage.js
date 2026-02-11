@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
+import { getAuthHeaders } from '../utils/api';
   Dialog,
   DialogContent,
   DialogDescription,
@@ -65,7 +66,7 @@ const GrievancePage = () => {
     try {
       let url = `${API_URL}/grievances?`;
       if (filterStatus !== 'all') url += `status=${filterStatus}`;
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) setTickets(await response.json());
     } catch (error) {
       console.error('Error:', error);
@@ -83,7 +84,7 @@ const GrievancePage = () => {
     try {
       const response = await fetch(`${API_URL}/grievances`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(form)
       });

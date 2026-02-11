@@ -13,6 +13,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { GraduationCap, Plus, RefreshCw, Award, BookOpen, Users, Calendar, CheckCircle, Clock } from 'lucide-react';
 
+import { getAuthHeaders } from '../utils/api';
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const TrainingPage = () => {
@@ -36,8 +37,8 @@ const TrainingPage = () => {
   const fetchData = async () => {
     try {
       const [programsRes, myRes] = await Promise.all([
-        fetch(`${API_URL}/training/programs`, { credentials: 'include' }),
-        fetch(`${API_URL}/training/my-training`, { credentials: 'include' })
+        fetch(`${API_URL}/training/programs`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/training/my-training`, { credentials: 'include', headers: getAuthHeaders() })
       ]);
       if (programsRes.ok) setPrograms(await programsRes.json());
       if (myRes.ok) setMyTraining(await myRes.json());
@@ -52,7 +53,7 @@ const TrainingPage = () => {
     try {
       const response = await fetch(`${API_URL}/training/programs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(programForm)
       });
@@ -73,7 +74,7 @@ const TrainingPage = () => {
     try {
       const response = await fetch(`${API_URL}/training/certifications`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(certForm)
       });
@@ -94,7 +95,7 @@ const TrainingPage = () => {
     try {
       const response = await fetch(`${API_URL}/training/enrollments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ program_id: programId, employee_id: user.employee_id })
       });

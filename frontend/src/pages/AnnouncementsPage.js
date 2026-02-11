@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import {
+import { getAuthHeaders } from '../utils/api';
   Dialog,
   DialogContent,
   DialogDescription,
@@ -70,7 +71,7 @@ const AnnouncementsPage = () => {
       if (filterCategory !== 'all') {
         url += `?category=${filterCategory}`;
       }
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setAnnouncements(data);
@@ -92,7 +93,7 @@ const AnnouncementsPage = () => {
     try {
       const response = await fetch(`${API_URL}/announcements`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(form)
       });

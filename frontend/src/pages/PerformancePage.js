@@ -10,6 +10,7 @@ import { Progress } from '../components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Slider } from '../components/ui/slider';
 import {
+import { getAuthHeaders } from '../utils/api';
   Dialog,
   DialogContent,
   DialogDescription,
@@ -87,14 +88,14 @@ const PerformancePage = () => {
   const fetchData = async () => {
     try {
       const promises = [
-        fetch(`${API_URL}/performance/templates`, { credentials: 'include' }),
-        fetch(`${API_URL}/performance/my-kpi`, { credentials: 'include' }),
-        fetch(`${API_URL}/performance/goals`, { credentials: 'include' })
+        fetch(`${API_URL}/performance/templates`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/performance/my-kpi`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/performance/goals`, { credentials: 'include', headers: getAuthHeaders() })
       ];
       
       // Fetch team performance for HR/Managers
       if (canViewTeam) {
-        promises.push(fetch(`${API_URL}/performance/team-performance`, { credentials: 'include' }));
+        promises.push(fetch(`${API_URL}/performance/team-performance`, { credentials: 'include', headers: getAuthHeaders() }));
       }
 
       const responses = await Promise.all(promises);
@@ -114,7 +115,7 @@ const PerformancePage = () => {
   const fetchEmployeePerformance = async (employeeId) => {
     setLoadingEmployeePerf(true);
     try {
-      const response = await fetch(`${API_URL}/performance/employee-performance/${employeeId}`, { credentials: 'include' });
+      const response = await fetch(`${API_URL}/performance/employee-performance/${employeeId}`, { credentials: 'include', headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setEmployeePerformance(data);
@@ -178,7 +179,7 @@ const PerformancePage = () => {
 
       const response = await fetch(`${API_URL}/performance/kpi`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({
           template_id: selectedTemplate,
@@ -210,7 +211,7 @@ const PerformancePage = () => {
     try {
       const response = await fetch(`${API_URL}/performance/templates/${editingTemplate.template_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(editingTemplate)
       });
@@ -231,7 +232,7 @@ const PerformancePage = () => {
     let questions = [];
     if (kpi.template_id) {
       try {
-        const response = await fetch(`${API_URL}/performance/templates/${kpi.template_id}`, { credentials: 'include' });
+        const response = await fetch(`${API_URL}/performance/templates/${kpi.template_id}`, { credentials: 'include', headers: getAuthHeaders() });
         if (response.ok) {
           const template = await response.json();
           questions = template.questions || [];
@@ -278,7 +279,7 @@ const PerformancePage = () => {
     try {
       const response = await fetch(`${API_URL}/performance/kpi/${editingKPI.kpi_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ responses, final_score: finalScore })
       });
@@ -325,7 +326,7 @@ const PerformancePage = () => {
     try {
       const response = await fetch(`${API_URL}/performance/goals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(goalForm)
       });
@@ -348,7 +349,7 @@ const PerformancePage = () => {
     try {
       await fetch(`${API_URL}/performance/goals/${goalId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ progress, status: progress === 100 ? 'completed' : 'in_progress' })
       });
@@ -894,7 +895,7 @@ const PerformancePage = () => {
                               try {
                                 const response = await fetch(`${API_URL}/performance/templates`, {
                                   method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
+                                  headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                                   credentials: 'include',
                                   body: JSON.stringify(templateForm)
                                 });

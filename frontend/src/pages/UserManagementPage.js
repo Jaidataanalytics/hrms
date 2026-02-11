@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import {
+import { getAuthHeaders } from '../utils/api';
   Table,
   TableBody,
   TableCell,
@@ -102,8 +103,8 @@ const UserManagementPage = () => {
       if (filterStatus !== 'all') url += `status=${filterStatus}&`;
       
       const [usersRes, rolesRes] = await Promise.all([
-        fetch(url, { credentials: 'include' }),
-        fetch(`${API_URL}/users/roles/list`, { credentials: 'include' })
+        fetch(url, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/users/roles/list`, { credentials: 'include', headers: getAuthHeaders() })
       ]);
 
       if (usersRes.ok) {
@@ -127,7 +128,7 @@ const UserManagementPage = () => {
     try {
       const response = await fetch(`${API_URL}/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify(form)
       });
@@ -155,7 +156,7 @@ const UserManagementPage = () => {
     try {
       const response = await fetch(`${API_URL}/users/${showEditUser.user_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({
           name: form.name,
@@ -186,7 +187,7 @@ const UserManagementPage = () => {
     try {
       const response = await fetch(`${API_URL}/users/${showResetPassword.user_id}/reset-password`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ new_password: newPassword })
       });
