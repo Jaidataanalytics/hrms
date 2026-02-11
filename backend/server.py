@@ -2644,7 +2644,12 @@ async def get_pending_leave_approvals(request: Request):
             req["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
             req["emp_code"] = emp.get("emp_code", req.get("employee_id"))
         else:
-            req["employee_name"] = req.get("employee_id", "Unknown")
+            # Fallback: check users collection for name
+            usr = await db.users.find_one(
+                {"employee_id": req.get("employee_id")},
+                {"_id": 0, "name": 1}
+            )
+            req["employee_name"] = usr.get("name") if usr else req.get("employee_id", "Unknown")
             req["emp_code"] = req.get("employee_id")
     
     return requests
