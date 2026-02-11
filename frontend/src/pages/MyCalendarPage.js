@@ -452,15 +452,17 @@ const MyCalendarPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Calendar</h1>
-          <p className="text-slate-600 mt-1">View attendance, manage tasks, and schedule meetings</p>
+          <span className="section-pill mono-accent">// Calendar</span>
+          <h1 className="text-2xl font-bold text-slate-900 mt-2" style={{ fontFamily: 'Manrope, sans-serif' }}>My Calendar</h1>
+          <p className="text-slate-500 text-sm mt-1">View attendance, manage tasks, and schedule meetings</p>
+          <div className="header-accent-line mt-3 max-w-[160px]" />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => openNewTask()}>
+          <Button variant="outline" className="rounded-lg" onClick={() => openNewTask()}>
             <ListTodo className="w-4 h-4 mr-2" />
             Add Task
           </Button>
-          <Button onClick={() => openNewMeeting()}>
+          <Button className="rounded-lg shadow-lg shadow-primary/20" onClick={() => openNewMeeting()}>
             <Video className="w-4 h-4 mr-2" />
             Schedule Meeting
           </Button>
@@ -468,71 +470,55 @@ const MyCalendarPage = () => {
       </div>
 
       {/* Monthly Stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        <Card className="bg-emerald-50 border-emerald-200">
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-emerald-700">{monthlyStats.present}</p>
-            <p className="text-xs text-emerald-600">Present</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-blue-700">{monthlyStats.wfh}</p>
-            <p className="text-xs text-blue-600">WFH</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-amber-50 border-amber-200">
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-amber-700">{monthlyStats.leave}</p>
-            <p className="text-xs text-amber-600">Leave</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-yellow-700">{monthlyStats.late}</p>
-            <p className="text-xs text-yellow-600">Late</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-purple-700">{monthlyStats.tasks}</p>
-            <p className="text-xs text-purple-600">Tasks</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-indigo-50 border-indigo-200">
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-indigo-700">{monthlyStats.meetings}</p>
-            <p className="text-xs text-indigo-600">Meetings</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 stagger-children">
+        {[
+          { label: 'Present', value: monthlyStats.present, color: 'emerald', icon: '●' },
+          { label: 'WFH', value: monthlyStats.wfh, color: 'blue', icon: '●' },
+          { label: 'Leave', value: monthlyStats.leave, color: 'amber', icon: '●' },
+          { label: 'Late', value: monthlyStats.late, color: 'yellow', icon: '●' },
+          { label: 'Tasks', value: monthlyStats.tasks, color: 'purple', icon: '●' },
+          { label: 'Meetings', value: monthlyStats.meetings, color: 'indigo', icon: '●' },
+        ].map((stat, i) => (
+          <div key={i} className={`premium-stat stat-${stat.color}`}>
+            <p className="text-2xl font-bold text-slate-800">{stat.value}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Calendar */}
-      <Card>
+      <Card className="!rounded-2xl">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="rounded-lg" onClick={handlePrevMonth}>
                 <ChevronLeft className="w-5 h-5" />
               </Button>
-              <h2 className="text-xl font-semibold min-w-[180px] text-center">
+              <h2 className="text-lg font-bold min-w-[180px] text-center text-slate-800" style={{ fontFamily: 'Manrope, sans-serif' }}>
                 {MONTHS[currentMonth]} {currentYear}
               </h2>
-              <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+              <Button variant="ghost" size="icon" className="rounded-lg" onClick={handleNextMonth}>
                 <ChevronRight className="w-5 h-5" />
               </Button>
-              <Button variant="outline" size="sm" onClick={handleToday}>
+              <Button variant="outline" size="sm" className="rounded-lg text-xs font-semibold" onClick={handleToday}>
                 Today
               </Button>
             </div>
             
             {/* Legend */}
-            <div className="hidden md:flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-emerald-200"></div> Present</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-blue-200"></div> WFH</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-amber-200"></div> Leave</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-purple-200"></div> Holiday</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-red-200"></div> Absent</div>
+            <div className="hidden md:flex items-center gap-5 text-xs">
+              {[
+                { label: 'Present', color: 'bg-emerald-400' },
+                { label: 'WFH', color: 'bg-blue-400' },
+                { label: 'Leave', color: 'bg-amber-400' },
+                { label: 'Holiday', color: 'bg-purple-400' },
+                { label: 'Absent', color: 'bg-red-400' },
+              ].map(l => (
+                <div key={l.label} className="premium-legend">
+                  <div className={`premium-legend-dot ${l.color}`} />
+                  {l.label}
+                </div>
+              ))}
             </div>
           </div>
         </CardHeader>
@@ -542,10 +528,10 @@ const MyCalendarPage = () => {
               <RefreshCw className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="grid grid-cols-7 gap-1">
+            <div className="premium-cal-grid">
               {/* Day headers */}
               {DAYS.map(day => (
-                <div key={day} className={`text-center py-2 text-sm font-semibold ${day === 'Sun' ? 'text-red-500' : 'text-slate-600'}`}>
+                <div key={day} className={`premium-cal-header ${day === 'Sun' ? 'sunday' : ''}`}>
                   {day}
                 </div>
               ))}
@@ -553,19 +539,23 @@ const MyCalendarPage = () => {
               {/* Calendar days */}
               {calendarDays.map((day, idx) => {
                 const dayData = getDayData(day.fullDate);
-                const bgColor = day.isCurrentMonth ? getAttendanceColor(dayData) : 'bg-slate-50';
+                const cellClass = !day.isCurrentMonth ? 'inactive' :
+                  dayData.holiday ? 'holiday' :
+                  dayData.leave ? 'leave' :
+                  dayData.attendance?.status === 'present' ? 'present' :
+                  dayData.attendance?.status === 'wfh' ? 'wfh' :
+                  dayData.isSunday ? 'sunday' :
+                  (dayData.attendance && !['present','wfh'].includes(dayData.attendance.status)) ? 'absent' : '';
                 
                 return (
                   <div
                     key={idx}
                     onClick={() => handleDayClick(day)}
-                    className={`min-h-[100px] p-1 border rounded-lg cursor-pointer transition-all hover:shadow-md ${bgColor} ${
-                      !day.isCurrentMonth ? 'opacity-40' : ''
-                    } ${dayData.isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                    className={`premium-cal-cell ${cellClass} ${dayData.isToday ? 'today' : ''}`}
                     data-testid={`calendar-day-${dayData.dateStr}`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-sm font-semibold ${dayData.isSunday ? 'text-red-500' : ''}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`cal-date-num ${dayData.isSunday && !dayData.isToday ? 'text-red-400' : 'text-slate-700'}`}>
                         {day.date}
                       </span>
                       {getAttendanceIcon(dayData)}
@@ -573,43 +563,43 @@ const MyCalendarPage = () => {
                     
                     {/* Day content */}
                     {day.isCurrentMonth && (
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         {dayData.holiday && (
-                          <div className="text-[10px] text-purple-700 truncate" title={dayData.holiday.name}>
-                            🎉 {dayData.holiday.name}
+                          <div className="cal-event-chip holiday-chip" title={dayData.holiday.name}>
+                            {dayData.holiday.name}
                           </div>
                         )}
                         {dayData.leave && (
-                          <div className="text-[10px] text-amber-700 truncate">
-                            ✈️ {dayData.leave.leave_type || 'Leave'}
+                          <div className="cal-event-chip leave-chip">
+                            {dayData.leave.leave_type || 'Leave'}
                           </div>
                         )}
                         {dayData.attendance && dayData.attendance.first_in && (
-                          <div className="text-[10px] text-slate-500">
+                          <div className="text-[10px] text-slate-400 font-medium px-1">
                             {dayData.attendance.first_in}
                           </div>
                         )}
                         {dayData.tasks.slice(0, 2).map((task, i) => (
-                          <div key={i} className={`text-[10px] truncate flex items-center gap-0.5 ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-                            <ListTodo className="w-2 h-2" />
+                          <div key={i} className={`cal-event-chip task ${task.completed ? 'opacity-40 line-through' : ''}`}>
+                            <ListTodo className="w-2.5 h-2.5" />
                             {task.title}
                           </div>
                         ))}
                         {dayData.meetings.slice(0, 1).map((meeting, i) => (
-                          <div key={i} className="text-[10px] text-indigo-700 truncate flex items-center gap-0.5">
-                            <Video className="w-2 h-2" />
+                          <div key={i} className="cal-event-chip meeting">
+                            <Video className="w-2.5 h-2.5" />
                             {meeting.start_time} {meeting.title}
                           </div>
                         ))}
                         {dayData.celebrations && dayData.celebrations.slice(0, 1).map((cel, i) => (
-                          <div key={`cel-${i}`} className="text-[10px] text-pink-600 truncate flex items-center gap-0.5">
+                          <div key={`cel-${i}`} className="cal-event-chip celebration">
                             {cel.event_type === 'birthday' ? '🎂' : cel.event_type === 'work_anniversary' ? '🌟' : '💝'}
                             {' '}{cel.employee_name || cel.emp_code}
                           </div>
                         ))}
                         {(dayData.tasks.length > 2 || dayData.meetings.length > 1) && (
-                          <div className="text-[10px] text-slate-400">
-                            +{dayData.tasks.length - 2 + dayData.meetings.length - 1} more
+                          <div className="text-[10px] text-slate-400 font-medium px-1">
+                            +{Math.max(0, dayData.tasks.length - 2) + Math.max(0, dayData.meetings.length - 1)} more
                           </div>
                         )}
                       </div>
