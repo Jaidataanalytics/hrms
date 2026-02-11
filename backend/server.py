@@ -1259,23 +1259,40 @@ async def get_attendance(
     
     attendance = await db.attendance.find(query, {"_id": 0}).sort("date", -1).to_list(500)
     
-    # Deduplicate by employee_id + date (keep the most complete record)
+    # Deduplicate by date when viewing specific employee (the $or query may return records
+    # stored under different ID formats for the same person)
+    is_single_employee = bool(employee_id and employee_id != "all")
     seen = {}
     deduped = []
     for att in attendance:
-        key = (att.get("employee_id"), att.get("date"))
-        if key in seen:
-            # Keep the record with more data (has both first_in and last_out)
-            existing = seen[key]
+        dedup_key = att.get("date") if is_single_employee else (att.get("employee_id"), att.get("date"))
+        if dedup_key in seen:
+            existing = seen[dedup_key]
             existing_score = (1 if existing.get("first_in") else 0) + (1 if existing.get("last_out") else 0) + (1 if existing.get("total_hours") else 0)
             new_score = (1 if att.get("first_in") else 0) + (1 if att.get("last_out") else 0) + (1 if att.get("total_hours") else 0)
             if new_score > existing_score:
-                # Replace with more complete record
-                deduped = [a for a in deduped if (a.get("employee_id"), a.get("date")) != key]
+                deduped = [a for a in deduped if (a.get("date") if is_single_employee else (a.get("employee_id"), a.get("date"))) != dedup_key]
                 deduped.append(att)
-                seen[key] = att
+                seen[dedup_key] = att
+            else:
+                # Merge: if new record has data the existing one doesn't, update it
+                merged = False
+                if att.get("first_in") and not existing.get("first_in"):
+                    existing["first_in"] = att["first_in"]
+                    merged = True
+                if att.get("last_out") and not existing.get("last_out"):
+                    existing["last_out"] = att["last_out"]
+                    merged = True
+                if merged and existing.get("first_in") and existing.get("last_out"):
+                    try:
+                        from datetime import datetime as dt
+                        t1 = dt.strptime(existing["first_in"], "%H:%M:%S" if existing["first_in"].count(":") == 2 else "%H:%M")
+                        t2 = dt.strptime(existing["last_out"], "%H:%M:%S" if existing["last_out"].count(":") == 2 else "%H:%M")
+                        existing["total_hours"] = round((t2 - t1).seconds / 3600, 2)
+                    except:
+                        pass
         else:
-            seen[key] = att
+            seen[dedup_key] = att
             deduped.append(att)
     
     attendance = deduped
