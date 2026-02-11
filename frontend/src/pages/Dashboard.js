@@ -144,6 +144,38 @@ const Dashboard = () => {
     }
   };
 
+  const handleRemoteCheckin = async (punchType) => {
+    setRemoteLoading(true);
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+      });
+      const response = await fetch(`${API_URL}/travel/remote-check-in`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          punch_type: punchType,
+          location: { lat: position.coords.latitude, lng: position.coords.longitude },
+          tour_request_id: tourStatus?.tour?.request_id
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Remote ${punchType} recorded at ${data.time}`);
+        fetchDashboardData();
+      } else {
+        const err = await response.json();
+        toast.error(err.detail || 'Failed to record check-in');
+      }
+    } catch (error) {
+      if (error.code === 1) toast.error('Location permission denied. Please enable GPS.');
+      else toast.error('Failed to get location for remote check-in');
+    } finally {
+      setRemoteLoading(false);
+    }
+  };
+
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
   // Animation variants
