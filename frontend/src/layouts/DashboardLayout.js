@@ -328,14 +328,14 @@ const DashboardLayout = () => {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="gap-2 px-2 rounded-lg hover:bg-slate-100" data-testid="user-menu-btn">
-                      <Avatar className="h-8 w-8 ring-2 ring-slate-100">
+                    <Button variant="ghost" className="gap-2 px-2 rounded-lg hover:bg-white/5" data-testid="user-menu-btn">
+                      <Avatar className="h-8 w-8 ring-2 ring-white/10">
                         <AvatarImage src={user?.picture} />
                         <AvatarFallback className="bg-primary text-white text-sm font-semibold">
                           {getInitials(user?.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="hidden sm:block text-sm font-medium text-slate-700">{user?.name}</span>
+                      <span className="hidden sm:block text-sm font-medium text-slate-200">{user?.name}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
