@@ -1213,16 +1213,30 @@ async def get_attendance(
         # Look up employee to get both employee_id and emp_code for broader matching
         employee = await db.employees.find_one(
             {"$or": [{"employee_id": employee_id}, {"emp_code": employee_id}]},
-            {"_id": 0, "employee_id": 1, "emp_code": 1}
+            {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "email": 1}
         )
         
         if employee:
-            # Query by both employee_id and emp_code to cover data inconsistencies
-            query = {"$or": [
-                {"employee_id": employee.get("employee_id")},
-                {"employee_id": employee.get("emp_code")},
-                {"emp_code": employee.get("emp_code")}
-            ]}
+            # Build list of possible IDs this employee might have attendance records under
+            possible_ids = set()
+            possible_ids.add(employee.get("employee_id"))
+            if employee.get("emp_code"):
+                possible_ids.add(employee.get("emp_code"))
+            
+            # Also check if there's another employee record with the same name/email (duplicate records)
+            name_query = {"first_name": employee.get("first_name"), "last_name": employee.get("last_name")}
+            alt_employees = await db.employees.find(name_query, {"_id": 0, "employee_id": 1, "emp_code": 1}).to_list(5)
+            for alt in alt_employees:
+                possible_ids.add(alt.get("employee_id"))
+                if alt.get("emp_code"):
+                    possible_ids.add(alt.get("emp_code"))
+            
+            possible_ids.discard(None)
+            
+            # Query by all possible identifiers
+            or_clauses = [{"employee_id": pid} for pid in possible_ids]
+            or_clauses.extend([{"emp_code": pid} for pid in possible_ids])
+            query = {"$or": or_clauses}
         else:
             # Fallback to direct employee_id match
             query = {"employee_id": employee_id}
