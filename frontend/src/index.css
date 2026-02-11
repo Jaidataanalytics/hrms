@@ -55,7 +55,8 @@
     body {
         @apply text-foreground;
         font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-        background: hsl(220 20% 97%);
+        background: hsl(240 20% 5%);
+        color: hsl(210 40% 98%);
     }
 
     h1, h2, h3, h4, h5, h6 {
