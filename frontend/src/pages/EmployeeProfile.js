@@ -137,15 +137,23 @@ const EmployeeProfile = () => {
     setAttendanceLoading(true);
     try {
       const authHeaders = getAuthHeaders();
-      // Try with employee_id first, then emp_code
+      // Try with employee_id first
       const identifier = employee.employee_id || employee.emp_code;
-      const response = await fetch(
+      let response = await fetch(
         `${API_URL}/attendance?employee_id=${identifier}&month=${selectedMonth}&year=${selectedYear}`,
         { credentials: 'include', headers: authHeaders }
       );
       
       if (response.ok) {
-        const data = await response.json();
+        let data = await response.json();
+        // If no records found with employee_id, try with emp_code
+        if (data.length === 0 && employee.emp_code && employee.emp_code !== identifier) {
+          response = await fetch(
+            `${API_URL}/attendance?employee_id=${employee.emp_code}&month=${selectedMonth}&year=${selectedYear}`,
+            { credentials: 'include', headers: authHeaders }
+          );
+          if (response.ok) data = await response.json();
+        }
         setAttendance(data);
       }
     } catch (error) {
