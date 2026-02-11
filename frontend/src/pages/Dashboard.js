@@ -45,6 +45,7 @@ const Dashboard = () => {
   const [myExpenses, setMyExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAttendance, setMarkingAttendance] = useState(false);
+  const [celebrationTheme, setCelebrationTheme] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
