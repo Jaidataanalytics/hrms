@@ -3630,6 +3630,7 @@ from routes.calendar import router as calendar_router
 from routes.meetings import router as meetings_router
 from routes.events import router as events_router
 from routes.notifications import router as notifications_router
+from routes.push_notifications import router as push_router
 from services.biometric_sync import set_db as set_biometric_sync_db
 
 # Set database for data management and biometric sync
