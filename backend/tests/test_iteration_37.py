@@ -93,16 +93,20 @@ class TestEmployeeSidebarAccess:
         response = employee_session.get(f"{BASE_URL}/api/training/my-training")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
-        assert isinstance(data, list), "Expected list of training assignments"
-        print(f"✓ Employee can access Training My-Training, got {len(data)} assignments")
+        # API returns object with enrollments, certifications, skills arrays
+        assert isinstance(data, dict), "Expected dict with training data"
+        assert "enrollments" in data or "certifications" in data or "skills" in data, "Expected training data fields"
+        print(f"✓ Employee can access Training My-Training API successfully")
 
     def test_employee_sop_my_sops(self, employee_session):
         """Test employee can access /api/sop/my-sops"""
         response = employee_session.get(f"{BASE_URL}/api/sop/my-sops")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
-        assert isinstance(data, list), "Expected list of SOPs"
-        print(f"✓ Employee can access SOPs, got {len(data)} SOPs")
+        # API returns object with main_responsible and also_involved arrays
+        assert isinstance(data, dict), "Expected dict with SOP categories"
+        assert "main_responsible" in data or "also_involved" in data, "Expected SOP data fields"
+        print(f"✓ Employee can access SOPs API successfully")
 
     def test_employee_travel_my_active_tour(self, employee_session):
         """Test employee can access /api/travel/my-active-tour"""
