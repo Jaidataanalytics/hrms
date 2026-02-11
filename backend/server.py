@@ -3680,6 +3680,8 @@ from starlette.responses import Response as StarletteResponse
 class DynamicCORSMiddleware(BaseHTTPMiddleware):
     ALLOWED_ORIGINS = set(cors_origins)
     ALLOWED_SUFFIXES = ('.emergentagent.com', '.emergent.host', '.emergentapp.com')
+    ALLOWED_METHODS = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
+    ALLOWED_HEADERS = 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cookie, X-Session-ID'
     
     async def dispatch(self, request, call_next):
         origin = request.headers.get('origin', '')
@@ -3687,7 +3689,7 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
             origin in self.ALLOWED_ORIGINS or
             any(origin.endswith(s) for s in self.ALLOWED_SUFFIXES) or
             origin.startswith('http://localhost') or
-            (origin.startswith('https://') and '.' in origin)  # Allow any custom domain
+            (origin.startswith('https://') and '.' in origin)
         )
         
         if request.method == 'OPTIONS':
@@ -3695,8 +3697,8 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
             if is_allowed and origin:
                 resp.headers['Access-Control-Allow-Origin'] = origin
                 resp.headers['Access-Control-Allow-Credentials'] = 'true'
-                resp.headers['Access-Control-Allow-Methods'] = '*'
-                resp.headers['Access-Control-Allow-Headers'] = '*'
+                resp.headers['Access-Control-Allow-Methods'] = self.ALLOWED_METHODS
+                resp.headers['Access-Control-Allow-Headers'] = self.ALLOWED_HEADERS
                 resp.headers['Access-Control-Max-Age'] = '86400'
             return resp
         
@@ -3704,8 +3706,8 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
         if is_allowed and origin:
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Access-Control-Allow-Credentials'] = 'true'
-            response.headers['Access-Control-Allow-Methods'] = '*'
-            response.headers['Access-Control-Allow-Headers'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = self.ALLOWED_METHODS
+            response.headers['Access-Control-Allow-Headers'] = self.ALLOWED_HEADERS
         return response
 
 app.add_middleware(DynamicCORSMiddleware)
