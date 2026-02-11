@@ -1,232 +1,131 @@
 {
-  "typography": {
-    "font_family": {
-      "heading": "Manrope, sans-serif",
-      "body": "Public Sans, sans-serif",
-      "mono": "JetBrains Mono, monospace"
-    },
-    "weights": {
-      "light": 300,
-      "regular": 400,
-      "medium": 500,
-      "semibold": 600,
-      "bold": 700,
-      "extrabold": 800
-    },
-    "sizes": {
-      "h1": "text-4xl md:text-5xl font-extrabold tracking-tight",
-      "h2": "text-3xl md:text-4xl font-bold tracking-tight",
-      "h3": "text-2xl md:text-3xl font-bold tracking-tight",
-      "h4": "text-xl md:text-2xl font-semibold tracking-tight",
-      "body_lg": "text-lg leading-relaxed",
-      "body_base": "text-base leading-relaxed",
-      "body_sm": "text-sm leading-relaxed",
-      "caption": "text-xs text-muted-foreground uppercase tracking-wider"
-    }
+  "identity": {
+    "designer": "E1",
+    "archetype": "The Anti-AI Designer",
+    "mission": "Kill the boring 'white dashboard'. Bring the login page's dark energy to the core.",
+    "core_principles": [
+      "Depth over Flatness (Glassmorphism)",
+      "Motion is Meaning (Staggered Entrances)",
+      "Darkness is Premium (Obsidian Backgrounds)",
+      "Data is Art (Glowing Charts)"
+    ]
   },
-  "colors": {
-    "palette": {
-      "primary": {
-        "DEFAULT": "#4F46E5",
-        "foreground": "#FFFFFF",
-        "50": "#EEF2FF",
-        "100": "#E0E7FF",
-        "200": "#C7D2FE",
-        "300": "#A5B4FC",
-        "400": "#818CF8",
-        "500": "#6366F1",
-        "600": "#4F46E5",
-        "700": "#4338CA",
-        "800": "#3730A3",
-        "900": "#312E81",
-        "950": "#1E1B4B"
+  "theme": {
+    "mode": "dark",
+    "base_colors": {
+      "background": "hsl(240 20% 5%)",
+      "foreground": "hsl(210 40% 98%)",
+      "card": "hsl(240 20% 10% / 0.4)",
+      "card_border": "hsl(210 40% 98% / 0.1)",
+      "primary": "hsl(243 75% 59%)",
+      "primary_glow": "hsl(243 75% 59% / 0.5)",
+      "sidebar_bg": "hsl(222.2 84% 4.9%)"
+    },
+    "gradients": {
+      "glass_surface": "linear-gradient(145deg, hsl(240 20% 10% / 0.6), hsl(240 20% 10% / 0.3))",
+      "neon_glow": "radial-gradient(circle at 50% 0%, hsl(243 75% 59% / 0.15), transparent 70%)"
+    },
+    "typography": {
+      "headings": {
+        "family": "Manrope, sans-serif",
+        "weights": ["600", "700", "800"],
+        "usage": "Page titles, Card headers, Big metrics"
       },
-      "secondary": {
-        "DEFAULT": "#64748B",
-        "foreground": "#F8FAFC"
+      "body": {
+        "family": "Public Sans, sans-serif",
+        "weights": ["300", "400", "500"],
+        "usage": "General text, descriptions"
       },
-      "background": {
-        "light": "#F8FAFC",
-        "dark": "#020617"
-      },
-      "surface": {
-        "light": "#FFFFFF",
-        "dark": "#0F172A"
-      },
-      "semantic": {
-        "success": "#10B981",
-        "warning": "#F59E0B",
-        "error": "#EF4444",
-        "info": "#3B82F6"
+      "mono": {
+        "family": "JetBrains Mono, monospace",
+        "usage": "Data points, IDs, Status pills, Charts"
       }
-    },
-    "theme_strategy": {
-      "mode": "system",
-      "default": "light",
-      "dark_mode_class": "dark"
     }
   },
-  "layout": {
-    "grid_system": {
-      "dashboard": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
-      "form": "grid grid-cols-1 md:grid-cols-2 gap-6",
-      "detail_view": "grid grid-cols-1 lg:grid-cols-3 gap-8"
+  "layout_strategies": {
+    "dashboard_grid": {
+      "type": "Bento Grid Mode B (High Density)",
+      "classes": "grid grid-cols-1 md:grid-cols-4 gap-6 p-6",
+      "rules": [
+        "Hero stats: col-span-1 (Square)",
+        "Main Chart: col-span-2 row-span-2 (The Focus)",
+        "Activity Feed: col-span-1 row-span-2 (Tall)",
+        "Quick Actions: col-span-4 (Horizontal Strip)"
+      ]
     },
     "spacing": {
-      "page_padding": "p-6 md:p-8 lg:p-10",
-      "card_padding": "p-6",
+      "container_padding": "p-8 md:p-12",
       "section_gap": "gap-8",
-      "component_gap": "gap-4"
-    },
-    "sidebar": {
-      "width": "w-64",
-      "collapsed_width": "w-16",
-      "bg_light": "bg-white border-r border-slate-200",
-      "bg_dark": "bg-slate-900 border-r border-slate-800"
-    },
-    "container": {
-      "max_width": "max-w-7xl mx-auto"
+      "card_internal": "p-6"
     }
   },
   "components": {
-    "card": {
-      "style": "rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300",
-      "header": "p-6 pb-3",
-      "content": "p-6 pt-0",
-      "footer": "p-6 pt-0 flex items-center"
+    "GlassCard": {
+      "description": "The fundamental building block. Replaces all white cards.",
+      "styles": "bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 rounded-2xl hover:bg-white/10 transition-all duration-300 group relative overflow-hidden",
+      "interactive_effect": "Add a 'tracing beam' or 'glow' effect on hover."
     },
-    "button": {
-      "base": "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-      "variants": {
-        "default": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all",
-        "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        "ghost": "hover:bg-accent hover:text-accent-foreground",
-        "destructive": "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-      },
-      "sizes": {
-        "default": "h-10 px-4 py-2",
-        "sm": "h-9 rounded-md px-3",
-        "lg": "h-11 rounded-md px-8",
-        "icon": "h-10 w-10"
-      }
+    "StatsCard": {
+      "description": "Small metric cards with top border accents.",
+      "styles": "relative overflow-hidden GlassCard",
+      "accent_bar": "absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-purple-500"
     },
-    "input": {
-      "style": "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 focus:border-primary/50"
+    "PageHeader": {
+      "description": "Dramatic entrance for page titles.",
+      "styles": "mb-8 flex flex-col gap-2 border-b border-white/10 pb-6",
+      "title_classes": "text-4xl font-extrabold tracking-tight text-white/90 font-display"
     },
-    "table": {
-      "wrapper": "relative w-full overflow-auto rounded-lg border border-border",
-      "header": "bg-muted/50 hover:bg-muted/60 transition-colors",
-      "row": "hover:bg-muted/50 transition-colors data-[state=selected]:bg-muted"
-    },
-    "badge": {
-      "style": "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-      "variants": {
-        "default": "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        "secondary": "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        "outline": "text-foreground"
-      }
+    "PrimaryButton": {
+      "styles": "bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-transform hover:-translate-y-0.5 active:scale-95 font-medium px-6 py-2.5 rounded-lg"
     }
   },
   "motion": {
-    "library": "framer-motion",
-    "variants": {
-      "page_transition": {
+    "page_transition": {
+      "type": "Framer Motion",
+      "variants": {
         "initial": { "opacity": 0, "y": 20 },
         "animate": { "opacity": 1, "y": 0 },
-        "exit": { "opacity": 0, "y": -20 },
-        "transition": { "duration": 0.3, "ease": "easeOut" }
+        "exit": { "opacity": 0, "y": -20 }
       },
-      "container_stagger": {
+      "transition": { "duration": 0.4, "ease": "easeOut" }
+    },
+    "stagger": {
+      "container_variants": {
         "hidden": { "opacity": 0 },
-        "show": {
-          "opacity": 1,
-          "transition": {
-            "staggerChildren": 0.1
-          }
-        }
-      },
-      "item_fade_up": {
-        "hidden": { "opacity": 0, "y": 20 },
-        "show": { "opacity": 1, "y": 0 }
-      },
-      "hover_scale": {
-        "scale": 1.02,
-        "transition": { "duration": 0.2 }
-      },
-      "button_tap": {
-        "scale": 0.95
+        "show": { "opacity": 1, "transition": { "staggerChildren": 0.1 } }
       }
     }
   },
-  "visual_enhancers": {
-    "glassmorphism": "backdrop-blur-md bg-white/70 dark:bg-slate-950/70 border border-white/20 dark:border-slate-800/50",
-    "gradients": {
-      "primary_subtle": "bg-gradient-to-br from-primary/10 to-transparent",
-      "surface_shine": "bg-gradient-to-tr from-white/5 to-white/20"
-    },
-    "shadows": {
-      "soft": "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)]",
-      "glow": "shadow-[0_0_15px_rgba(79,70,229,0.3)]"
-    },
-    "borders": {
-      "subtle": "border border-slate-200 dark:border-slate-800",
-      "highlight": "border-l-4 border-primary"
-    }
-  },
-  "image_urls": {
-    "login_background": {
-      "url": "https://images.unsplash.com/photo-1699221956417-eeaca01d9e68",
-      "alt": "Modern manufacturing facility abstract",
-      "category": "background"
-    },
-    "avatars": [
-      {
-        "url": "https://images.unsplash.com/photo-1627776880991-808c5996527b",
-        "alt": "Male employee portrait",
-        "category": "avatar"
-      },
-      {
-        "url": "https://images.unsplash.com/photo-1742485244360-ce19c0531e46",
-        "alt": "Female employee portrait",
-        "category": "avatar"
-      }
-    ],
-    "meeting_room": {
-      "url": "https://images.unsplash.com/photo-1686100508940-d6c65b17f6d7",
-      "alt": "Corporate meeting room",
-      "category": "content"
-    },
-    "assets": {
-      "url": "https://images.unsplash.com/photo-1738162837329-2f2a2cdebb5e",
-      "alt": "Industrial machinery",
-      "category": "content"
-    }
-  },
-  "instructions_to_main_agent": [
-    "Implement a global ThemeProvider using 'next-themes' or similar context for dark mode toggling.",
-    "Replace all 'isLoading' boolean checks with Skeleton components from shadcn/ui.",
-    "Wrap all page contents in a 'motion.div' with the 'page_transition' variant.",
-    "Use the 'Manrope' font for all headings (h1-h6) and 'Public Sans' for body text.",
-    "Ensure all forms use 'react-hook-form' with 'zod' validation, styled with shadcn Form components.",
-    "Implement the Sidebar with a collapsible state that persists in local storage.",
-    "Use 'sonner' for all toast notifications (success, error, info).",
-    "For the Dashboard, use a Bento Grid layout (CSS Grid) to arrange widgets asymmetrically.",
-    "Ensure all interactive elements (buttons, inputs, cards) have a 'data-testid' attribute.",
-    "Do not use default HTML tables; use the shadcn Table component with proper header/body separation.",
-    "Apply 'glassmorphism' utility classes to sticky headers and modal overlays."
+  "universal_guidelines": [
+    "OVERWRITE /app/frontend/src/index.css variables to force DARK MODE by default. The light mode is dead.",
+    "Do NOT touch the sidebar structure, but ensure it blends with the new dark body.",
+    "Use 'backdrop-blur-xl' liberally. The background should feel like 'smoked glass'.",
+    "Replace all solid white backgrounds with `hsl(var(--card))` which is now transparent/glass.",
+    "Add `data-testid` to every interactive element.",
+    "Use `JetBrains Mono` for all numbers and data-heavy tables.",
+    "Ensure 'Chart' components use the new dark palette (Neon Blue, Purple, Emerald, Orange) instead of default colors."
   ],
-  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
-    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
-    "Create depth through layered design elements with z-index hierarchy.",
-    "Use glass-morphism effects with backdrop filters (12-24px blur).",
-    "You MUST NOT apply universal transition. Eg: 'transition: all'. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
-    "You MUST NOT center align the app container, ie do not add '.App { text-align: center; }' in the css file. This disrupts the human natural reading flow of text.",
-    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
-    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
-    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
-    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
-    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
-    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN."
-  ]
+  "implementation_steps": [
+    {
+      "step": 1,
+      "action": "Update CSS Variables",
+      "details": "Modify /app/frontend/src/index.css :root to use the dark theme values defined in this JSON."
+    },
+    {
+      "step": 2,
+      "action": "Global Glass",
+      "details": "Create a global utility class `.glass-panel` in index.css that applies the glassmorphism styles (bg, blur, border, shadow)."
+    },
+    {
+      "step": 3,
+      "action": "Component Reskin",
+      "details": "Update the existing Card, Button, and Table styles in index.css to match the new dark aesthetic."
+    },
+    {
+      "step": 4,
+      "action": "Layout Update",
+      "details": "Refactor the main dashboard layout to use the Bento Grid strategy."
+    }
+  ],
+  "image_urls": {}
 }
