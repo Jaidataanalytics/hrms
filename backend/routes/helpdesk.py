@@ -887,3 +887,577 @@ async def list_employees_for_selection(
     ).to_list(500)
     
     return employees
+
+
+# ==================== ENHANCED SURVEY ANALYTICS ====================
+
+@router.get("/surveys/{survey_id}/analytics/detailed")
+async def get_detailed_survey_analytics(survey_id: str, request: Request):
+    """Get detailed analytics with department breakdown and timeline"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    survey = await db.surveys.find_one({"survey_id": survey_id}, {"_id": 0})
+    if not survey:
+        raise HTTPException(status_code=404, detail="Survey not found")
+    
+    responses = await db.survey_responses.find({"survey_id": survey_id}, {"_id": 0}).to_list(1000)
+    
+    # Build respondent info map
+    respondent_ids = [r.get("employee_id") for r in responses]
+    employees = await db.employees.find(
+        {"$or": [{"employee_id": {"$in": respondent_ids}}, {"emp_code": {"$in": respondent_ids}}]},
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1, "department_name": 1}
+    ).to_list(500)
+    emp_map = {}
+    for e in employees:
+        emp_map[e.get("employee_id")] = e
+        if e.get("emp_code"):
+            emp_map[e.get("emp_code")] = e
+    
+    # Department breakdown
+    dept_responses = {}
+    for r in responses:
+        emp = emp_map.get(r.get("employee_id"), {})
+        dept = emp.get("department_name") or emp.get("department") or "Unknown"
+        if dept not in dept_responses:
+            dept_responses[dept] = {"count": 0, "respondents": []}
+        dept_responses[dept]["count"] += 1
+        dept_responses[dept]["respondents"].append(emp.get("first_name", ""))
+    
+    # Timeline: responses per day
+    timeline = {}
+    for r in responses:
+        submitted = r.get("submitted_at", r.get("created_at", ""))
+        if submitted:
+            day = submitted[:10]
+            timeline[day] = timeline.get(day, 0) + 1
+    
+    # Question analytics (enhanced)
+    questions = survey.get("questions", [])
+    question_analytics = []
+    for q in questions:
+        q_id = q.get("question_id")
+        q_type = q.get("type")
+        qa = {"question_id": q_id, "question_text": q.get("text"), "type": q_type, "total_responses": 0, "analytics": {}, "dept_breakdown": {}}
+        
+        answers = []
+        answers_by_dept = {}
+        for r in responses:
+            emp = emp_map.get(r.get("employee_id"), {})
+            dept = emp.get("department_name") or emp.get("department") or "Unknown"
+            for a in r.get("answers", []):
+                if a.get("question_id") == q_id:
+                    answers.append(a)
+                    if dept not in answers_by_dept:
+                        answers_by_dept[dept] = []
+                    answers_by_dept[dept].append(a)
+        
+        qa["total_responses"] = len(answers)
+        
+        if q_type in ["rating", "nps", "satisfaction"]:
+            ratings = [a.get("rating", 0) for a in answers if a.get("rating") is not None]
+            if ratings:
+                qa["analytics"] = {
+                    "average": round(sum(ratings) / len(ratings), 2),
+                    "min": min(ratings),
+                    "max": max(ratings),
+                    "distribution": {str(i): ratings.count(i) for i in sorted(set(ratings))}
+                }
+                for dept, dept_ans in answers_by_dept.items():
+                    dept_ratings = [a.get("rating", 0) for a in dept_ans if a.get("rating") is not None]
+                    if dept_ratings:
+                        qa["dept_breakdown"][dept] = round(sum(dept_ratings) / len(dept_ratings), 2)
+        
+        elif q_type in ["multiple_choice", "single_choice", "yes_no"]:
+            option_counts = {}
+            for a in answers:
+                selected = a.get("selected_options", [])
+                if isinstance(selected, str):
+                    selected = [selected]
+                for opt in selected:
+                    option_counts[opt] = option_counts.get(opt, 0) + 1
+            qa["analytics"] = {"option_counts": option_counts, "total": len(answers)}
+        
+        elif q_type in ["text", "long_text"]:
+            text_responses = [a.get("answer", "") for a in answers if a.get("answer")]
+            qa["analytics"] = {"responses": text_responses[:50], "total_text": len(text_responses)}
+        
+        question_analytics.append(qa)
+    
+    # Overall score (average of all rating questions)
+    all_averages = [qa["analytics"].get("average", 0) for qa in question_analytics if qa["type"] in ["rating", "nps", "satisfaction"] and qa["analytics"].get("average")]
+    overall_score = round(sum(all_averages) / len(all_averages), 2) if all_averages else None
+    
+    return {
+        "survey": survey,
+        "summary": {
+            "total_recipients": survey.get("total_recipients", 0),
+            "total_responses": len(responses),
+            "response_rate": round((len(responses) / max(survey.get("total_recipients", 1), 1)) * 100, 1),
+            "overall_score": overall_score,
+            "status": survey.get("status"),
+            "created": survey.get("created_at"),
+            "started": survey.get("activated_at"),
+            "closed": survey.get("closed_at"),
+        },
+        "department_breakdown": dept_responses,
+        "response_timeline": dict(sorted(timeline.items())),
+        "question_analytics": question_analytics
+    }
+
+
+@router.get("/surveys/{survey_id}/export")
+async def export_survey_responses(survey_id: str, request: Request):
+    """Export survey responses to Excel"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    survey = await db.surveys.find_one({"survey_id": survey_id}, {"_id": 0})
+    if not survey:
+        raise HTTPException(status_code=404, detail="Survey not found")
+    
+    responses = await db.survey_responses.find({"survey_id": survey_id}, {"_id": 0}).to_list(1000)
+    
+    # Get employee names
+    resp_ids = [r.get("employee_id") for r in responses]
+    employees = await db.employees.find(
+        {"$or": [{"employee_id": {"$in": resp_ids}}, {"emp_code": {"$in": resp_ids}}]},
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
+    ).to_list(500)
+    emp_map = {e["employee_id"]: e for e in employees}
+    for e in employees:
+        if e.get("emp_code"):
+            emp_map[e["emp_code"]] = e
+    
+    import openpyxl
+    import io
+    from fastapi.responses import StreamingResponse
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Survey Responses"
+    
+    questions = survey.get("questions", [])
+    headers = ["Employee", "Department", "Submitted At"] + [q.get("text", f"Q{i+1}") for i, q in enumerate(questions)]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = openpyxl.styles.Font(bold=True)
+    
+    for row_idx, resp in enumerate(responses, 2):
+        emp = emp_map.get(resp.get("employee_id"), {})
+        name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip() or resp.get("employee_id")
+        ws.cell(row=row_idx, column=1, value=name)
+        ws.cell(row=row_idx, column=2, value=emp.get("department", ""))
+        ws.cell(row=row_idx, column=3, value=resp.get("submitted_at", ""))
+        
+        answer_map = {a["question_id"]: a for a in resp.get("answers", [])}
+        for col_idx, q in enumerate(questions, 4):
+            ans = answer_map.get(q["question_id"], {})
+            if q["type"] in ["rating", "nps", "satisfaction"]:
+                ws.cell(row=row_idx, column=col_idx, value=ans.get("rating"))
+            elif q["type"] in ["text", "long_text"]:
+                ws.cell(row=row_idx, column=col_idx, value=ans.get("answer"))
+            elif q["type"] in ["single_choice", "multiple_choice", "yes_no"]:
+                selected = ans.get("selected_options", [])
+                if isinstance(selected, list):
+                    ws.cell(row=row_idx, column=col_idx, value=", ".join(selected))
+                else:
+                    ws.cell(row=row_idx, column=col_idx, value=str(selected))
+    
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 20
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=survey_{survey_id}_responses.xlsx"}
+    )
+
+
+# ==================== 360-DEGREE FEEDBACK ====================
+
+@router.post("/feedback-cycles")
+async def create_feedback_cycle(data: dict, request: Request):
+    """Create a new 360-degree feedback cycle"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    cycle = {
+        "cycle_id": f"fc_{uuid.uuid4().hex[:12]}",
+        "title": data.get("title", ""),
+        "description": data.get("description", ""),
+        "status": "draft",
+        "start_date": data.get("start_date"),
+        "end_date": data.get("end_date"),
+        "questions": data.get("questions", [
+            {"question_id": "fb_q1", "text": "How effective is this person at communication?", "type": "rating", "category": "Communication"},
+            {"question_id": "fb_q2", "text": "How well does this person collaborate with the team?", "type": "rating", "category": "Teamwork"},
+            {"question_id": "fb_q3", "text": "How would you rate their leadership abilities?", "type": "rating", "category": "Leadership"},
+            {"question_id": "fb_q4", "text": "How reliable is this person in meeting deadlines?", "type": "rating", "category": "Reliability"},
+            {"question_id": "fb_q5", "text": "How well does this person handle challenges?", "type": "rating", "category": "Problem Solving"},
+            {"question_id": "fb_q6", "text": "What are this person's key strengths?", "type": "long_text", "category": "Strengths"},
+            {"question_id": "fb_q7", "text": "What areas could this person improve on?", "type": "long_text", "category": "Areas for Improvement"},
+        ]),
+        "allow_self_nomination": data.get("allow_self_nomination", True),
+        "min_reviewers": data.get("min_reviewers", 3),
+        "anonymous": data.get("anonymous", True),
+        "assignments": [],
+        "created_by": user.get("user_id"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    await db.feedback_cycles.insert_one(cycle)
+    cycle.pop("_id", None)
+    return cycle
+
+
+@router.get("/feedback-cycles")
+async def list_feedback_cycles(request: Request):
+    """List feedback cycles"""
+    user = await get_current_user(request)
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    
+    cycles = await db.feedback_cycles.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    
+    emp_id = user.get("employee_id")
+    for cycle in cycles:
+        if is_hr:
+            total_assignments = len(cycle.get("assignments", []))
+            completed = sum(1 for a in cycle.get("assignments", []) if a.get("status") == "completed")
+            cycle["total_assignments"] = total_assignments
+            cycle["completed_assignments"] = completed
+        else:
+            my_assignments = [a for a in cycle.get("assignments", []) if a.get("reviewer_id") == emp_id]
+            cycle["my_assignments"] = len(my_assignments)
+            cycle["my_completed"] = sum(1 for a in my_assignments if a.get("status") == "completed")
+            cycle["my_pending"] = sum(1 for a in my_assignments if a.get("status") == "pending")
+        
+        cycle.pop("assignments", None)
+    
+    return cycles
+
+
+@router.get("/feedback-cycles/{cycle_id}")
+async def get_feedback_cycle(cycle_id: str, request: Request):
+    """Get feedback cycle details"""
+    user = await get_current_user(request)
+    
+    cycle = await db.feedback_cycles.find_one({"cycle_id": cycle_id}, {"_id": 0})
+    if not cycle:
+        raise HTTPException(status_code=404, detail="Feedback cycle not found")
+    
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    emp_id = user.get("employee_id")
+    
+    if not is_hr:
+        cycle["my_assignments"] = [a for a in cycle.get("assignments", []) if a.get("reviewer_id") == emp_id]
+        cycle.pop("assignments", None)
+    
+    return cycle
+
+
+@router.put("/feedback-cycles/{cycle_id}")
+async def update_feedback_cycle(cycle_id: str, data: dict, request: Request):
+    """Update feedback cycle"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    update = {}
+    for field in ["title", "description", "start_date", "end_date", "questions", "status", "allow_self_nomination", "min_reviewers", "anonymous"]:
+        if field in data:
+            update[field] = data[field]
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.feedback_cycles.update_one({"cycle_id": cycle_id}, {"$set": update})
+    return await db.feedback_cycles.find_one({"cycle_id": cycle_id}, {"_id": 0})
+
+
+@router.post("/feedback-cycles/{cycle_id}/assign")
+async def assign_reviewers(cycle_id: str, data: dict, request: Request):
+    """Assign reviewers to an employee in a feedback cycle"""
+    user = await get_current_user(request)
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    emp_id = user.get("employee_id")
+    
+    cycle = await db.feedback_cycles.find_one({"cycle_id": cycle_id})
+    if not cycle:
+        raise HTTPException(status_code=404, detail="Cycle not found")
+    
+    target_employee = data.get("target_employee_id")
+    reviewer_ids = data.get("reviewer_ids", [])
+    
+    if not is_hr and not cycle.get("allow_self_nomination"):
+        raise HTTPException(status_code=403, detail="Self-nomination not allowed")
+    
+    if not is_hr:
+        target_employee = emp_id
+    
+    existing = cycle.get("assignments", [])
+    
+    new_assignments = []
+    for rid in reviewer_ids:
+        if rid == target_employee:
+            continue
+        exists = any(a.get("target_employee_id") == target_employee and a.get("reviewer_id") == rid for a in existing)
+        if not exists:
+            new_assignments.append({
+                "assignment_id": f"fa_{uuid.uuid4().hex[:8]}",
+                "target_employee_id": target_employee,
+                "reviewer_id": rid,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+    
+    if new_assignments:
+        await db.feedback_cycles.update_one(
+            {"cycle_id": cycle_id},
+            {"$push": {"assignments": {"$each": new_assignments}}}
+        )
+    
+    return {"message": f"Assigned {len(new_assignments)} reviewers", "assignments_added": len(new_assignments)}
+
+
+@router.post("/feedback-cycles/{cycle_id}/submit")
+async def submit_feedback(cycle_id: str, data: dict, request: Request):
+    """Submit feedback for an assigned review"""
+    user = await get_current_user(request)
+    emp_id = user.get("employee_id")
+    
+    assignment_id = data.get("assignment_id")
+    answers = data.get("answers", [])
+    
+    cycle = await db.feedback_cycles.find_one({"cycle_id": cycle_id})
+    if not cycle:
+        raise HTTPException(status_code=404, detail="Cycle not found")
+    
+    assignment = next((a for a in cycle.get("assignments", []) if a.get("assignment_id") == assignment_id and a.get("reviewer_id") == emp_id), None)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    if assignment.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Already submitted")
+    
+    feedback = {
+        "feedback_id": f"fb_{uuid.uuid4().hex[:12]}",
+        "cycle_id": cycle_id,
+        "assignment_id": assignment_id,
+        "target_employee_id": assignment["target_employee_id"],
+        "reviewer_id": emp_id,
+        "anonymous": cycle.get("anonymous", True),
+        "answers": answers,
+        "submitted_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.feedback_responses.insert_one(feedback)
+    feedback.pop("_id", None)
+    
+    await db.feedback_cycles.update_one(
+        {"cycle_id": cycle_id, "assignments.assignment_id": assignment_id},
+        {"$set": {"assignments.$.status": "completed", "assignments.$.submitted_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return feedback
+
+
+@router.get("/feedback-cycles/{cycle_id}/my-assignments")
+async def get_my_feedback_assignments(cycle_id: str, request: Request):
+    """Get my pending feedback assignments with target employee details"""
+    user = await get_current_user(request)
+    emp_id = user.get("employee_id")
+    
+    cycle = await db.feedback_cycles.find_one({"cycle_id": cycle_id}, {"_id": 0})
+    if not cycle:
+        raise HTTPException(status_code=404, detail="Cycle not found")
+    
+    my_assignments = [a for a in cycle.get("assignments", []) if a.get("reviewer_id") == emp_id]
+    
+    for a in my_assignments:
+        emp = await db.employees.find_one(
+            {"$or": [{"employee_id": a["target_employee_id"]}, {"emp_code": a["target_employee_id"]}]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "department": 1, "designation": 1}
+        )
+        if emp:
+            a["target_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+            a["target_department"] = emp.get("department", "")
+            a["target_designation"] = emp.get("designation", "")
+    
+    return {"cycle": {"cycle_id": cycle["cycle_id"], "title": cycle["title"], "questions": cycle.get("questions", []), "anonymous": cycle.get("anonymous", True)}, "assignments": my_assignments}
+
+
+@router.get("/feedback-cycles/{cycle_id}/analytics")
+async def get_feedback_cycle_analytics(cycle_id: str, request: Request, employee_id: Optional[str] = None):
+    """Get analytics for a feedback cycle (HR only) or for a specific employee"""
+    user = await get_current_user(request)
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    emp_id = user.get("employee_id")
+    
+    cycle = await db.feedback_cycles.find_one({"cycle_id": cycle_id}, {"_id": 0})
+    if not cycle:
+        raise HTTPException(status_code=404, detail="Cycle not found")
+    
+    query = {"cycle_id": cycle_id}
+    if employee_id and is_hr:
+        query["target_employee_id"] = employee_id
+    elif not is_hr:
+        query["target_employee_id"] = emp_id
+    
+    feedbacks = await db.feedback_responses.find(query, {"_id": 0}).to_list(500)
+    
+    if not is_hr:
+        for f in feedbacks:
+            if cycle.get("anonymous", True):
+                f.pop("reviewer_id", None)
+    
+    questions = cycle.get("questions", [])
+    question_summaries = []
+    
+    for q in questions:
+        q_id = q.get("question_id")
+        q_type = q.get("type")
+        answers = []
+        for f in feedbacks:
+            for a in f.get("answers", []):
+                if a.get("question_id") == q_id:
+                    answers.append(a)
+        
+        summary = {
+            "question_id": q_id,
+            "question_text": q.get("text"),
+            "category": q.get("category", ""),
+            "type": q_type,
+            "total_responses": len(answers),
+        }
+        
+        if q_type in ["rating"]:
+            ratings = [a.get("rating", 0) for a in answers if a.get("rating") is not None]
+            if ratings:
+                summary["average"] = round(sum(ratings) / len(ratings), 2)
+                summary["distribution"] = {str(i): ratings.count(i) for i in range(1, 6)}
+        elif q_type in ["long_text", "text"]:
+            summary["responses"] = [a.get("answer", "") for a in answers if a.get("answer")]
+        
+        question_summaries.append(summary)
+    
+    # Per-employee summaries (HR only)
+    employee_summaries = []
+    if is_hr and not employee_id:
+        assignments = cycle.get("assignments", [])
+        target_ids = list(set(a.get("target_employee_id") for a in assignments))
+        
+        for tid in target_ids:
+            emp = await db.employees.find_one(
+                {"$or": [{"employee_id": tid}, {"emp_code": tid}]},
+                {"_id": 0, "first_name": 1, "last_name": 1, "department": 1}
+            )
+            emp_feedbacks = [f for f in feedbacks if f.get("target_employee_id") == tid]
+            assigned = sum(1 for a in assignments if a.get("target_employee_id") == tid)
+            completed = sum(1 for a in assignments if a.get("target_employee_id") == tid and a.get("status") == "completed")
+            
+            rating_scores = []
+            for f in emp_feedbacks:
+                for a in f.get("answers", []):
+                    if a.get("rating") is not None:
+                        rating_scores.append(a["rating"])
+            
+            employee_summaries.append({
+                "employee_id": tid,
+                "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip() if emp else tid,
+                "department": emp.get("department", "") if emp else "",
+                "total_assigned": assigned,
+                "total_completed": completed,
+                "avg_score": round(sum(rating_scores) / len(rating_scores), 2) if rating_scores else None,
+                "total_feedbacks": len(emp_feedbacks)
+            })
+        
+        employee_summaries.sort(key=lambda x: x.get("avg_score") or 0, reverse=True)
+    
+    total_assignments = len(cycle.get("assignments", []))
+    completed_assignments = sum(1 for a in cycle.get("assignments", []) if a.get("status") == "completed")
+    
+    return {
+        "cycle": {"cycle_id": cycle["cycle_id"], "title": cycle["title"], "status": cycle.get("status"), "anonymous": cycle.get("anonymous", True)},
+        "summary": {
+            "total_assignments": total_assignments,
+            "completed": completed_assignments,
+            "completion_rate": round((completed_assignments / max(total_assignments, 1)) * 100, 1),
+        },
+        "question_summaries": question_summaries,
+        "employee_summaries": employee_summaries
+    }
+
+
+@router.delete("/feedback-cycles/{cycle_id}")
+async def delete_feedback_cycle(cycle_id: str, request: Request):
+    """Delete a feedback cycle"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.feedback_cycles.delete_one({"cycle_id": cycle_id})
+    await db.feedback_responses.delete_many({"cycle_id": cycle_id})
+    return {"message": "Feedback cycle deleted"}
+
+
+@router.get("/my-feedback-summary")
+async def get_my_feedback_summary(request: Request):
+    """Get aggregated feedback summary for the current employee"""
+    user = await get_current_user(request)
+    emp_id = user.get("employee_id")
+    
+    feedbacks = await db.feedback_responses.find({"target_employee_id": emp_id}, {"_id": 0}).to_list(200)
+    
+    if not feedbacks:
+        return {"has_feedback": False, "message": "No feedback received yet"}
+    
+    # Aggregate scores by category
+    category_scores = {}
+    text_feedback = {"strengths": [], "improvements": []}
+    
+    for f in feedbacks:
+        cycle = await db.feedback_cycles.find_one({"cycle_id": f["cycle_id"]}, {"_id": 0, "questions": 1, "anonymous": 1})
+        if not cycle:
+            continue
+        q_map = {q["question_id"]: q for q in cycle.get("questions", [])}
+        
+        for a in f.get("answers", []):
+            q = q_map.get(a.get("question_id"), {})
+            cat = q.get("category", "General")
+            
+            if a.get("rating") is not None:
+                if cat not in category_scores:
+                    category_scores[cat] = []
+                category_scores[cat].append(a["rating"])
+            elif a.get("answer") and q.get("type") in ["text", "long_text"]:
+                if "strength" in cat.lower():
+                    text_feedback["strengths"].append(a["answer"])
+                elif "improve" in cat.lower():
+                    text_feedback["improvements"].append(a["answer"])
+    
+    categories = []
+    for cat, scores in category_scores.items():
+        categories.append({
+            "category": cat,
+            "average": round(sum(scores) / len(scores), 2),
+            "count": len(scores)
+        })
+    
+    overall = sum(s for scores in category_scores.values() for s in scores)
+    total = sum(len(scores) for scores in category_scores.values())
+    
+    return {
+        "has_feedback": True,
+        "total_feedbacks": len(feedbacks),
+        "overall_score": round(overall / total, 2) if total else None,
+        "categories": sorted(categories, key=lambda x: x["average"], reverse=True),
+        "text_feedback": text_feedback
+    }
+
