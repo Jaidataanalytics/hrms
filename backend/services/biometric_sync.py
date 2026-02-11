@@ -175,9 +175,12 @@ async def update_attendance_record(
             "device": device_serial
         }
         
-        # Find existing attendance for this date
+        # Find existing attendance for this date (check both ID formats)
         existing = await db.attendance.find_one(
-            {"employee_id": employee_id, "date": date}
+            {"$or": [
+                {"employee_id": employee_id, "date": date},
+                {"emp_code": emp_code, "date": date}
+            ]}
         )
         
         if existing:
