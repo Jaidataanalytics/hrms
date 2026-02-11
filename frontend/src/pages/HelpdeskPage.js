@@ -809,7 +809,7 @@ const HelpdeskPage = () => {
                                     <X className="w-4 h-4 text-amber-600" />
                                   </Button>
                                 )}
-                                <Button size="sm" variant="ghost" onClick={() => { setSelectedSurvey(survey); fetchSurveyAnalytics(survey.survey_id); }} title="View Results">
+                                <Button size="sm" variant="ghost" onClick={() => setEnhancedAnalyticsSurveyId(survey.survey_id)} title="View Results">
                                   <BarChart3 className="w-4 h-4 text-blue-600" />
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => handleDuplicateSurvey(survey.survey_id)} title="Duplicate">
