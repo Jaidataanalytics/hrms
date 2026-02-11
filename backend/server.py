@@ -792,17 +792,18 @@ async def list_employees(
     if employment_type and employment_type != 'all':
         query["employment_type"] = employment_type
     
-    # Apply data visibility rules
+    # All roles can see employee list (needed for meeting scheduling, task assignment, etc.)
+    # HR/admin see full details, employees see basic info
     user_role = user.get("role", "employee")
-    if user_role == "employee":
-        query["employee_id"] = user.get("employee_id")
-    elif user_role in ["manager", "team_lead"]:
-        # Managers see their department
-        if user.get("department_id"):
-            query["department_id"] = user["department_id"]
-    # HR and admin see all
     
     employees = await db.employees.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    # For non-HR users, strip sensitive fields
+    if user_role == "employee":
+        safe_fields = {"employee_id", "emp_code", "first_name", "last_name", "email", 
+                       "department", "department_id", "designation", "picture", "is_active", "status"}
+        employees = [{k: v for k, v in emp.items() if k in safe_fields} for emp in employees]
+    
     return employees
 
 @api_router.post("/employees", response_model=Employee)
