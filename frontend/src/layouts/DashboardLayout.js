@@ -281,13 +281,13 @@ const DashboardLayout = () => {
 
               {/* Breadcrumb */}
               <div className="hidden sm:flex items-center gap-2 text-sm">
-                <Link to="/dashboard" className="text-slate-400 hover:text-slate-200 transition-colors">
+                <Link to="/dashboard" className="text-slate-400 hover:text-slate-600 transition-colors">
                   Dashboard
                 </Link>
                 {location.pathname !== '/dashboard' && (
                   <>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-                    <span className="text-white font-semibold capitalize">
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                    <span className="text-slate-800 font-semibold capitalize">
                       {location.pathname.split('/').pop().replace(/-/g, ' ')}
                     </span>
                   </>
