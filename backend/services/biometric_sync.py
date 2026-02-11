@@ -229,8 +229,10 @@ async def update_attendance_record(
                     pass
             
             await db.attendance.update_one(
-                {"employee_id": employee_id, "date": date},
+                {"attendance_id": existing.get("attendance_id", ""), "date": date},
                 {"$set": {
+                    "employee_id": employee_id,
+                    "emp_code": emp_code,
                     "punches": existing_punches,
                     "first_in": first_in,
                     "last_out": last_out,
