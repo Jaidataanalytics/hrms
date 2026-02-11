@@ -1223,13 +1223,35 @@ async def get_attendance(
             if employee.get("emp_code"):
                 possible_ids.add(employee.get("emp_code"))
             
-            # Also check if there's another employee record with the same name/email (duplicate records)
-            name_query = {"first_name": employee.get("first_name"), "last_name": employee.get("last_name")}
-            alt_employees = await db.employees.find(name_query, {"_id": 0, "employee_id": 1, "emp_code": 1}).to_list(5)
-            for alt in alt_employees:
-                possible_ids.add(alt.get("employee_id"))
-                if alt.get("emp_code"):
-                    possible_ids.add(alt.get("emp_code"))
+            # Also check for duplicate employee records with similar names
+            full_name = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+            name_parts = full_name.split()
+            if len(name_parts) >= 2:
+                # Search for employees whose combined name contains the same parts
+                name_regex = ".*" + ".*".join(name_parts[:2]) + ".*"
+                alt_by_name = await db.employees.find(
+                    {"$or": [
+                        {"first_name": {"$regex": name_parts[0], "$options": "i"}, "last_name": {"$regex": name_parts[-1], "$options": "i"}},
+                        {"first_name": {"$regex": name_parts[0], "$options": "i"}, "last_name": {"$regex": name_parts[1], "$options": "i"}} if len(name_parts) > 2 else {"employee_id": None}
+                    ]},
+                    {"_id": 0, "employee_id": 1, "emp_code": 1}
+                ).to_list(10)
+                for alt in alt_by_name:
+                    possible_ids.add(alt.get("employee_id"))
+                    if alt.get("emp_code"):
+                        possible_ids.add(alt.get("emp_code"))
+            
+            # Also try email-based matching if available
+            if employee.get("email"):
+                email_base = employee["email"].split("@")[0].lower()
+                alt_by_email = await db.employees.find(
+                    {"email": {"$regex": email_base, "$options": "i"}},
+                    {"_id": 0, "employee_id": 1, "emp_code": 1}
+                ).to_list(5)
+                for alt in alt_by_email:
+                    possible_ids.add(alt.get("employee_id"))
+                    if alt.get("emp_code"):
+                        possible_ids.add(alt.get("emp_code"))
             
             possible_ids.discard(None)
             
