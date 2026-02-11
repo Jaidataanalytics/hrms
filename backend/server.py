@@ -3661,6 +3661,7 @@ api_router.include_router(calendar_router)
 api_router.include_router(meetings_router)
 api_router.include_router(notifications_router)
 api_router.include_router(events_router)
+api_router.include_router(push_router)
 
 # CORS Configuration - Starlette native middleware with regex for reliable preflight handling
 app.add_middleware(
