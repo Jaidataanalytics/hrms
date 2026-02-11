@@ -659,8 +659,10 @@ const AttendancePage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Attendance Analytics</h1>
-          <p className="text-slate-600 mt-1">{formatDateRange()}</p>
+          <span className="section-pill mono-accent">// Attendance Analytics</span>
+          <h1 className="text-2xl font-bold text-slate-900 mt-2" style={{ fontFamily: 'Manrope, sans-serif' }}>Attendance Analytics</h1>
+          <p className="text-slate-500 text-sm mt-1">{formatDateRange()}</p>
+          <div className="header-accent-line mt-3 max-w-[180px]" />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Select value={dateRangePreset} onValueChange={setDateRangePreset}>
