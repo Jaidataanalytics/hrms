@@ -626,3 +626,83 @@ tbody td {
 .att-dot.present { background: #10b981; }
 .att-dot.late { background: #f59e0b; }
 .att-dot.absent { background: #ef4444; }
+
+
+/* ========================================================================
+   DYNAMIC CELEBRATION THEMES — Dashboard theming based on events
+   ======================================================================== */
+.celebration-theme {
+    position: relative;
+}
+.celebration-theme::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 50;
+    transition: background 0.5s ease;
+}
+
+/* Birthday Theme — warm amber/gold accents */
+.celebration-theme-birthday::before {
+    background: linear-gradient(90deg, #f59e0b, #f97316, #f59e0b);
+    animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-birthday .stat-card {
+    border-top: 2px solid rgba(245, 158, 11, 0.3);
+}
+.celebration-theme-birthday .stat-card:hover {
+    box-shadow: 0 4px 24px -4px rgba(245, 158, 11, 0.15);
+}
+
+/* Work Anniversary Theme — blue/indigo accents */
+.celebration-theme-work_anniversary::before {
+    background: linear-gradient(90deg, #3b82f6, #6366f1, #3b82f6);
+    animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-work_anniversary .stat-card {
+    border-top: 2px solid rgba(59, 130, 246, 0.3);
+}
+.celebration-theme-work_anniversary .stat-card:hover {
+    box-shadow: 0 4px 24px -4px rgba(59, 130, 246, 0.15);
+}
+
+/* Marriage Anniversary Theme — rose/pink accents */
+.celebration-theme-marriage_anniversary::before {
+    background: linear-gradient(90deg, #ec4899, #f43f5e, #ec4899);
+    animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-marriage_anniversary .stat-card {
+    border-top: 2px solid rgba(236, 72, 153, 0.3);
+}
+.celebration-theme-marriage_anniversary .stat-card:hover {
+    box-shadow: 0 4px 24px -4px rgba(236, 72, 153, 0.15);
+}
+
+/* Custom Event Theme — emerald/teal accents */
+.celebration-theme-custom::before {
+    background: linear-gradient(90deg, #10b981, #14b8a6, #10b981);
+    animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-custom .stat-card {
+    border-top: 2px solid rgba(16, 185, 129, 0.3);
+}
+.celebration-theme-custom .stat-card:hover {
+    box-shadow: 0 4px 24px -4px rgba(16, 185, 129, 0.15);
+}
+
+@keyframes shimmerBar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.confetti-piece {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    z-index: 1000;
+    pointer-events: none;
+}
