@@ -203,9 +203,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6" data-testid="dashboard-page">
+    <div className={`space-y-6 ${celebrationTheme ? `celebration-theme celebration-theme-${celebrationTheme}` : ''}`} data-testid="dashboard-page">
       {/* Celebration Banner */}
-      <CelebrationBanner />
+      <CelebrationBanner onThemeDetected={setCelebrationTheme} />
 
       {/* Welcome Section */}
       <motion.div 
