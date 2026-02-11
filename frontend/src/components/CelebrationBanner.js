@@ -72,7 +72,7 @@ const ConfettiPiece = ({ delay, left, color }) => (
   />
 );
 
-const CelebrationBanner = () => {
+const CelebrationBanner = ({ onThemeDetected }) => {
   const { user } = useAuth();
   const [todayEvents, setTodayEvents] = useState([]);
   const [dismissed, setDismissed] = useState(false);
@@ -81,6 +81,16 @@ const CelebrationBanner = () => {
   useEffect(() => {
     fetchTodayEvents();
   }, []);
+
+  useEffect(() => {
+    if (onThemeDetected && todayEvents.length > 0) {
+      const myEvent = todayEvents.find(e => e.emp_code === user?.employee_id);
+      const dominantType = myEvent?.event_type || todayEvents[0]?.event_type || null;
+      onThemeDetected(dominantType);
+    } else if (onThemeDetected) {
+      onThemeDetected(null);
+    }
+  }, [todayEvents, user, onThemeDetected]);
 
   const fetchTodayEvents = async () => {
     try {
