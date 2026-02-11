@@ -30,6 +30,7 @@ import {
   Plane
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
+import CelebrationBanner from '../components/CelebrationBanner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
