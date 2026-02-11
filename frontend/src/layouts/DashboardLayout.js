@@ -240,7 +240,7 @@ const DashboardLayout = () => {
         {showLoader && <LoadingScreen onComplete={handleLoadingComplete} />}
       </AnimatePresence>
 
-      <div className={`min-h-screen bg-slate-50/80 noise-bg transition-opacity duration-500 ${appReady ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`min-h-screen bg-[hsl(240,20%,5%)] noise-bg transition-opacity duration-500 ${appReady ? 'opacity-100' : 'opacity-0'}`}>
         {/* Desktop Sidebar */}
         <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-64 lg:overflow-y-auto">
           <Sidebar />
