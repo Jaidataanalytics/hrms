@@ -562,6 +562,9 @@ const HelpdeskPage = () => {
           <TabsTrigger value="surveys" className="gap-2">
             <ClipboardList className="w-4 h-4" /> Surveys
           </TabsTrigger>
+          <TabsTrigger value="feedback" className="gap-2">
+            <Target className="w-4 h-4" /> 360 Feedback
+          </TabsTrigger>
         </TabsList>
 
         {/* ==================== COMPLAINTS TAB ==================== */}
