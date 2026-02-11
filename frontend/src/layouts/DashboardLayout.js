@@ -44,7 +44,8 @@ import {
   Shield,
   Search,
   FileSpreadsheet,
-  UsersRound
+  UsersRound,
+  PartyPopper
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalSearch from '../components/GlobalSearch';
