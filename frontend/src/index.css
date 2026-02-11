@@ -740,3 +740,18 @@ tbody td {
     z-index: 1000;
     pointer-events: none;
 }
+
+
+/* ========================================================================
+   MOBILE BOTTOM NAVIGATION & SAFE AREAS
+   ======================================================================== */
+.h-safe-area-bottom {
+    height: env(safe-area-inset-bottom, 0px);
+}
+
+/* Ensure main content doesn't hide behind bottom nav on mobile */
+@media (max-width: 1023px) {
+    main {
+        padding-bottom: 5rem !important;
+    }
+}
