@@ -49,6 +49,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [markingAttendance, setMarkingAttendance] = useState(false);
   const [celebrationTheme, setCelebrationTheme] = useState(null);
+  const [tourStatus, setTourStatus] = useState(null);
+  const [remoteLoading, setRemoteLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
