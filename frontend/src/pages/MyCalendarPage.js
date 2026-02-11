@@ -202,6 +202,16 @@ const MyCalendarPage = () => {
     // Get meetings for this day
     const dayMeetings = meetings.filter(m => m.date === dateStr);
     
+    // Get celebration events for this day (match month-day for recurring events)
+    const mmdd = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    const dayCelebrations = events.filter(e => {
+      try {
+        const ed = new Date(e.event_date);
+        const eMmDd = `${String(ed.getMonth() + 1).padStart(2, '0')}-${String(ed.getDate()).padStart(2, '0')}`;
+        return eMmDd === mmdd;
+      } catch { return false; }
+    });
+    
     return {
       dateStr,
       isSunday: dayOfWeek === 0,
@@ -210,7 +220,8 @@ const MyCalendarPage = () => {
       leave: dayLeave,
       holiday: dayHoliday,
       tasks: dayTasks,
-      meetings: dayMeetings
+      meetings: dayMeetings,
+      celebrations: dayCelebrations
     };
   };
 
