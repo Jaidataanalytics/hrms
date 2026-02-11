@@ -261,7 +261,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-3 mb-1">
             <span className="section-pill mono-accent">// Dashboard</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Welcome back, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-slate-500 mt-1.5 text-sm">
@@ -282,7 +282,7 @@ const Dashboard = () => {
                     <Navigation className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm text-slate-800">Remote Check-in</p>
+                    <p className="font-semibold text-sm text-slate-200">Remote Check-in</p>
                     <p className="text-xs text-slate-500">
                       {tourStatus?.has_active_tour
                         ? `On tour: ${tourStatus.tour?.purpose || 'Active Tour'}`
@@ -325,7 +325,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500">Total Employees</p>
-                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total_employees}</p>
+                    <p className="text-3xl font-bold text-white mt-1">{stats.total_employees}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Users className="w-6 h-6 text-primary" />
@@ -341,7 +341,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500">Present Today</p>
-                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.present_today}</p>
+                    <p className="text-3xl font-bold text-white mt-1">{stats.present_today}</p>
                     <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3" />
                       {stats.attendance_percentage}% attendance
@@ -361,7 +361,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500">On Leave Today</p>
-                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.on_leave_today}</p>
+                    <p className="text-3xl font-bold text-white mt-1">{stats.on_leave_today}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Calendar className="w-6 h-6 text-amber-600" />
@@ -377,7 +377,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500">Pending Approvals</p>
-                    <p className="text-3xl font-bold text-slate-900 mt-1">{stats.pending_leaves}</p>
+                    <p className="text-3xl font-bold text-white mt-1">{stats.pending_leaves}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <AlertCircle className="w-6 h-6 text-red-600" />
@@ -410,7 +410,7 @@ const Dashboard = () => {
                         <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-slate-900">
+                        <p className="font-medium text-white">
                           Status: <span className="text-emerald-600 capitalize">{employeeDashboard.attendance_today.status}</span>
                         </p>
                         <p className="text-sm text-slate-500">
@@ -474,7 +474,7 @@ const Dashboard = () => {
                       <div key={idx} className="p-4 bg-slate-50 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium text-slate-600">{leaveName}</p>
-                          <p className="text-sm font-semibold text-slate-900">
+                          <p className="text-sm font-semibold text-white">
                             {balance.available} / {balance.opening_balance + balance.accrued}
                           </p>
                         </div>
@@ -513,7 +513,7 @@ const Dashboard = () => {
                 employeeDashboard.recent_announcements.slice(0, 3).map((ann, idx) => (
                   <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition-colors cursor-pointer">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <p className="font-medium text-slate-900 text-sm line-clamp-1">{ann.title}</p>
+                      <p className="font-medium text-white text-sm line-clamp-1">{ann.title}</p>
                       <Badge variant="outline" className="text-xs shrink-0">{ann.category}</Badge>
                     </div>
                     <p className="text-xs text-slate-500 line-clamp-2">{ann.content}</p>
