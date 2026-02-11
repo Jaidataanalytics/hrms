@@ -71,6 +71,7 @@ const MyCalendarPage = () => {
   const [tasks, setTasks] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [events, setEvents] = useState([]);
   
   // Dialog states
   const [showTaskDialog, setShowTaskDialog] = useState(false);
