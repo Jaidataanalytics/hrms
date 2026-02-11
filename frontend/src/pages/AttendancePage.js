@@ -714,7 +714,7 @@ const AttendancePage = () => {
       {summary && (
         <>
           {/* Period Info */}
-          <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+          <div className="p-3 bg-primary/5 rounded-xl text-sm text-slate-600 border border-primary/10">
             <strong>Period:</strong> {summary.from_date} to {summary.to_date} | 
             <strong> Working Days:</strong> {summary.working_days_in_range} | 
             <strong> Holidays:</strong> {summary.holidays_in_range} | 
