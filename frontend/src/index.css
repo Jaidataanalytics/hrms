@@ -145,20 +145,28 @@ button:active:not(:disabled), [role="button"]:active:not(:disabled) {
     box-shadow: 0 0 12px hsl(var(--primary) / 0.15);
 }
 
-/* ------- INPUTS ------- */
+/* ------- INPUTS — Dark Glass ------- */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 textarea,
 select,
 [role="combobox"] {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     border-radius: 10px !important;
+    background: hsl(240 20% 8% / 0.6) !important;
+    border-color: hsl(210 40% 98% / 0.1) !important;
+    color: hsl(210 40% 98%) !important;
 }
 
 input:focus:not([type="checkbox"]):not([type="radio"]),
 textarea:focus,
 [data-state="open"][role="combobox"] {
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08), 0 1px 3px hsl(220 40% 10% / 0.06) !important;
-    border-color: hsl(var(--primary) / 0.4) !important;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15), 0 0 20px hsl(var(--primary) / 0.1) !important;
+    border-color: hsl(var(--primary) / 0.5) !important;
+    background: hsl(240 20% 10% / 0.8) !important;
+}
+
+input::placeholder, textarea::placeholder {
+    color: hsl(215 20% 40%) !important;
 }
 
 /* ------- DIALOGS / MODALS ------- */
