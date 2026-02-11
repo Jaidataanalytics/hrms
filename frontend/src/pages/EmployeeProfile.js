@@ -800,9 +800,11 @@ const EmployeeProfile = () => {
                     <TableBody>
                       {attendance.length > 0 ? (
                         attendance.slice(0, 31).map((record, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-medium">{record.date}</TableCell>
-                            <TableCell>{new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short' })}</TableCell>
+                          <TableRow key={record.attendance_id || `att-${idx}`}>
+                            <TableCell className="font-medium">
+                              {new Date(record.date + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell>{new Date(record.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short' })}</TableCell>
                             <TableCell>
                               <Badge className={getStatusColor(record.status)}>
                                 {record.status}
@@ -811,7 +813,7 @@ const EmployeeProfile = () => {
                             </TableCell>
                             <TableCell className="font-mono text-sm">{record.first_in || record.check_in_time || '-'}</TableCell>
                             <TableCell className="font-mono text-sm">{record.last_out || record.check_out_time || '-'}</TableCell>
-                            <TableCell>{record.total_hours ? `${record.total_hours}h` : '-'}</TableCell>
+                            <TableCell className="font-mono text-sm">{record.total_hours ? `${record.total_hours}h` : '-'}</TableCell>
                           </TableRow>
                         ))
                       ) : (
