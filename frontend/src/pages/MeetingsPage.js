@@ -441,8 +441,10 @@ const MeetingsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Meeting Management</h1>
+          <span className="section-pill mono-accent">// Meetings</span>
+            <h1 className="text-2xl font-bold text-slate-900 mt-2">Meeting Management</h1>
           <p className="text-slate-600 mt-1">Track meetings, discussions, and follow-ups</p>
+            <div className="header-accent-line mt-3 max-w-[160px]" />
         </div>
         <Button onClick={() => { resetForm(); setShowCreateDialog(true); }} data-testid="create-meeting-btn">
           <Plus className="w-4 h-4 mr-2" />

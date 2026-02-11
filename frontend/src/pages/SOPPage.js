@@ -748,8 +748,10 @@ const SOPPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Standard Operating Procedures</h1>
+          <span className="section-pill mono-accent">// SOPs</span>
+            <h1 className="text-2xl font-bold text-slate-900 mt-2">Standard Operating Procedures</h1>
           <p className="text-slate-600 mt-1">Manage, search, and track SOPs by department, task, and owner</p>
+            <div className="header-accent-line mt-3 max-w-[160px]" />
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchSOPs}>

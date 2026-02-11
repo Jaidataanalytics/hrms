@@ -533,11 +533,13 @@ const HelpdeskPage = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <span className="section-pill mono-accent">// Helpdesk</span>
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mt-2">
             <HelpCircle className="w-7 h-7 text-primary" />
             Helpdesk
           </h1>
           <p className="text-slate-500">Complaints, suggestions, and surveys</p>
+            <div className="header-accent-line mt-3 max-w-[160px]" />
         </div>
         <Button variant="outline" onClick={fetchData}>
           <RefreshCw className="w-4 h-4 mr-2" /> Refresh

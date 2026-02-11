@@ -227,10 +227,12 @@ const DocumentsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <span className="section-pill mono-accent">// Documents</span>
+            <h1 className="text-2xl font-bold text-slate-900 mt-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Document Management
           </h1>
           <p className="text-slate-600 mt-1">Upload and manage employee documents</p>
+            <div className="header-accent-line mt-3 max-w-[160px]" />
         </div>
         <Dialog open={showUpload} onOpenChange={setShowUpload}>
           <DialogTrigger asChild>

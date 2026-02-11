@@ -210,10 +210,12 @@ const ExpensesPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <span className="section-pill mono-accent">// Expenses</span>
+            <h1 className="text-2xl font-bold text-slate-900 mt-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Expense Claims
           </h1>
           <p className="text-slate-600 mt-1">Submit and track expense reimbursements</p>
+            <div className="header-accent-line mt-3 max-w-[160px]" />
         </div>
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
