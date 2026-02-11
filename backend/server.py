@@ -3668,7 +3668,7 @@ if cors_origins_env and cors_origins_env != '*':
 else:
     cors_origins = [
         "http://localhost:3000",
-        "https://sop-flow-parser.preview.emergentagent.com",
+        "https://feedback-360.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
     ]

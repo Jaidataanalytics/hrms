@@ -5,7 +5,7 @@ import sys
 
 def test_bulk_import_endpoints():
     """Test bulk import specific endpoints"""
-    base_url = "https://sop-flow-parser.preview.emergentagent.com/api"
+    base_url = "https://feedback-360.preview.emergentagent.com/api"
     
     # Login first
     login_response = requests.post(f"{base_url}/auth/login", json={
