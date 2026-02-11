@@ -2595,6 +2595,18 @@ async def get_leave_requests(
     
     for req in requests_list:
         req["leave_type_name"] = leave_type_map.get(req.get("leave_type_id"), "Unknown")
+        # Enrich with employee name
+        emp = await db.employees.find_one(
+            {"$or": [{"employee_id": req.get("employee_id")}, {"emp_code": req.get("employee_id")}]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "emp_code": 1}
+        )
+        if emp:
+            req["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+            req["emp_code"] = emp.get("emp_code", req.get("employee_id"))
+        else:
+            usr = await db.users.find_one({"employee_id": req.get("employee_id")}, {"_id": 0, "name": 1})
+            req["employee_name"] = usr.get("name") if usr else req.get("employee_id")
+            req["emp_code"] = req.get("employee_id")
     
     return requests_list
 
