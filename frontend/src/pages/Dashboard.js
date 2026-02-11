@@ -59,14 +59,15 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const authHeaders = getAuthHeaders();
-      const [statsRes, empDashRes, leaveTypesRes, sopsRes, assetsRes, toursRes, expensesRes] = await Promise.all([
+      const [statsRes, empDashRes, leaveTypesRes, sopsRes, assetsRes, toursRes, expensesRes, tourStatusRes] = await Promise.all([
         fetch(`${API_URL}/dashboard/stats`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/dashboard/employee`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/sop/my-sops`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/employee-assets/my-assets`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/tours/my-tours`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/expenses/my-expenses`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/expenses/my-expenses`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/travel/my-tour-status`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (statsRes.ok) {
