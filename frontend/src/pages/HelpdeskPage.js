@@ -534,7 +534,7 @@ const HelpdeskPage = () => {
       <div className="flex justify-between items-center">
         <div>
           <span className="section-pill mono-accent">// Helpdesk</span>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mt-2">
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mt-2" style={{ fontFamily: "Manrope, sans-serif" }}>
             <HelpCircle className="w-7 h-7 text-primary" />
             Helpdesk
           </h1>
