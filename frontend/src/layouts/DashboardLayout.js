@@ -267,7 +267,7 @@ const DashboardLayout = () => {
         {/* Main Content */}
         <div className="lg:pl-64">
           {/* Top Navigation */}
-          <header className="sticky top-0 z-30 border-b border-white/[0.06]" style={{ background: 'hsl(240 20% 6% / 0.8)', backdropFilter: 'blur(20px) saturate(150%)' }}>
+          <header className="sticky top-0 z-30 glass border-b border-slate-200/60">
             <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
               <Button
                 variant="ghost"
