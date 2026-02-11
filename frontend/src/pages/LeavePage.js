@@ -611,7 +611,11 @@ const LeavePage = () => {
                           </div>
                           <div>
                             <p className="font-medium text-slate-900">
-                              {request.employee_id} - {getLeaveTypeName(request.leave_type_id)}
+                              {request.employee_name || request.employee_id}
+                              {request.emp_code && <span className="text-xs text-slate-400 ml-2">({request.emp_code})</span>}
+                            </p>
+                            <p className="text-sm text-primary font-medium mt-0.5">
+                              {getLeaveTypeName(request.leave_type_id)}
                             </p>
                             <p className="text-sm text-slate-500">
                               {request.from_date} to {request.to_date} ({request.days} days)
