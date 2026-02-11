@@ -1,0 +1,21 @@
+{
+	"appId": "com.sharda.hrms",
+	"appName": "Sharda HRMS",
+	"webDir": "build",
+	"server": {
+		"androidScheme": "https"
+	},
+	"plugins": {
+		"StatusBar": {
+			"style": "DARK",
+			"backgroundColor": "#0a0f1a"
+		},
+		"SplashScreen": {
+			"launchShowDuration": 2000,
+			"launchAutoHide": true,
+			"backgroundColor": "#0a0f1a",
+			"androidSplashResourceName": "splash",
+			"showSpinner": false
+		}
+	}
+}
