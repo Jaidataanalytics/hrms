@@ -300,7 +300,7 @@ const DashboardLayout = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="hidden sm:flex items-center gap-2 text-slate-400 hover:text-white border border-white/10 px-3 rounded-lg hover:border-white/20 transition-all"
+                    className="hidden sm:flex items-center gap-2 text-slate-400 hover:text-slate-600 border border-slate-200/80 px-3 rounded-lg hover:border-slate-300 transition-all"
                     onClick={() => setSearchOpen(true)}
                     data-testid="global-search-btn"
                   >
