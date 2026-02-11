@@ -404,7 +404,7 @@ const Dashboard = () => {
             <CardContent>
               {employeeDashboard?.attendance_today ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
                         <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -471,7 +471,7 @@ const Dashboard = () => {
                     const leaveType = leaveTypes.find(lt => lt.leave_type_id === balance.leave_type_id);
                     const leaveName = leaveType?.name || leaveType?.code || balance.leave_type_id;
                     return (
-                      <div key={idx} className="p-4 bg-slate-50 rounded-lg">
+                      <div key={idx} className="p-4 bg-white/5 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium text-slate-600">{leaveName}</p>
                           <p className="text-sm font-semibold text-white">
@@ -511,7 +511,7 @@ const Dashboard = () => {
             <CardContent className="space-y-3">
               {employeeDashboard?.recent_announcements?.length > 0 ? (
                 employeeDashboard.recent_announcements.slice(0, 3).map((ann, idx) => (
-                  <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition-colors cursor-pointer">
+                  <div key={idx} className="p-3 bg-white/5 rounded-lg border border-slate-100 hover:bg-white/5 transition-colors cursor-pointer">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <p className="font-medium text-white text-sm line-clamp-1">{ann.title}</p>
                       <Badge variant="outline" className="text-xs shrink-0">{ann.category}</Badge>
@@ -615,14 +615,14 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className={`p-3 rounded-lg text-center ${myAssets.laptop ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50'}`}>
+                  <div className={`p-3 rounded-lg text-center ${myAssets.laptop ? 'bg-emerald-50 border border-emerald-200' : 'bg-white/5'}`}>
                     <Laptop className={`w-5 h-5 mx-auto mb-1 ${myAssets.laptop ? 'text-emerald-600' : 'text-slate-400'}`} />
                     <p className="text-xs font-medium">Laptop</p>
                     <p className={`text-xs ${myAssets.laptop ? 'text-emerald-600' : 'text-slate-400'}`}>
                       {myAssets.laptop ? 'Assigned' : 'N/A'}
                     </p>
                   </div>
-                  <div className={`p-3 rounded-lg text-center ${myAssets.mobile_charger ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50'}`}>
+                  <div className={`p-3 rounded-lg text-center ${myAssets.mobile_charger ? 'bg-emerald-50 border border-emerald-200' : 'bg-white/5'}`}>
                     <Smartphone className={`w-5 h-5 mx-auto mb-1 ${myAssets.mobile_charger ? 'text-emerald-600' : 'text-slate-400'}`} />
                     <p className="text-xs font-medium">Mobile</p>
                     <p className={`text-xs ${myAssets.mobile_charger ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -661,7 +661,7 @@ const Dashboard = () => {
                       <Badge className={
                         tour.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
                         tour.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                        'bg-slate-100 text-slate-600'
+                        'bg-white/5 text-slate-600'
                       }>
                         {tour.status}
                       </Badge>
@@ -698,7 +698,7 @@ const Dashboard = () => {
                         expense.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
                         expense.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                         expense.status === 'reimbursed' ? 'bg-blue-100 text-blue-700' :
-                        'bg-slate-100 text-slate-600'
+                        'bg-white/5 text-slate-600'
                       }>
                         {expense.status}
                       </Badge>
