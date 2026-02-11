@@ -71,8 +71,8 @@
    ======================================================================== */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.15); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.3); }
+::-webkit-scrollbar-thumb { background: hsl(210 40% 98% / 0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(210 40% 98% / 0.2); }
 
 /* ========================================================================
    GLOBAL COMPONENT OVERRIDES — makes EVERYTHING premium automatically
