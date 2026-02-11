@@ -1,0 +1,24 @@
+{
+  "appId": "com.shardahr.app",
+  "appName": "Sharda HR",
+  "webDir": "build",
+  "server": {
+    "url": "https://shardahrms.com",
+    "cleartext": false
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0a0a14",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0a0a14"
+    }
+  }
+}
