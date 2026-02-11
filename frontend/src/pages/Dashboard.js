@@ -67,7 +67,7 @@ const Dashboard = () => {
         fetch(`${API_URL}/employee-assets/my-assets`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/tours/my-tours`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/expenses/my-expenses`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/travel/my-tour-status`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/travel/my-active-tour`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (statsRes.ok) {
