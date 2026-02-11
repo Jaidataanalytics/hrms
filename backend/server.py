@@ -2633,6 +2633,20 @@ async def get_pending_leave_approvals(request: Request):
         query["employee_id"] = {"$in": reportee_ids}
     
     requests = await db.leave_requests.find(query, {"_id": 0}).sort("applied_on", -1).to_list(100)
+    
+    # Enrich with employee names and emp_codes
+    for req in requests:
+        emp = await db.employees.find_one(
+            {"$or": [{"employee_id": req.get("employee_id")}, {"emp_code": req.get("employee_id")}]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "emp_code": 1, "employee_id": 1}
+        )
+        if emp:
+            req["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+            req["emp_code"] = emp.get("emp_code", req.get("employee_id"))
+        else:
+            req["employee_name"] = req.get("employee_id", "Unknown")
+            req["emp_code"] = req.get("employee_id")
+    
     return requests
 
 @api_router.put("/leave/{leave_id}/approve")
