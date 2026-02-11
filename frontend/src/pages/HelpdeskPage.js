@@ -844,7 +844,19 @@ const HelpdeskPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ==================== 360 FEEDBACK TAB ==================== */}
+        <TabsContent value="feedback" className="space-y-4">
+          <FeedbackTab />
+        </TabsContent>
       </Tabs>
+
+      {/* Enhanced Survey Analytics Dashboard */}
+      <SurveyAnalyticsDashboard
+        surveyId={enhancedAnalyticsSurveyId}
+        isOpen={!!enhancedAnalyticsSurveyId}
+        onClose={() => setEnhancedAnalyticsSurveyId(null)}
+      />
 
       {/* ==================== CREATE TICKET DIALOG ==================== */}
       <Dialog open={showCreateTicket} onOpenChange={setShowCreateTicket}>
