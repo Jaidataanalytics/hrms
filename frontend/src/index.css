@@ -411,13 +411,13 @@ tbody td {
    ======================================================================== */
 .section-pill {
     @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase;
-    background: hsl(var(--primary) / 0.12);
+    background: hsl(var(--primary) / 0.06);
     color: hsl(var(--primary));
-    border: 1px solid hsl(var(--primary) / 0.2);
+    border: 1px solid hsl(var(--primary) / 0.12);
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.08em;
     font-size: 0.65rem;
-    box-shadow: 0 0 12px hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.06);
 }
 
 .mono-accent {
