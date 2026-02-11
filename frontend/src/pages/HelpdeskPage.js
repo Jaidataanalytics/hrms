@@ -404,6 +404,8 @@ const HelpdeskPage = () => {
   };
 
   // Survey response (for employees)
+  const [enhancedAnalyticsSurveyId, setEnhancedAnalyticsSurveyId] = useState(null);
+  
   const handleOpenSurveyToRespond = async (survey) => {
     setRespondingSurvey(survey);
     setSurveyAnswers({});
