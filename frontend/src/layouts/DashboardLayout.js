@@ -99,6 +99,10 @@ const DashboardLayout = () => {
     { name: 'Payroll', path: '/dashboard/payroll', icon: CreditCard },
     { name: 'Performance', path: '/dashboard/performance', icon: Target },
     { name: 'Announcements', path: '/dashboard/announcements', icon: Megaphone },
+    { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
+    { name: 'SOPs', path: '/dashboard/sop', icon: FileSpreadsheet },
+    { name: 'Training', path: '/dashboard/training', icon: GraduationCap },
+    { name: 'Tour Management', path: '/dashboard/tour-management', icon: Plane },
   ];
 
   const hrMenuItems = [{ name: 'Employees', path: '/dashboard/employees', icon: Users }];
