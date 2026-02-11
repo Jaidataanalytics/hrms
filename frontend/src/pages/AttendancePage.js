@@ -542,8 +542,10 @@ const AttendancePage = () => {
       <div className="space-y-6 p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">My Attendance</h1>
-            <p className="text-slate-600 mt-1">Your personal attendance summary</p>
+            <span className="section-pill mono-accent">// My Attendance</span>
+            <h1 className="text-2xl font-bold text-slate-900 mt-2" style={{ fontFamily: 'Manrope, sans-serif' }}>My Attendance</h1>
+            <p className="text-slate-500 text-sm mt-1">Your personal attendance summary</p>
+            <div className="header-accent-line mt-3 max-w-[140px]" />
           </div>
           <Select value={dateRangePreset} onValueChange={setDateRangePreset}>
             <SelectTrigger className="w-[160px]">
@@ -560,49 +562,31 @@ const AttendancePage = () => {
 
         {mySummary && (
           <>
-            <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+            <div className="p-3 bg-primary/5 rounded-xl text-sm text-slate-600 border border-primary/10">
               <strong>Period:</strong> {mySummary.from_date} to {mySummary.to_date} | 
               <strong> Working Days:</strong> {mySummary.working_days}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <Card className="bg-emerald-50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-emerald-600">{mySummary.summary?.present_days || 0}</p>
-                  <p className="text-sm text-slate-500">Present Days</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-red-50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-red-600">{mySummary.summary?.absent_days || 0}</p>
-                  <p className="text-sm text-slate-500">Absent Days</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-amber-50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-amber-600">{mySummary.summary?.late_count || 0}</p>
-                  <p className="text-sm text-slate-500">Late Instances</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-blue-50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-blue-600">{mySummary.summary?.wfh_count || 0}</p>
-                  <p className="text-sm text-slate-500">WFH</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-purple-50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-purple-600">{mySummary.summary?.leave_count || 0}</p>
-                  <p className="text-sm text-slate-500">Leave</p>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 stagger-children">
+              {[
+                { value: mySummary.summary?.present_days || 0, label: 'Present Days', color: 'emerald' },
+                { value: mySummary.summary?.absent_days || 0, label: 'Absent Days', color: 'rose' },
+                { value: mySummary.summary?.late_count || 0, label: 'Late Instances', color: 'amber' },
+                { value: mySummary.summary?.wfh_count || 0, label: 'WFH', color: 'blue' },
+                { value: mySummary.summary?.leave_count || 0, label: 'Leave', color: 'purple' },
+              ].map((stat, i) => (
+                <div key={i} className={`premium-stat stat-${stat.color}`}>
+                  <p className="text-2xl font-bold text-slate-800">{stat.value}</p>
+                  <p className="text-xs font-medium text-slate-500 mt-0.5">{stat.label}</p>
+                </div>
+              ))}
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-3">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Attendance Rate</span>
+                    <span className="text-sm font-medium text-slate-500">Attendance Rate</span>
                     <span className="text-2xl font-bold text-emerald-600">{mySummary.summary?.attendance_rate}%</span>
                   </div>
                 </CardContent>
@@ -610,7 +594,7 @@ const AttendancePage = () => {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Avg Hours/Day</span>
+                    <span className="text-sm font-medium text-slate-500">Avg Hours/Day</span>
                     <span className="text-2xl font-bold text-blue-600">{mySummary.summary?.avg_hours_per_day}h</span>
                   </div>
                 </CardContent>
