@@ -114,13 +114,14 @@ const MyCalendarPage = () => {
       const authHeaders = getAuthHeaders();
       const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
       
-      const [attRes, leaveRes, holidayRes, taskRes, meetingRes, empRes] = await Promise.all([
+      const [attRes, leaveRes, holidayRes, taskRes, meetingRes, empRes, eventsRes] = await Promise.all([
         fetch(`${API_URL}/attendance?month=${currentMonth + 1}&year=${currentYear}`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/leave/my-leaves?year=${currentYear}`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/holidays?year=${currentYear}`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/calendar/tasks?month=${monthStr}`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/calendar/meetings?month=${monthStr}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/events`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (attRes.ok) setAttendance(await attRes.json());
@@ -129,6 +130,7 @@ const MyCalendarPage = () => {
       if (taskRes.ok) setTasks(await taskRes.json());
       if (meetingRes.ok) setMeetings(await meetingRes.json());
       if (empRes.ok) setEmployees(await empRes.json());
+      if (eventsRes.ok) setEvents(await eventsRes.json());
     } catch (error) {
       console.error('Error fetching calendar data:', error);
     } finally {
