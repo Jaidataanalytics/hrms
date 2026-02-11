@@ -104,6 +104,11 @@ const Dashboard = () => {
         const expensesData = await expensesRes.json();
         setMyExpenses(expensesData);
       }
+
+      if (tourStatusRes.ok) {
+        const tourData = await tourStatusRes.json();
+        setTourStatus(tourData);
+      }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
