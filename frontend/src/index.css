@@ -231,14 +231,17 @@ input::placeholder, textarea::placeholder {
     background: hsl(210 40% 98% / 0.04);
 }
 
-/* ------- DROPDOWN MENUS ------- */
+/* ------- DROPDOWN MENUS — Dark Glass ------- */
 [role="menu"] {
-    border-radius: 12px;
+    border-radius: 14px;
+    background: hsl(240 20% 8% / 0.95) !important;
+    backdrop-filter: blur(40px);
     box-shadow:
-        0 12px 48px hsl(220 40% 10% / 0.12),
-        0 4px 16px hsl(220 40% 10% / 0.06);
-    border: 1px solid hsl(220 13% 91% / 0.6);
+        0 16px 48px hsl(0 0% 0% / 0.5),
+        inset 0 1px 0 hsl(210 40% 98% / 0.06);
+    border: 1px solid hsl(210 40% 98% / 0.1);
     animation: dropdownOpen 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+    color: hsl(210 40% 90%);
 }
 
 @keyframes dropdownOpen {
