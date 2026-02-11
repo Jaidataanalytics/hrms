@@ -252,20 +252,42 @@ input::placeholder, textarea::placeholder {
 [role="menuitem"] {
     border-radius: 8px;
     transition: all 0.15s ease;
+    color: hsl(210 40% 80%);
 }
 
-/* ------- SELECT DROPDOWNS ------- */
+[role="menuitem"]:hover {
+    background: hsl(var(--primary) / 0.1) !important;
+    color: hsl(210 40% 98%);
+}
+
+/* ------- SELECT DROPDOWNS — Dark Glass ------- */
 [role="listbox"] {
-    border-radius: 12px;
-    box-shadow: 0 12px 48px hsl(220 40% 10% / 0.12);
+    border-radius: 14px;
+    background: hsl(240 20% 8% / 0.95) !important;
+    backdrop-filter: blur(40px);
+    box-shadow: 0 16px 48px hsl(0 0% 0% / 0.5);
+    border: 1px solid hsl(210 40% 98% / 0.1);
     animation: dropdownOpen 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+    color: hsl(210 40% 90%);
+}
+
+[role="option"] {
+    color: hsl(210 40% 80%);
+}
+
+[role="option"]:hover, [role="option"][data-highlighted] {
+    background: hsl(var(--primary) / 0.12) !important;
+    color: hsl(210 40% 98%);
 }
 
 /* ------- TOOLTIPS ------- */
 [role="tooltip"] {
     border-radius: 8px;
     animation: fadeIn 0.15s ease both;
-    box-shadow: 0 4px 16px hsl(220 40% 10% / 0.12);
+    background: hsl(240 20% 12% / 0.95) !important;
+    border: 1px solid hsl(210 40% 98% / 0.1);
+    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
+    color: hsl(210 40% 90%);
 }
 
 /* ------- TABLES ------- */
