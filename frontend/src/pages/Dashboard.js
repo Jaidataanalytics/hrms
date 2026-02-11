@@ -203,6 +203,9 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
+      {/* Celebration Banner */}
+      <CelebrationBanner />
+
       {/* Welcome Section */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
