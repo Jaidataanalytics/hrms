@@ -3660,29 +3660,54 @@ api_router.include_router(meetings_router)
 api_router.include_router(notifications_router)
 api_router.include_router(events_router)
 
-# CORS Configuration - when credentials are used, origins must be explicit
+# CORS Configuration - dynamically allow custom domains
 cors_origins_env = os.environ.get('CORS_ORIGINS', '')
-if cors_origins_env == '*' or cors_origins_env == '':
-    # Default origins for development and production
+if cors_origins_env and cors_origins_env != '*':
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+else:
     cors_origins = [
         "http://localhost:3000",
         "https://sop-flow-parser.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
-        "https://sop-flow-parser.preview.emergentagent.com",
     ]
-    # Also allow any .emergentagent.com or .emergent.host subdomain
-    # Custom domains are handled by allowing all origins when credentials aren't cookie-based
-else:
-    cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=cors_origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Use a dynamic CORS middleware that allows known origins + any custom domain
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as StarletteResponse
+
+class DynamicCORSMiddleware(BaseHTTPMiddleware):
+    ALLOWED_ORIGINS = set(cors_origins)
+    ALLOWED_SUFFIXES = ('.emergentagent.com', '.emergent.host', '.emergentapp.com')
+    
+    async def dispatch(self, request, call_next):
+        origin = request.headers.get('origin', '')
+        is_allowed = (
+            origin in self.ALLOWED_ORIGINS or
+            any(origin.endswith(s) for s in self.ALLOWED_SUFFIXES) or
+            origin.startswith('http://localhost') or
+            (origin.startswith('https://') and '.' in origin)  # Allow any custom domain
+        )
+        
+        if request.method == 'OPTIONS':
+            resp = StarletteResponse(status_code=200)
+            if is_allowed and origin:
+                resp.headers['Access-Control-Allow-Origin'] = origin
+                resp.headers['Access-Control-Allow-Credentials'] = 'true'
+                resp.headers['Access-Control-Allow-Methods'] = '*'
+                resp.headers['Access-Control-Allow-Headers'] = '*'
+                resp.headers['Access-Control-Max-Age'] = '86400'
+            return resp
+        
+        response = await call_next(request)
+        if is_allowed and origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Methods'] = '*'
+            response.headers['Access-Control-Allow-Headers'] = '*'
+        return response
+
+app.add_middleware(DynamicCORSMiddleware)
 
 # ==================== SCHEDULER FOR BIOMETRIC SYNC ====================
 
