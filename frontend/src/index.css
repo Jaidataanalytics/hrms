@@ -191,8 +191,8 @@ input::placeholder, textarea::placeholder {
 
 /* Dialog overlay */
 [data-state="open"][data-slot="dialog-overlay"] {
-    backdrop-filter: blur(6px);
-    background: hsl(220 40% 10% / 0.4);
+    backdrop-filter: blur(12px);
+    background: hsl(240 20% 3% / 0.7);
 }
 
 /* ------- BADGE ------- */
@@ -203,24 +203,32 @@ input::placeholder, textarea::placeholder {
     letter-spacing: 0.02em;
 }
 
-/* ------- TABS ------- */
+/* ------- TABS — Dark Glass ------- */
 [role="tablist"] {
-    background: hsl(220 14% 96%);
+    background: hsl(240 20% 8% / 0.6);
     border-radius: 12px;
     padding: 3px;
-    border: 1px solid hsl(220 13% 91% / 0.5);
+    border: 1px solid hsl(210 40% 98% / 0.08);
+    backdrop-filter: blur(12px);
 }
 
 [role="tab"][data-state="active"] {
-    background: white;
-    box-shadow: 0 1px 4px hsl(220 40% 10% / 0.08);
+    background: hsl(var(--primary) / 0.2);
+    box-shadow: 0 0 16px hsl(var(--primary) / 0.15), inset 0 1px 0 hsl(210 40% 98% / 0.08);
     border-radius: 9px;
+    color: hsl(210 40% 98%);
 }
 
 [role="tab"] {
     border-radius: 9px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 500;
+    color: hsl(215 20% 55%);
+}
+
+[role="tab"]:hover:not([data-state="active"]) {
+    color: hsl(210 40% 85%);
+    background: hsl(210 40% 98% / 0.04);
 }
 
 /* ------- DROPDOWN MENUS ------- */
