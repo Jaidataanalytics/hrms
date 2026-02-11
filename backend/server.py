@@ -3671,6 +3671,8 @@ if cors_origins_env == '*' or cors_origins_env == '':
         "https://sharda-hr-system.emergent.host",
         "https://sop-flow-parser.preview.emergentagent.com",
     ]
+    # Also allow any .emergentagent.com or .emergent.host subdomain
+    # Custom domains are handled by allowing all origins when credentials aren't cookie-based
 else:
     cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
 
