@@ -27,7 +27,10 @@ import {
   Smartphone,
   MapPin,
   Receipt,
-  Plane
+  Plane,
+  LogIn,
+  LogOut,
+  Navigation
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 import CelebrationBanner from '../components/CelebrationBanner';
