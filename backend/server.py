@@ -3661,56 +3661,23 @@ api_router.include_router(meetings_router)
 api_router.include_router(notifications_router)
 api_router.include_router(events_router)
 
-# CORS Configuration - dynamically allow custom domains
-cors_origins_env = os.environ.get('CORS_ORIGINS', '')
-if cors_origins_env and cors_origins_env != '*':
-    cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
-else:
-    cors_origins = [
+# CORS Configuration - Starlette native middleware with regex for reliable preflight handling
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
         "http://localhost:3000",
         "https://feedback-360.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
-    ]
-
-# Use a dynamic CORS middleware that allows known origins + any custom domain
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response as StarletteResponse
-
-class DynamicCORSMiddleware(BaseHTTPMiddleware):
-    ALLOWED_ORIGINS = set(cors_origins)
-    ALLOWED_SUFFIXES = ('.emergentagent.com', '.emergent.host', '.emergentapp.com')
-    ALLOWED_METHODS = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
-    ALLOWED_HEADERS = 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cookie, X-Session-ID'
-    
-    async def dispatch(self, request, call_next):
-        origin = request.headers.get('origin', '')
-        is_allowed = (
-            origin in self.ALLOWED_ORIGINS or
-            any(origin.endswith(s) for s in self.ALLOWED_SUFFIXES) or
-            origin.startswith('http://localhost') or
-            (origin.startswith('https://') and '.' in origin)
-        )
-        
-        if request.method == 'OPTIONS':
-            resp = StarletteResponse(status_code=200)
-            if is_allowed and origin:
-                resp.headers['Access-Control-Allow-Origin'] = origin
-                resp.headers['Access-Control-Allow-Credentials'] = 'true'
-                resp.headers['Access-Control-Allow-Methods'] = self.ALLOWED_METHODS
-                resp.headers['Access-Control-Allow-Headers'] = self.ALLOWED_HEADERS
-                resp.headers['Access-Control-Max-Age'] = '86400'
-            return resp
-        
-        response = await call_next(request)
-        if is_allowed and origin:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            response.headers['Access-Control-Allow-Methods'] = self.ALLOWED_METHODS
-            response.headers['Access-Control-Allow-Headers'] = self.ALLOWED_HEADERS
-        return response
-
-app.add_middleware(DynamicCORSMiddleware)
+        "https://shardahrms.com",
+        "https://www.shardahrms.com",
+    ],
+    allow_origin_regex=r"https://.*\.(emergentagent\.com|emergent\.host|emergentapp\.com)$",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Cookie", "X-Session-ID"],
+    max_age=86400,
+)
 
 # ==================== SCHEDULER FOR BIOMETRIC SYNC ====================
 
