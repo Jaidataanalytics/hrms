@@ -59,8 +59,11 @@ import {
   FileText,
   Play,
   Copy,
-  X
+  X,
+  Target
 } from 'lucide-react';
+import FeedbackTab from '../components/FeedbackTab';
+import SurveyAnalyticsDashboard from '../components/SurveyAnalyticsDashboard';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
