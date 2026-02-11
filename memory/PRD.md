@@ -1,60 +1,65 @@
 # Sharda HR - Product Requirements Document
 
 ## Original Problem Statement
-Overhaul the company's HR systems into a modern, full-featured HR management platform with premium dark glass-morphism UI.
+Modern HR management platform with premium UI, mobile app support, and push notifications.
 
 ## Authentication
 - JWT + Emergent Google Auth
 - Admin: admin@shardahr.com / Admin@123 | Employee: employee@shardahr.com / Employee@123
 
 ## Tech Stack
-Frontend: React, TailwindCSS, Shadcn/UI, Framer Motion, Lucide icons
-Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
-3rd Party: emergentintegrations (Emergent LLM Key for AI SOP parsing), Custom Biometric API, Emergent Google Auth
+- Frontend: React, TailwindCSS, Shadcn/UI, Framer Motion, Lucide icons, Capacitor
+- Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
+- Mobile: Capacitor 6 (Android WebView wrapper), Firebase FCM
+- 3rd Party: emergentintegrations, Custom Biometric API, Emergent Google Auth
 
 ---
 
-## What's Been Implemented (as of Feb 11, 2026)
+## What's Been Implemented
 
-### Dark Glass-Morphism UI Overhaul (NEW - Feb 11, 2026)
-- Complete dark mode CSS variable overhaul (hsl(240 20% 5%) background)
-- Glass-morphism cards: backdrop-blur, translucent backgrounds, subtle borders, neon glow
-- Dark glass tabs, inputs, dialogs, dropdowns, tooltips, tables
-- Neon glow effects on primary buttons and accent elements
-- Global dark mode overrides for ALL Tailwind utility classes (text, bg, border, hover)
-- Dark header bar with glass blur effect
-- Section pills with glow, premium stat cards with dark glass
-- Works across all 20+ pages via global CSS — no per-page changes needed
-- Sidebar remains dark anchor (unchanged by design)
+### Mobile App Setup (NEW - Feb 11, 2026)
+- Capacitor 6 configured for Android (`com.shardahr.app`)
+- Backend URL points to `https://shardahrms.com`
+- Mobile bottom navigation: Home, Attendance, Leave, Helpdesk, More
+- Hamburger menu opens full sidebar for accessing all pages
+- Native plugins: Geolocation, Push Notifications, Status Bar, Splash Screen
+- `nativeServices.js` — abstraction layer for push/GPS with web fallback
+- Build guide at `frontend/MOBILE_BUILD_GUIDE.md`
 
-### Employee Sidebar Access (NEW - Feb 11, 2026)
-- Helpdesk, SOPs, Training, Tour Management visible to ALL roles
-- Each page shows role-appropriate content
+### Push Notification Backend (NEW - Feb 11, 2026)
+- `/api/push/register-token` — register FCM device token
+- `/api/push/unregister-token` — remove token on logout
+- `send_push_to_user()` / `send_push_to_employee()` — helper functions
+- Ready for Firebase FCM integration (needs `FIREBASE_SERVER_KEY` in .env)
 
-### Remote Check-in Dashboard Shortcut (NEW - Feb 11, 2026)
-- GPS Clock In/Out card on dashboard for eligible employees (field employees / active tours)
+### Light Glass-Morphism UI
+- Frosted glass cards with backdrop-blur on light background
+- Bold hover animations (3px lift, glow effects)
+- Neon glow on primary buttons
+- Glass dialogs, tabs, dropdowns, inputs
+- Dark sidebar as contrast anchor
 
-### Custom Domain CORS + Auth Fix (NEW - Feb 11, 2026)
-- Starlette native CORSMiddleware with shardahrms.com explicitly listed
-- 11 pages fixed with Bearer token auth headers (getAuthHeaders)
+### Employee Features
+- Sidebar access: Helpdesk, SOPs, Training, Tour Management
+- Remote check-in dashboard shortcut with GPS
+- Auth headers fix for cross-domain (11 pages patched)
 
-### Previous Implementations
-- Helpdesk Phase 2: 360 Feedback + Survey Analytics (COMPLETE)
-- Dynamic Dashboard Theming for celebrations
-- Employee Events & Celebrations System
-- AI-Powered SOP Management
-- Attendance Data Integrity Fixes
-- Leave management, meetings, payroll, performance, etc.
+### Previous: Helpdesk Phase 2, Celebrations, Attendance fixes, etc.
 
 ---
+
+## Pending Setup (User Action Required)
+1. **Firebase project** — Create at console.firebase.google.com, get `google-services.json` + Server Key
+2. **Set `FIREBASE_SERVER_KEY`** in backend `.env`
+3. **Build APK** — Follow `MOBILE_BUILD_GUIDE.md` (requires Android Studio on local machine)
+4. **Redeploy** — CORS fix for custom domain
 
 ## Prioritized Backlog
 ### P1
-- [ ] Production deployment (MUST redeploy for CORS fix on custom domain)
+- [ ] Wire push notifications into existing event handlers (leave approved, announcements, etc.)
+- [ ] Production deployment
 - [ ] Admin "Unknown" name in meeting analytics
 
 ### P2
-- [ ] Bulk import for contract workers, salary download
-- [ ] Helpdesk Phase 3
-- [ ] Employee record deduplication cleanup
-- [ ] HelpdeskPage.js refactoring (1500+ lines)
+- [ ] Bulk import, Helpdesk Phase 3, employee deduplication
+- [ ] HelpdeskPage.js refactoring
