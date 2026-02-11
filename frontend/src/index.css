@@ -229,42 +229,31 @@ textarea:focus,
 [role="menuitem"] {
     border-radius: 8px;
     transition: all 0.15s ease;
-    color: hsl(210 40% 80%);
 }
 
 [role="menuitem"]:hover {
-    background: hsl(var(--primary) / 0.1) !important;
-    color: hsl(210 40% 98%);
+    background: hsl(var(--primary) / 0.06) !important;
 }
 
-/* ------- SELECT DROPDOWNS — Dark Glass ------- */
+/* ------- SELECT DROPDOWNS — Glass ------- */
 [role="listbox"] {
     border-radius: 14px;
-    background: hsl(240 20% 8% / 0.95) !important;
-    backdrop-filter: blur(40px);
-    box-shadow: 0 16px 48px hsl(0 0% 0% / 0.5);
-    border: 1px solid hsl(210 40% 98% / 0.1);
+    background: hsl(0 0% 100% / 0.9) !important;
+    backdrop-filter: blur(40px) saturate(180%);
+    box-shadow: 0 16px 48px hsl(220 40% 10% / 0.12);
+    border: 1px solid hsl(220 13% 91% / 0.6);
     animation: dropdownOpen 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
-    color: hsl(210 40% 90%);
-}
-
-[role="option"] {
-    color: hsl(210 40% 80%);
 }
 
 [role="option"]:hover, [role="option"][data-highlighted] {
-    background: hsl(var(--primary) / 0.12) !important;
-    color: hsl(210 40% 98%);
+    background: hsl(var(--primary) / 0.06) !important;
 }
 
 /* ------- TOOLTIPS ------- */
 [role="tooltip"] {
     border-radius: 8px;
     animation: fadeIn 0.15s ease both;
-    background: hsl(240 20% 12% / 0.95) !important;
-    border: 1px solid hsl(210 40% 98% / 0.1);
-    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
-    color: hsl(210 40% 90%);
+    box-shadow: 0 8px 24px hsl(220 40% 10% / 0.12);
 }
 
 /* ------- TABLES — Dark Theme ------- */
