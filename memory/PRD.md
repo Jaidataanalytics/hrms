@@ -17,72 +17,56 @@ Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
 ## What's Been Implemented (as of Feb 11, 2026)
 
 ### Premium UI/UX Overhaul (Eclipticon-Inspired)
-- Global CSS overrides for ALL Shadcn components (cards, buttons, inputs, dialogs, tabs, tables, dropdowns)
-- Section pills (`// CALENDAR`, `// ATTENDANCE`) on 13+ pages
-- Dark login page with animated SVG arcs, glassmorphism
-- Animated loading screen, premium sidebar, glass-morphism header
-- Premium calendar with refined cells, colored status backgrounds
+- Global CSS overrides for ALL Shadcn components
+- Section pills, dark login, animated loading screen, premium sidebar
 - JetBrains Mono accents, Manrope headings, Public Sans body
 
 ### Employee Events & Celebrations System
 - Backend: Full CRUD API at `/api/events` (today, upcoming, bulk upload, template, self-service)
-- Events Management page at `/dashboard/events`
-- Dashboard CelebrationBanner with confetti + themed banners
-- Calendar integration showing celebration markers
+- Events Management page, Dashboard CelebrationBanner with confetti
 
-### Dynamic Dashboard Theming (NEW - Feb 11, 2026)
-- Dashboard appearance dynamically changes based on today's employee celebration events
-- Birthday theme: Warm amber/gold shimmer bar + card accents
-- Work Anniversary theme: Blue/indigo shimmer bar + card accents
-- Marriage Anniversary theme: Rose/pink shimmer bar + card accents
-- Custom Event theme: Emerald/teal shimmer bar + card accents
-- CelebrationBanner communicates theme type via `onThemeDetected` callback
+### Dynamic Dashboard Theming
+- Dashboard appearance changes based on today's celebrations (birthday=amber, work anniversary=blue, marriage anniversary=pink, custom=emerald)
 
-### Helpdesk Phase 2: 360-Degree Feedback System (COMPLETE - Feb 11, 2026)
-- **Backend**: Full CRUD for feedback cycles (`/api/helpdesk/feedback-cycles`)
-- **Backend**: Assignment system, submission, analytics endpoints
-- **Backend**: My feedback summary, per-employee analytics
-- **Frontend**: FeedbackTab component with:
-  - Create/manage feedback cycles (HR)
-  - Assign reviewers with employee picker dialog
-  - Feedback submission dialog with rating + text responses
-  - Analytics dialog with category scores, employee rankings, text responses
-- **Frontend**: Integrated as "360 Feedback" tab in HelpdeskPage
+### Helpdesk Phase 2: 360-Degree Feedback + Survey Analytics (COMPLETE)
+- Full CRUD feedback cycles, reviewer assignment, feedback submission, analytics
+- Enhanced survey analytics with dept breakdown, response timeline, Excel export
 
-### Helpdesk Phase 2: Enhanced Survey Analytics (COMPLETE - Feb 11, 2026)
-- **Backend**: Detailed analytics endpoint with department breakdown, timeline
-- **Backend**: Excel export for survey responses
-- **Frontend**: SurveyAnalyticsDashboard component with:
-  - Summary cards (Recipients, Responses, Rate, Score)
-  - SVG response rate gauge
-  - Department response breakdown with animated bars
-  - Question-level analytics (rating distributions, choice counts, text responses)
-  - Response timeline chart
-  - Export to Excel button
+### Employee Sidebar Access (NEW - Feb 11, 2026)
+- Helpdesk, SOPs, Training, Tour Management now visible to ALL employee roles in sidebar
+- Each page shows role-appropriate content (employees see their own data, HR sees all)
+
+### Remote Check-in Dashboard Shortcut (NEW - Feb 11, 2026)
+- Dashboard shows "Remote Check-in" card for eligible employees
+- Fetches `/api/travel/my-active-tour` to check eligibility
+- GPS-based Clock In/Clock Out same as Tour Management page
+- Only visible when employee has active tour OR is marked as field employee
+
+### Custom Domain CORS Fix (NEW - Feb 11, 2026)
+- Replaced custom DynamicCORSMiddleware with Starlette native CORSMiddleware
+- `shardahrms.com` and `www.shardahrms.com` explicitly listed in allowed origins
+- Fixed wildcard `*` not working with `allow_credentials=true`
+
+### Auth Headers Fix for Cross-Domain (NEW - Feb 11, 2026)
+- 11 pages were missing `getAuthHeaders()` Bearer token in fetch calls
+- Fixed: DataManagement, Training, Travel, Announcements, UserManagement, Performance, Reports, Grievance, Expenses, Recruitment, ReportBuilder
+- Root cause of "users shows 0" and pages not working from custom domain
 
 ### Attendance Data Integrity Fixes
-- Fixed duplicate records for employees with multiple ID formats
-- Robust name-based employee matching with fallbacks
-- Date-based deduplication in attendance API
+- Fixed duplicate records, robust name-based matching, date deduplication
 
 ### Previous Implementations
-- AI-Powered SOP Management (flowchart, re-parse, columns)
-- Employee Profile Documents & Assets tab fixes
-- Documents page search/filter/delete
-- Internal Meeting System
-- Leave management with employee name enrichment
-- Dynamic CORS for custom domains
-- Full employee list endpoint for selection dropdowns
+- AI-Powered SOP Management, Employee Profile, Documents, Internal Meetings
+- Leave management, employee list endpoint, employee celebrations
 
 ---
 
 ## Key Database Issues
-- **Duplicate employee records**: Some employees exist under multiple IDs
-- **Incomplete biometric data**: Some days only have IN or OUT punch
+- Duplicate employee records with multiple IDs
+- Incomplete biometric data (partial punches)
 
 ## Prioritized Backlog
-### P0
-- All P0 items completed
+### P0 - All completed
 
 ### P1
 - [ ] Production deployment
@@ -92,4 +76,4 @@ Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
 - [ ] Bulk import for contract workers, salary download, add 100+ employees
 - [ ] Helpdesk Phase 3, dual asset schema migration
 - [ ] Employee record deduplication cleanup
-- [ ] HelpdeskPage.js refactoring (1500+ lines, break into smaller components)
+- [ ] HelpdeskPage.js refactoring (1500+ lines)
