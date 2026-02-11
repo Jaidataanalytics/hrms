@@ -271,6 +271,46 @@ const Dashboard = () => {
         </div>
       </motion.div>
 
+      {/* Remote Check-in Shortcut - only for eligible employees */}
+      {tourStatus?.can_remote_checkin && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent" data-testid="remote-checkin-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Navigation className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-slate-800">Remote Check-in</p>
+                    <p className="text-xs text-slate-500">
+                      {tourStatus?.has_active_tour
+                        ? `On tour: ${tourStatus.tour?.purpose || 'Active Tour'}`
+                        : tourStatus?.is_field_employee
+                          ? 'Field employee — GPS check-in available'
+                          : 'Remote check-in available'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {tourStatus?.todays_checkins?.length > 0 && (
+                    <span className="text-xs text-slate-400 mr-2">
+                      {tourStatus.todays_checkins.length} check-in{tourStatus.todays_checkins.length !== 1 ? 's' : ''} today
+                    </span>
+                  )}
+                  <Button size="sm" onClick={() => handleRemoteCheckin('IN')} disabled={remoteLoading} data-testid="dashboard-remote-checkin-btn">
+                    <LogIn className="w-3.5 h-3.5 mr-1.5" /> Clock In
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleRemoteCheckin('OUT')} disabled={remoteLoading} data-testid="dashboard-remote-checkout-btn">
+                    <LogOut className="w-3.5 h-3.5 mr-1.5" /> Clock Out
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Stats Cards - Show for HR/Admin */}
       {isHR && stats && (
         <motion.div 
