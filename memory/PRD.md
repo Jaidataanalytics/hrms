@@ -1,7 +1,7 @@
 # Sharda HR - Product Requirements Document
 
 ## Original Problem Statement
-Overhaul the company's HR systems into a modern, full-featured HR management platform. React/FastAPI/MongoDB stack.
+Overhaul the company's HR systems into a modern, full-featured HR management platform with premium dark glass-morphism UI.
 
 ## Authentication
 - JWT + Emergent Google Auth
@@ -16,64 +16,45 @@ Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
 
 ## What's Been Implemented (as of Feb 11, 2026)
 
-### Premium UI/UX Overhaul (Eclipticon-Inspired)
-- Global CSS overrides for ALL Shadcn components
-- Section pills, dark login, animated loading screen, premium sidebar
-- JetBrains Mono accents, Manrope headings, Public Sans body
-
-### Employee Events & Celebrations System
-- Backend: Full CRUD API at `/api/events` (today, upcoming, bulk upload, template, self-service)
-- Events Management page, Dashboard CelebrationBanner with confetti
-
-### Dynamic Dashboard Theming
-- Dashboard appearance changes based on today's celebrations (birthday=amber, work anniversary=blue, marriage anniversary=pink, custom=emerald)
-
-### Helpdesk Phase 2: 360-Degree Feedback + Survey Analytics (COMPLETE)
-- Full CRUD feedback cycles, reviewer assignment, feedback submission, analytics
-- Enhanced survey analytics with dept breakdown, response timeline, Excel export
+### Dark Glass-Morphism UI Overhaul (NEW - Feb 11, 2026)
+- Complete dark mode CSS variable overhaul (hsl(240 20% 5%) background)
+- Glass-morphism cards: backdrop-blur, translucent backgrounds, subtle borders, neon glow
+- Dark glass tabs, inputs, dialogs, dropdowns, tooltips, tables
+- Neon glow effects on primary buttons and accent elements
+- Global dark mode overrides for ALL Tailwind utility classes (text, bg, border, hover)
+- Dark header bar with glass blur effect
+- Section pills with glow, premium stat cards with dark glass
+- Works across all 20+ pages via global CSS — no per-page changes needed
+- Sidebar remains dark anchor (unchanged by design)
 
 ### Employee Sidebar Access (NEW - Feb 11, 2026)
-- Helpdesk, SOPs, Training, Tour Management now visible to ALL employee roles in sidebar
-- Each page shows role-appropriate content (employees see their own data, HR sees all)
+- Helpdesk, SOPs, Training, Tour Management visible to ALL roles
+- Each page shows role-appropriate content
 
 ### Remote Check-in Dashboard Shortcut (NEW - Feb 11, 2026)
-- Dashboard shows "Remote Check-in" card for eligible employees
-- Fetches `/api/travel/my-active-tour` to check eligibility
-- GPS-based Clock In/Clock Out same as Tour Management page
-- Only visible when employee has active tour OR is marked as field employee
+- GPS Clock In/Out card on dashboard for eligible employees (field employees / active tours)
 
-### Custom Domain CORS Fix (NEW - Feb 11, 2026)
-- Replaced custom DynamicCORSMiddleware with Starlette native CORSMiddleware
-- `shardahrms.com` and `www.shardahrms.com` explicitly listed in allowed origins
-- Fixed wildcard `*` not working with `allow_credentials=true`
-
-### Auth Headers Fix for Cross-Domain (NEW - Feb 11, 2026)
-- 11 pages were missing `getAuthHeaders()` Bearer token in fetch calls
-- Fixed: DataManagement, Training, Travel, Announcements, UserManagement, Performance, Reports, Grievance, Expenses, Recruitment, ReportBuilder
-- Root cause of "users shows 0" and pages not working from custom domain
-
-### Attendance Data Integrity Fixes
-- Fixed duplicate records, robust name-based matching, date deduplication
+### Custom Domain CORS + Auth Fix (NEW - Feb 11, 2026)
+- Starlette native CORSMiddleware with shardahrms.com explicitly listed
+- 11 pages fixed with Bearer token auth headers (getAuthHeaders)
 
 ### Previous Implementations
-- AI-Powered SOP Management, Employee Profile, Documents, Internal Meetings
-- Leave management, employee list endpoint, employee celebrations
+- Helpdesk Phase 2: 360 Feedback + Survey Analytics (COMPLETE)
+- Dynamic Dashboard Theming for celebrations
+- Employee Events & Celebrations System
+- AI-Powered SOP Management
+- Attendance Data Integrity Fixes
+- Leave management, meetings, payroll, performance, etc.
 
 ---
 
-## Key Database Issues
-- Duplicate employee records with multiple IDs
-- Incomplete biometric data (partial punches)
-
 ## Prioritized Backlog
-### P0 - All completed
-
 ### P1
-- [ ] Production deployment
+- [ ] Production deployment (MUST redeploy for CORS fix on custom domain)
 - [ ] Admin "Unknown" name in meeting analytics
 
 ### P2
-- [ ] Bulk import for contract workers, salary download, add 100+ employees
-- [ ] Helpdesk Phase 3, dual asset schema migration
+- [ ] Bulk import for contract workers, salary download
+- [ ] Helpdesk Phase 3
 - [ ] Employee record deduplication cleanup
 - [ ] HelpdeskPage.js refactoring (1500+ lines)
