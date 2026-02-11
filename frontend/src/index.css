@@ -256,7 +256,7 @@ textarea:focus,
     box-shadow: 0 8px 24px hsl(220 40% 10% / 0.12);
 }
 
-/* ------- TABLES — Dark Theme ------- */
+/* ------- TABLES — Light with Depth ------- */
 table {
     border-collapse: separate;
     border-spacing: 0;
@@ -268,9 +268,9 @@ thead th {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: hsl(215 20% 50%);
-    background: hsl(240 20% 8% / 0.6);
-    border-bottom: 1px solid hsl(210 40% 98% / 0.08);
+    color: hsl(220 9% 46%);
+    background: hsl(220 20% 97% / 0.8);
+    border-bottom: 1px solid hsl(220 13% 91%);
 }
 
 tbody tr {
@@ -278,12 +278,11 @@ tbody tr {
 }
 
 tbody tr:hover {
-    background: hsl(var(--primary) / 0.06);
+    background: hsl(var(--primary) / 0.025);
 }
 
 tbody td {
-    border-bottom: 1px solid hsl(210 40% 98% / 0.05);
-    color: hsl(210 40% 85%);
+    border-bottom: 1px solid hsl(220 13% 91% / 0.5);
 }
 
 /* ========================================================================
