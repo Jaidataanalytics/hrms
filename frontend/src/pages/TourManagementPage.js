@@ -563,6 +563,52 @@ const TourManagementPage = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* HR View: All Today's Remote Check-ins */}
+          {isHR && (
+            <Card className="mt-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">All Remote Check-ins Today</CardTitle>
+                <CardDescription>{allTodayCheckins.length} check-in(s) recorded today</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {allTodayCheckins.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>GPS Location</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allTodayCheckins.map((c, idx) => (
+                        <TableRow key={c.checkin_id || idx}>
+                          <TableCell className="font-medium">{c.employee_name || c.employee_id}</TableCell>
+                          <TableCell>
+                            <Badge className={c.punch_type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
+                              {c.punch_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">{c.time}</TableCell>
+                          <TableCell className="text-xs text-slate-500">
+                            {c.location?.name || (c.location?.latitude ? (
+                              <a href={`https://maps.google.com/?q=${c.location.latitude},${c.location.longitude}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                                {c.location.latitude.toFixed(4)}, {c.location.longitude.toFixed(4)}
+                              </a>
+                            ) : 'N/A')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-center py-6 text-slate-400">No remote check-ins today</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* All Requests Tab (HR Only) */}
