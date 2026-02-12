@@ -38,6 +38,7 @@ const TourManagementPage = () => {
   const [overrides, setOverrides] = useState([]);
   const [showOverrideDialog, setShowOverrideDialog] = useState(false);
   const [overrideForm, setOverrideForm] = useState({ date: '', type: 'employee', employee_ids: '', department_id: '', reason: '' });
+  const [allTodayCheckins, setAllTodayCheckins] = useState([]);
 
   const [form, setForm] = useState({
     purpose: '',
