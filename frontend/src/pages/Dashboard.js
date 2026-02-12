@@ -110,6 +110,14 @@ const Dashboard = () => {
         const tourData = await tourStatusRes.json();
         setTourStatus(tourData);
       }
+
+      // HR: Check for tour employees without check-in
+      if (user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive') {
+        try {
+          const tacRes = await fetch(`${API_URL}/travel/tour-attendance-check`, { credentials: 'include', headers: authHeaders });
+          if (tacRes.ok) setTourAttendanceCheck(await tacRes.json());
+        } catch {}
+      }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
