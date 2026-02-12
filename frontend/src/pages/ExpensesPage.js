@@ -491,6 +491,19 @@ const ExpensesPage = () => {
                           </Button>
                         </div>
                       )}
+                      {expense.status === 'pending' && expense.employee_id === user?.employee_id && (
+                        <Button size="sm" variant="ghost" className="text-red-500" data-testid={`cancel-expense-${expense.claim_id}`}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const res = await fetch(`${API_URL}/expenses/${expense.claim_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(), credentials: 'include' });
+                              if (res.ok) { toast.success('Expense claim cancelled'); fetchData(); }
+                              else { const err = await res.json(); toast.error(err.detail || 'Failed'); }
+                            } catch { toast.error('Failed to cancel'); }
+                          }}>
+                          Cancel
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
