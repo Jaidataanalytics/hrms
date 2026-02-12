@@ -72,6 +72,9 @@ const LeavePage = () => {
   const [editingRule, setEditingRule] = useState(null);
   const [showEditBalanceDialog, setShowEditBalanceDialog] = useState(false);
   const [showEditRuleDialog, setShowEditRuleDialog] = useState(false);
+  const [coRequests, setCoRequests] = useState([]);
+  const [showCoDialog, setShowCoDialog] = useState(false);
+  const [coForm, setCoForm] = useState({ worked_dates: '', reason: '' });
 
   const [leaveForm, setLeaveForm] = useState({
     leave_type_id: '',
