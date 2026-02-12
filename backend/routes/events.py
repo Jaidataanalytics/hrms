@@ -62,7 +62,10 @@ async def get_today_events(request: Request):
             ed = datetime.strptime(event_date_str, "%Y-%m-%d")
             event_mm_dd = f"{ed.month:02d}-{ed.day:02d}"
             if event_mm_dd == today_mm_dd:
-                emp = await db.employees.find_one({"employee_id": event.get("emp_code")}, {"_id": 0, "first_name": 1, "last_name": 1, "department": 1, "picture": 1})
+                emp = await db.employees.find_one(
+                    {"$or": [{"employee_id": event.get("emp_code")}, {"emp_code": event.get("emp_code")}]},
+                    {"_id": 0, "first_name": 1, "last_name": 1, "department": 1, "picture": 1}
+                )
                 if emp:
                     event["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
                     event["department"] = emp.get("department", "")
