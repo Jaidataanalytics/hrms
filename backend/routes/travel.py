@@ -682,3 +682,118 @@ async def delete_remote_checkin_override(override_id: str, request: Request):
     await db.remote_checkin_overrides.delete_one({"override_id": override_id})
     return {"message": "Override removed"}
 
+
+
+# ==================== TOUR ATTENDANCE DAILY CHECK ====================
+
+@router.get("/tour-attendance-check")
+async def check_tour_attendance(request: Request, date: str = None):
+    """
+    HR daily check: Find employees on active tours who haven't checked in today.
+    Returns list of employees needing attendance decision (present/absent).
+    """
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    check_date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Find all active tours covering this date
+    active_tours = await db.travel_requests.find({
+        "status": {"$in": ["approved", "ongoing"]},
+        "start_date": {"$lte": check_date},
+        "end_date": {"$gte": check_date}
+    }, {"_id": 0}).to_list(200)
+    
+    # Also get field employees
+    field_employees = await db.employees.find(
+        {"is_field_employee": True, "is_active": True},
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
+    ).to_list(200)
+    
+    tour_employee_ids = set(t.get("employee_id") for t in active_tours)
+    field_employee_ids = set(f.get("employee_id") for f in field_employees)
+    all_eligible_ids = tour_employee_ids | field_employee_ids
+    
+    if not all_eligible_ids:
+        return {"date": check_date, "unchecked_employees": [], "checked_employees": []}
+    
+    # Get today's remote check-ins
+    checkins = await db.remote_checkins.find(
+        {"date": check_date, "employee_id": {"$in": list(all_eligible_ids)}},
+        {"_id": 0}
+    ).to_list(500)
+    checked_ids = set(c.get("employee_id") for c in checkins)
+    
+    # Also check regular attendance
+    attendance = await db.attendance.find(
+        {"date": check_date, "employee_id": {"$in": list(all_eligible_ids)}},
+        {"_id": 0}
+    ).to_list(500)
+    attended_ids = set(a.get("employee_id") for a in attendance)
+    
+    all_present_ids = checked_ids | attended_ids
+    unchecked_ids = all_eligible_ids - all_present_ids
+    
+    # Get employee details for unchecked
+    unchecked_employees = []
+    for eid in unchecked_ids:
+        emp = await db.employees.find_one(
+            {"$or": [{"employee_id": eid}, {"emp_code": eid}]},
+            {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1, "department": 1}
+        )
+        if emp:
+            tour = next((t for t in active_tours if t.get("employee_id") == eid), None)
+            unchecked_employees.append({
+                "employee_id": eid,
+                "name": f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip(),
+                "department": emp.get("department", ""),
+                "is_field_employee": eid in field_employee_ids,
+                "tour_purpose": tour.get("purpose") if tour else None,
+                "tour_location": tour.get("location") if tour else None,
+            })
+    
+    return {
+        "date": check_date,
+        "unchecked_employees": unchecked_employees,
+        "checked_count": len(all_present_ids),
+        "unchecked_count": len(unchecked_employees),
+    }
+
+
+@router.post("/mark-tour-attendance")
+async def mark_tour_attendance(data: dict, request: Request):
+    """HR marks attendance for tour employees who didn't check in"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    employee_id = data.get("employee_id")
+    date = data.get("date")
+    status = data.get("status", "present")  # "present" or "absent"
+    
+    if not employee_id or not date:
+        raise HTTPException(status_code=400, detail="employee_id and date required")
+    
+    existing = await db.attendance.find_one({"employee_id": employee_id, "date": date})
+    
+    if existing:
+        await db.attendance.update_one(
+            {"employee_id": employee_id, "date": date},
+            {"$set": {"status": status, "remarks": f"Marked by HR ({user.get('name')})", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    else:
+        att_doc = {
+            "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
+            "employee_id": employee_id,
+            "date": date,
+            "status": status,
+            "remarks": f"Tour/Field - marked by HR ({user.get('name')})",
+            "source": "hr_manual",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.attendance.insert_one(att_doc)
+    
+    return {"message": f"Attendance marked as {status} for {employee_id} on {date}"}
+
