@@ -719,8 +719,100 @@ const TourManagementPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Daily Override Tab */}
+          <TabsContent value="daily-override">
+            <Card>
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>Remote Check-in Overrides</CardTitle>
+                  <CardDescription>Allow remote check-in for employees or departments for a specific day</CardDescription>
+                </div>
+                <Button onClick={() => setShowOverrideDialog(true)} data-testid="add-override-btn">
+                  <Plus className="w-4 h-4 mr-2" /> Add Override
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {overrides.length > 0 ? (
+                  <div className="space-y-2">
+                    {overrides.map(ov => (
+                      <div key={ov.override_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-slate-900">{ov.date} — {ov.type === 'department' ? `Department: ${ov.department_id}` : `Employees: ${ov.employee_ids?.join(', ')}`}</p>
+                          <p className="text-xs text-slate-400">{ov.reason} (by {ov.created_by_name})</p>
+                        </div>
+                        <Button size="sm" variant="ghost" className="text-red-500" onClick={async () => {
+                          await fetch(`${API_URL}/travel/remote-checkin-overrides/${ov.override_id}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
+                          toast.success('Override removed'); fetchFieldEmployees();
+                        }}>Remove</Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-slate-400">No active overrides</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         )}
       </Tabs>
+
+      {/* Override Dialog */}
+      <Dialog open={showOverrideDialog} onOpenChange={setShowOverrideDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Allow Remote Check-in</DialogTitle>
+            <DialogDescription>Grant remote check-in access for a specific day</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Date *</Label>
+              <Input type="date" value={overrideForm.date} onChange={e => setOverrideForm({...overrideForm, date: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={overrideForm.type} onValueChange={v => setOverrideForm({...overrideForm, type: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">Specific Employees</SelectItem>
+                  <SelectItem value="department">Entire Department</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {overrideForm.type === 'employee' && (
+              <div className="space-y-2">
+                <Label>Employee IDs (comma-separated)</Label>
+                <Input value={overrideForm.employee_ids} onChange={e => setOverrideForm({...overrideForm, employee_ids: e.target.value})} placeholder="S0001, S0002" />
+              </div>
+            )}
+            {overrideForm.type === 'department' && (
+              <div className="space-y-2">
+                <Label>Department ID</Label>
+                <Input value={overrideForm.department_id} onChange={e => setOverrideForm({...overrideForm, department_id: e.target.value})} placeholder="dept_xxx" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Input value={overrideForm.reason} onChange={e => setOverrideForm({...overrideForm, reason: e.target.value})} placeholder="e.g., WFH day, office closed" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOverrideDialog(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              const payload = {
+                date: overrideForm.date,
+                type: overrideForm.type,
+                employee_ids: overrideForm.type === 'employee' ? overrideForm.employee_ids.split(',').map(s => s.trim()).filter(Boolean) : [],
+                department_id: overrideForm.type === 'department' ? overrideForm.department_id : null,
+                reason: overrideForm.reason,
+              };
+              const res = await fetch(`${API_URL}/travel/remote-checkin-override`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, credentials: 'include', body: JSON.stringify(payload) });
+              if (res.ok) { toast.success('Override created'); setShowOverrideDialog(false); setOverrideForm({ date: '', type: 'employee', employee_ids: '', department_id: '', reason: '' }); fetchFieldEmployees(); }
+              else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
+            }} data-testid="create-override-btn">Create Override</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Tour Request Dialog */}
       <Dialog open={showAddRequest} onOpenChange={setShowAddRequest}>
