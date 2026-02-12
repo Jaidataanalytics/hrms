@@ -2710,36 +2710,55 @@ async def approve_leave(leave_id: str, request: Request):
     if not leave_req:
         raise HTTPException(status_code=404, detail="Leave request not found")
     
-    await db.leave_requests.update_one(
-        {"leave_id": leave_id},
-        {"$set": {
-            "status": "approved",
-            "approved_by": user.get("employee_id") or user["user_id"],
-            "approved_on": datetime.now(timezone.utc).isoformat()
-        }}
-    )
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    is_dept_head = leave_req.get("dept_head_id") == user.get("employee_id")
     
-    # Update leave balance
-    current_year = datetime.now(timezone.utc).year
-    await db.leave_balances.update_one(
-        {"employee_id": leave_req["employee_id"], "leave_type_id": leave_req["leave_type_id"], "year": current_year},
-        {"$inc": {"used": leave_req["days"], "pending": -leave_req["days"]}}
-    )
+    # Two-step approval logic
+    update_fields = {"approved_on": datetime.now(timezone.utc).isoformat()}
+    
+    if is_dept_head and leave_req.get("dept_head_status") == "pending":
+        # Step 1: Department head approves
+        update_fields["dept_head_status"] = "approved"
+        update_fields["dept_head_approved_by"] = user.get("employee_id")
+        update_fields["dept_head_approved_on"] = datetime.now(timezone.utc).isoformat()
+        # If HR approval still pending, keep status as pending
+        if leave_req.get("hr_status") == "pending":
+            update_fields["status"] = "pending"
+        message = "Leave approved by department head. Pending HR approval."
+    elif is_hr:
+        # Step 2: HR approves (or single-step if no dept head)
+        update_fields["hr_status"] = "approved"
+        update_fields["hr_approved_by"] = user.get("employee_id") or user["user_id"]
+        update_fields["status"] = "approved"
+        update_fields["approved_by"] = user.get("employee_id") or user["user_id"]
+        message = "Leave approved successfully"
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized to approve this leave")
+    
+    await db.leave_requests.update_one({"leave_id": leave_id}, {"$set": update_fields})
+    
+    # Update leave balance only on final approval
+    if update_fields.get("status") == "approved":
+        current_year = datetime.now(timezone.utc).year
+        await db.leave_balances.update_one(
+            {"employee_id": leave_req["employee_id"], "leave_type_id": leave_req["leave_type_id"], "year": current_year},
+            {"$inc": {"used": leave_req["days"], "pending": -leave_req["days"]}}
+        )
     
     # Notify employee
-    employee = await db.employees.find_one({"employee_id": leave_req["employee_id"]}, {"_id": 0})
-    if employee and employee.get("user_id"):
+    emp_user = await db.users.find_one({"employee_id": leave_req["employee_id"]}, {"_id": 0, "user_id": 1})
+    if emp_user:
         await create_notification(
-            employee["user_id"],
-            "Leave Approved",
-            f"Your leave from {leave_req['from_date']} to {leave_req['to_date']} has been approved",
+            emp_user["user_id"],
+            "Leave Approved" if update_fields.get("status") == "approved" else "Leave: Dept Head Approved",
+            f"Your leave from {leave_req['from_date']} to {leave_req['to_date']} has been {'approved' if update_fields.get('status') == 'approved' else 'approved by department head (pending HR)'}",
             "success", "leave"
         )
     
     await log_audit("APPROVE", "leave", "leave_request", leave_id,
                    user["user_id"], user.get("name", ""), request=request)
     
-    return {"message": "Leave approved successfully"}
+    return {"message": message}
 
 @api_router.put("/leave/{leave_id}/reject")
 async def reject_leave(leave_id: str, rejection_reason: str, request: Request):
