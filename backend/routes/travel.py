@@ -383,10 +383,19 @@ async def remote_check_in(data: dict, request: Request):
         }, {"_id": 0})
     
     if not is_field_employee and not active_tour:
-        raise HTTPException(
-            status_code=403, 
-            detail="Remote check-in is only allowed for field employees or those on approved tours"
-        )
+        # Check for HR override for today
+        has_override = await db.remote_checkin_overrides.find_one({
+            "date": today,
+            "$or": [
+                {"type": "employee", "employee_ids": employee_id},
+                {"type": "department", "department_id": employee.get("department_id")}
+            ]
+        })
+        if not has_override:
+            raise HTTPException(
+                status_code=403, 
+                detail="Remote check-in is only allowed for field employees, those on approved tours, or with HR override"
+            )
     
     now_time = datetime.now(timezone.utc).strftime("%H:%M")
     
