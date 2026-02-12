@@ -33,10 +33,15 @@ async def list_events(request: Request, emp_code: Optional[str] = None, event_ty
     events = await db.employee_events.find(query, {"_id": 0}).sort("event_date", 1).to_list(500)
 
     for event in events:
-        emp = await db.employees.find_one({"employee_id": event.get("emp_code")}, {"_id": 0, "first_name": 1, "last_name": 1, "department": 1})
+        emp = await db.employees.find_one(
+            {"$or": [{"employee_id": event.get("emp_code")}, {"emp_code": event.get("emp_code")}]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "department": 1}
+        )
         if emp:
             event["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
             event["department"] = emp.get("department", "")
+        else:
+            event["employee_name"] = event.get("emp_code", "Unknown")
 
     return events
 
