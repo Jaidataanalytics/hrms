@@ -218,7 +218,7 @@ const MyCalendarPage = () => {
     return {
       dateStr,
       isSunday: dayOfWeek === 0,
-      isToday: dateStr === new Date().toISOString().split('T')[0],
+      isToday: dateStr === (() => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; })(),
       attendance: dayAttendance,
       leave: dayLeave,
       holiday: dayHoliday,
