@@ -295,11 +295,18 @@ const ExpensesPage = () => {
               </div>
               <div className="space-y-2">
                 <Label>Receipt</Label>
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-primary/50 cursor-pointer transition-colors">
+                <label className="block border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-primary/50 cursor-pointer transition-colors">
+                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => setReceiptFile(e.target.files[0])} data-testid="receipt-upload-input" />
                   <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">Click to upload receipt</p>
-                  <p className="text-xs text-slate-400">PNG, JPG up to 5MB</p>
-                </div>
+                  {receiptFile ? (
+                    <p className="text-sm text-primary font-medium">{receiptFile.name}</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-slate-500">Click to upload receipt</p>
+                      <p className="text-xs text-slate-400">PNG, JPG, PDF up to 5MB</p>
+                    </>
+                  )}
+                </label>
               </div>
             </div>
             <DialogFooter>
