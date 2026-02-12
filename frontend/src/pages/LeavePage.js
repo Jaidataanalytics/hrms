@@ -646,6 +646,52 @@ const LeavePage = () => {
           </Card>
         </TabsContent>
 
+        {/* CO Requests Tab */}
+        <TabsContent value="co-requests">
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>Compensatory Off Requests</CardTitle>
+                <CardDescription>Request CO for working on weekends/holidays</CardDescription>
+              </div>
+              <Button onClick={() => setShowCoDialog(true)} data-testid="request-co-btn">
+                <Plus className="w-4 h-4 mr-2" /> Request CO
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {coRequests.length > 0 ? coRequests.map(co => (
+                  <div key={co.co_request_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg" data-testid={`co-${co.co_request_id}`}>
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {co.employee_name || 'You'} — {co.days} day(s) CO
+                      </p>
+                      <p className="text-sm text-slate-500">Worked: {co.worked_dates?.join(', ')}</p>
+                      {co.reason && <p className="text-xs text-slate-400">{co.reason}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {co.status === 'pending' && co.employee_id === user?.employee_id && (
+                        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => {
+                          fetch(`${API_URL}/co-requests/${co.co_request_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(), credentials: 'include' }).then(() => { toast.success('Cancelled'); fetchData(); });
+                        }}>Cancel</Button>
+                      )}
+                      {co.status === 'pending' && (isManager || isHR) && co.employee_id !== user?.employee_id && (
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => handleApproveCO(co.co_request_id)}>Approve</Button>
+                          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleRejectCO(co.co_request_id)}>Reject</Button>
+                        </>
+                      )}
+                      <Badge className={statusColors[co.status] || 'bg-slate-100 text-slate-700'}>{co.status}</Badge>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-center py-8 text-slate-400">No CO requests</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {isManager && (
           <TabsContent value="approvals">
             <Card>
