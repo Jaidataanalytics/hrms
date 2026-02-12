@@ -227,14 +227,29 @@ async def bulk_upload_events(request: Request, file: UploadFile = File(...)):
 
                 if isinstance(event_date_val, datetime):
                     event_date = event_date_val.strftime("%Y-%m-%d")
+                elif isinstance(event_date_val, (int, float)) and event_date_val > 1000:
+                    # Excel serial date number — convert to date
+                    from datetime import timedelta
+                    excel_epoch = datetime(1899, 12, 30)
+                    event_date = (excel_epoch + timedelta(days=int(event_date_val))).strftime("%Y-%m-%d")
                 else:
                     event_date = str(event_date_val).strip()
-                    for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"]:
-                        try:
-                            event_date = datetime.strptime(event_date, fmt).strftime("%Y-%m-%d")
-                            break
-                        except ValueError:
-                            continue
+                    # Try to parse if it's a number that looks like a date serial
+                    try:
+                        serial = int(float(event_date))
+                        if serial > 1000:
+                            from datetime import timedelta
+                            excel_epoch = datetime(1899, 12, 30)
+                            event_date = (excel_epoch + timedelta(days=serial)).strftime("%Y-%m-%d")
+                        else:
+                            raise ValueError("Not a serial")
+                    except (ValueError, TypeError):
+                        for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"]:
+                            try:
+                                event_date = datetime.strptime(event_date, fmt).strftime("%Y-%m-%d")
+                                break
+                            except ValueError:
+                                continue
 
                 type_mapping = {
                     "birthday": "birthday",
