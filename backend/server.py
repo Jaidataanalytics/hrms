@@ -2662,6 +2662,65 @@ async def get_my_leave_requests(request: Request, status: Optional[str] = None):
     requests = await db.leave_requests.find(query, {"_id": 0}).sort("applied_on", -1).to_list(100)
     return requests
 
+
+@api_router.put("/leave/{leave_id}/cancel")
+async def cancel_leave_request(leave_id: str, request: Request):
+    """Cancel a pending leave request (employee can only cancel their own pending requests)"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    leave_req = await db.leave_requests.find_one({"leave_id": leave_id}, {"_id": 0})
+    if not leave_req:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    
+    if leave_req.get("employee_id") != employee_id:
+        raise HTTPException(status_code=403, detail="Can only cancel your own requests")
+    
+    if leave_req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Can only cancel pending requests")
+    
+    await db.leave_requests.update_one(
+        {"leave_id": leave_id},
+        {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Leave request cancelled"}
+
+
+@api_router.put("/leave/{leave_id}/edit")
+async def edit_leave_request(leave_id: str, data: dict, request: Request):
+    """Edit a pending leave request"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    leave_req = await db.leave_requests.find_one({"leave_id": leave_id}, {"_id": 0})
+    if not leave_req:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    
+    if leave_req.get("employee_id") != employee_id:
+        raise HTTPException(status_code=403, detail="Can only edit your own requests")
+    
+    if leave_req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Can only edit pending requests")
+    
+    update = {}
+    for field in ["from_date", "to_date", "reason", "is_half_day", "half_day_type"]:
+        if field in data:
+            update[field] = data[field]
+    
+    if "from_date" in update or "to_date" in update:
+        from datetime import datetime as dt
+        fd = update.get("from_date", leave_req["from_date"])
+        td = update.get("to_date", leave_req["to_date"])
+        days = (dt.strptime(td, "%Y-%m-%d") - dt.strptime(fd, "%Y-%m-%d")).days + 1
+        if update.get("is_half_day", leave_req.get("is_half_day")):
+            days = 0.5
+        update["days"] = days
+    
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.leave_requests.update_one({"leave_id": leave_id}, {"$set": update})
+    return {"message": "Leave request updated"}
+
+
 @api_router.get("/leave/pending-approvals")
 async def get_pending_leave_approvals(request: Request):
     user = await get_current_user(request)
