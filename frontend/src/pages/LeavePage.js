@@ -616,9 +616,16 @@ const LeavePage = () => {
                             <p className="text-xs text-slate-400 mt-1">{request.reason}</p>
                           </div>
                         </div>
-                        <Badge className={statusColors[request.status]}>
-                          {request.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {request.status === 'pending' && (
+                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleCancelLeave(request.leave_id)} data-testid={`cancel-leave-${request.leave_id}`}>
+                              <XCircle className="w-4 h-4 mr-1" /> Cancel
+                            </Button>
+                          )}
+                          <Badge className={statusColors[request.status]}>
+                            {request.status}
+                          </Badge>
+                        </div>
                       </div>
                     );
                   })
