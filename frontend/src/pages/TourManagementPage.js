@@ -346,6 +346,10 @@ const TourManagementPage = () => {
                 <Users className="w-4 h-4" />
                 Field Employees
               </TabsTrigger>
+              <TabsTrigger value="daily-override" className="gap-2" data-testid="tab-daily-override">
+                <MapPin className="w-4 h-4" />
+                Daily Override
+              </TabsTrigger>
             </>
           )}
         </TabsList>
