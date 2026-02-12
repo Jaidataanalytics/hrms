@@ -255,3 +255,20 @@ async def mark_reimbursed(claim_id: str, data: dict, request: Request):
         }}
     )
     return {"message": "Expense marked as reimbursed"}
+
+
+@router.put("/{claim_id}/cancel")
+async def cancel_expense(claim_id: str, request: Request):
+    """Cancel own pending expense claim"""
+    user = await get_current_user(request)
+    expense = await db.expenses.find_one({"claim_id": claim_id}, {"_id": 0})
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    if expense.get("employee_id") != user.get("employee_id"):
+        raise HTTPException(status_code=403, detail="Can only cancel your own requests")
+    if expense.get("status") not in ["pending", "submitted"]:
+        raise HTTPException(status_code=400, detail="Can only cancel pending/submitted expenses")
+    
+    await db.expenses.update_one({"claim_id": claim_id}, {"$set": {"status": "cancelled"}})
+    return {"message": "Expense claim cancelled"}
+
