@@ -156,7 +156,8 @@ const Dashboard = () => {
         credentials: 'include',
         body: JSON.stringify({
           punch_type: punchType,
-          location: { lat: position.coords.latitude, lng: position.coords.longitude },
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
           tour_request_id: tourStatus?.tour?.request_id
         }),
       });
