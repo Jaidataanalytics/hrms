@@ -1194,6 +1194,31 @@ const LeavePage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* CO Request Dialog */}
+      <Dialog open={showCoDialog} onOpenChange={setShowCoDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Compensatory Off</DialogTitle>
+            <DialogDescription>Enter the dates you worked on weekends/holidays</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Worked Date(s) *</Label>
+              <Input type="date" value={coForm.worked_dates} onChange={e => setCoForm({...coForm, worked_dates: e.target.value})} placeholder="Select date" data-testid="co-date-input" />
+              <p className="text-xs text-slate-400">For multiple dates, enter comma-separated: 2026-02-08, 2026-02-15</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Textarea value={coForm.reason} onChange={e => setCoForm({...coForm, reason: e.target.value})} placeholder="e.g., Worked on Sunday for project deadline" rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCoDialog(false)}>Cancel</Button>
+            <Button onClick={handleSubmitCO} data-testid="submit-co-btn">Submit Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
