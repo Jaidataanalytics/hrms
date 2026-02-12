@@ -116,22 +116,33 @@ const SOPPage = () => {
   const fetchSOPs = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `${API_URL}/sop/list?`;
-      if (filterDepartment && filterDepartment !== 'all') url += `department_id=${filterDepartment}&`;
-      if (filterStatus && filterStatus !== 'all') url += `status=${filterStatus}&`;
-      if (filterOwner && filterOwner !== 'all') url += `owner_id=${filterOwner}&`;
-      if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
-      if (groupBy && groupBy !== 'none') url += `group_by=${groupBy}`;
-      
-      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.grouped) {
-          setGroupedSOPs(data.groups);
-          setSOPs([]);
-        } else {
-          setSOPs(data);
+      if (!isHR) {
+        // Employees see only SOPs they're linked to
+        const response = await fetch(`${API_URL}/sop/my-sops`, { credentials: 'include', headers: getAuthHeaders() });
+        if (response.ok) {
+          const data = await response.json();
+          const allMySops = [...(data.main_responsible || []), ...(data.also_involved || [])];
+          setSOPs(allMySops);
           setGroupedSOPs(null);
+        }
+      } else {
+        let url = `${API_URL}/sop/list?`;
+        if (filterDepartment && filterDepartment !== 'all') url += `department_id=${filterDepartment}&`;
+        if (filterStatus && filterStatus !== 'all') url += `status=${filterStatus}&`;
+        if (filterOwner && filterOwner !== 'all') url += `owner_id=${filterOwner}&`;
+        if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
+        if (groupBy && groupBy !== 'none') url += `group_by=${groupBy}`;
+        
+        const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.grouped) {
+            setGroupedSOPs(data.groups);
+            setSOPs([]);
+          } else {
+            setSOPs(data);
+            setGroupedSOPs(null);
+          }
         }
       }
     } catch (error) {
@@ -139,7 +150,7 @@ const SOPPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterDepartment, filterStatus, filterOwner, searchTerm, groupBy]);
+  }, [isHR, filterDepartment, filterStatus, filterOwner, searchTerm, groupBy]);
 
   useEffect(() => {
     fetchSOPs();
