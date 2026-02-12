@@ -384,7 +384,19 @@ const TourManagementPage = () => {
                         <TableCell>
                           <Badge className={statusColors[req.status]}>{req.status}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right flex gap-1 justify-end">
+                          {req.status === 'pending' && (
+                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" data-testid={`cancel-tour-${req.request_id}`}
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`${API_URL}/travel/requests/${req.request_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(), credentials: 'include' });
+                                  if (res.ok) { toast.success('Tour request cancelled'); fetchData(); }
+                                  else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
+                                } catch { toast.error('Failed to cancel'); }
+                              }}>
+                              Cancel
+                            </Button>
+                          )}
                           <Button size="sm" variant="outline" onClick={() => setSelectedRequest(req)}>
                             <Eye className="w-3 h-3 mr-1" />
                             View
