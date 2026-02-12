@@ -92,6 +92,20 @@ async def create_task(data: dict, request: Request):
     await db.calendar_tasks.insert_one(task)
     task.pop('_id', None)
     
+    # Send notification to assigned employee if different from creator
+    assigned_to = task.get("assigned_to")
+    if assigned_to and assigned_to != user.get("employee_id"):
+        assignee_user = await db.users.find_one({"employee_id": assigned_to}, {"_id": 0, "user_id": 1})
+        if assignee_user:
+            from server import create_notification
+            await create_notification(
+                assignee_user["user_id"],
+                "New Task Assigned",
+                f"You've been assigned: {task['title']} (Due: {task['due_date']})",
+                "info", "calendar",
+                link="/dashboard/my-calendar"
+            )
+    
     return task
 
 
