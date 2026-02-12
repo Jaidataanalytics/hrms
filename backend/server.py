@@ -3165,6 +3165,136 @@ async def update_single_leave_rule(leave_code: str, rule_data: dict, request: Re
     return {"message": f"Leave rule for {leave_code} updated", "rule": rule_data}
 
 
+# ==================== COMPENSATORY OFF (CO) REQUESTS ====================
+
+@api_router.post("/co-requests")
+async def create_co_request(data: dict, request: Request):
+    """Employee requests CO for working on a holiday/weekend"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="No employee profile linked")
+    
+    worked_dates = data.get("worked_dates", [])
+    if not worked_dates:
+        raise HTTPException(status_code=400, detail="At least one worked date is required")
+    
+    co_request = {
+        "co_request_id": f"co_{uuid.uuid4().hex[:12]}",
+        "employee_id": employee_id,
+        "employee_name": user.get("name", ""),
+        "worked_dates": worked_dates,
+        "days": len(worked_dates),
+        "reason": data.get("reason", ""),
+        "status": "pending",
+        "dept_head_status": "pending",
+        "hr_status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    # Find department head
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    if employee and employee.get("department_id"):
+        dept = await db.departments.find_one({"department_id": employee["department_id"]}, {"_id": 0})
+        if dept and dept.get("head_employee_id"):
+            co_request["dept_head_id"] = dept["head_employee_id"]
+    
+    await db.co_requests.insert_one(co_request)
+    co_request.pop("_id", None)
+    return co_request
+
+
+@api_router.get("/co-requests")
+async def get_co_requests(request: Request, status: Optional[str] = None):
+    """Get CO requests — employees see own, HR/dept heads see relevant ones"""
+    user = await get_current_user(request)
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    employee_id = user.get("employee_id")
+    
+    if is_hr:
+        query = {}
+    else:
+        query = {"$or": [{"employee_id": employee_id}, {"dept_head_id": employee_id}]}
+    
+    if status and status != "all":
+        query["status"] = status
+    
+    requests = await db.co_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return requests
+
+
+@api_router.put("/co-requests/{co_id}/approve")
+async def approve_co_request(co_id: str, request: Request):
+    """Approve CO request (dept head first, then HR)"""
+    user = await get_current_user(request)
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    
+    co_req = await db.co_requests.find_one({"co_request_id": co_id}, {"_id": 0})
+    if not co_req:
+        raise HTTPException(status_code=404, detail="CO request not found")
+    
+    is_dept_head = co_req.get("dept_head_id") == user.get("employee_id")
+    update = {}
+    
+    if is_dept_head and co_req.get("dept_head_status") == "pending":
+        update["dept_head_status"] = "approved"
+        msg = "CO approved by department head. Pending HR approval."
+    elif is_hr:
+        update["hr_status"] = "approved"
+        update["status"] = "approved"
+        
+        # Add CO days to employee's leave balance
+        current_year = datetime.now(timezone.utc).year
+        co_leave_type = await db.leave_types.find_one({"code": {"$regex": "^CO$", "$options": "i"}}, {"_id": 0})
+        if co_leave_type:
+            await db.leave_balances.update_one(
+                {"employee_id": co_req["employee_id"], "leave_type_id": co_leave_type["leave_type_id"], "year": current_year},
+                {"$inc": {"accrued": co_req["days"], "available": co_req["days"]}},
+                upsert=True
+            )
+        msg = f"CO approved. {co_req['days']} day(s) added to leave balance."
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.co_requests.update_one({"co_request_id": co_id}, {"$set": update})
+    
+    return {"message": msg}
+
+
+@api_router.put("/co-requests/{co_id}/reject")
+async def reject_co_request(co_id: str, data: dict, request: Request):
+    """Reject CO request"""
+    user = await get_current_user(request)
+    
+    await db.co_requests.update_one(
+        {"co_request_id": co_id},
+        {"$set": {
+            "status": "rejected",
+            "rejection_reason": data.get("reason", ""),
+            "rejected_by": user.get("name", ""),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"message": "CO request rejected"}
+
+
+@api_router.put("/co-requests/{co_id}/cancel")
+async def cancel_co_request(co_id: str, request: Request):
+    """Cancel own pending CO request"""
+    user = await get_current_user(request)
+    co_req = await db.co_requests.find_one({"co_request_id": co_id}, {"_id": 0})
+    
+    if not co_req or co_req.get("employee_id") != user.get("employee_id"):
+        raise HTTPException(status_code=403, detail="Can only cancel your own requests")
+    if co_req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Can only cancel pending requests")
+    
+    await db.co_requests.update_one({"co_request_id": co_id}, {"$set": {"status": "cancelled"}})
+    return {"message": "CO request cancelled"}
+
+
 @api_router.post("/leave/run-accrual")
 async def run_leave_accrual(request: Request, month: Optional[int] = None, year: Optional[int] = None):
     """Manually run leave accrual for all eligible employees"""
