@@ -2554,6 +2554,14 @@ async def apply_leave(leave_data: LeaveApplyRequest, request: Request):
     if leave_data.is_half_day:
         days = 0.5
     
+    # Determine department head for two-step approval
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    dept_head_id = None
+    if employee and employee.get("department_id"):
+        dept = await db.departments.find_one({"department_id": employee["department_id"]}, {"_id": 0})
+        if dept and dept.get("head_employee_id"):
+            dept_head_id = dept["head_employee_id"]
+    
     leave_request = LeaveRequest(
         employee_id=employee_id,
         leave_type_id=leave_data.leave_type_id,
@@ -2568,19 +2576,22 @@ async def apply_leave(leave_data: LeaveApplyRequest, request: Request):
     doc = leave_request.model_dump()
     doc['applied_on'] = doc['applied_on'].isoformat()
     doc['created_at'] = doc['created_at'].isoformat()
+    # Two-step approval fields
+    doc['dept_head_id'] = dept_head_id
+    doc['dept_head_status'] = 'pending' if dept_head_id else 'not_required'
+    doc['hr_status'] = 'pending'
     
     await db.leave_requests.insert_one(doc)
     
-    # Get employee's manager and notify
-    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
-    if employee and employee.get("reporting_manager_id"):
-        manager = await db.employees.find_one({"employee_id": employee["reporting_manager_id"]}, {"_id": 0})
-        if manager and manager.get("user_id"):
+    # Notify department head first (if exists), else notify HR
+    if dept_head_id:
+        dept_head_user = await db.users.find_one({"employee_id": dept_head_id}, {"_id": 0, "user_id": 1})
+        if dept_head_user:
             await create_notification(
-                manager["user_id"],
-                "Leave Request",
+                dept_head_user["user_id"],
+                "Leave Approval Required",
                 f"{user.get('name', 'Employee')} has applied for leave from {leave_data.from_date} to {leave_data.to_date}",
-                "info", "leave", f"/leave/requests/{leave_request.leave_id}"
+                "info", "leave", "/dashboard/leave"
             )
     
     return leave_request
