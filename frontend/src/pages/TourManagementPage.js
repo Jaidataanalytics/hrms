@@ -103,6 +103,10 @@ const TourManagementPage = () => {
       // Also fetch overrides
       const overrideRes = await fetch(`${API_URL}/travel/remote-checkin-overrides`, { credentials: 'include', headers: getAuthHeaders() });
       if (overrideRes.ok) setOverrides(await overrideRes.json());
+      // Fetch all today's remote check-ins
+      const today = new Date().toISOString().split('T')[0];
+      const allCheckinsRes = await fetch(`${API_URL}/travel/remote-check-ins?date=${today}`, { credentials: 'include', headers: getAuthHeaders() });
+      if (allCheckinsRes.ok) setAllTodayCheckins(await allCheckinsRes.json());
     } catch (error) {
       console.error('Error fetching field employees:', error);
     }
