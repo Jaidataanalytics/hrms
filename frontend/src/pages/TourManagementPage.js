@@ -652,8 +652,9 @@ const TourManagementPage = () => {
           </TabsContent>
         )}
 
-        {/* Field Employees Tab (HR Only) */}
+        {/* Field Employees & Daily Override Tabs (HR Only) */}
         {isHR && (
+          <>
           <TabsContent value="field-employees">
             <Card>
               <CardHeader>
