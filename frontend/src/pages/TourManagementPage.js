@@ -755,10 +755,8 @@ const TourManagementPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          </>
         )}
-      </Tabs>
-
-      {/* Override Dialog */}
       <Dialog open={showOverrideDialog} onOpenChange={setShowOverrideDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
