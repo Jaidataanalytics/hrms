@@ -594,3 +594,56 @@ async def toggle_field_employee(employee_id: str, data: dict, request: Request):
         "employee_id": employee_id,
         "is_field_employee": is_field_employee
     }
+
+
+# ==================== HR REMOTE CHECK-IN OVERRIDES ====================
+
+@router.post("/remote-checkin-override")
+async def create_remote_checkin_override(data: dict, request: Request):
+    """HR allows remote check-in for specific employee(s) or department for a day"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    override = {
+        "override_id": f"rco_{uuid.uuid4().hex[:12]}",
+        "date": data.get("date"),
+        "type": data.get("type", "employee"),  # "employee" or "department"
+        "employee_ids": data.get("employee_ids", []),
+        "department_id": data.get("department_id"),
+        "reason": data.get("reason", ""),
+        "created_by": user.get("user_id"),
+        "created_by_name": user.get("name"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    await db.remote_checkin_overrides.insert_one(override)
+    override.pop("_id", None)
+    return override
+
+
+@router.get("/remote-checkin-overrides")
+async def list_remote_checkin_overrides(request: Request, date: str = None):
+    """List remote check-in overrides"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = {}
+    if date:
+        query["date"] = date
+    
+    overrides = await db.remote_checkin_overrides.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return overrides
+
+
+@router.delete("/remote-checkin-overrides/{override_id}")
+async def delete_remote_checkin_override(override_id: str, request: Request):
+    """Remove a remote check-in override"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.remote_checkin_overrides.delete_one({"override_id": override_id})
+    return {"message": "Override removed"}
+
