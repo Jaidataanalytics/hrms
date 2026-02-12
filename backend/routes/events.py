@@ -98,10 +98,15 @@ async def get_upcoming_events(request: Request, days: int = 30):
                 this_year_date = ed.replace(year=today.year + 1)
             delta = (this_year_date - today.replace(hour=0, minute=0, second=0, microsecond=0)).days
             if 0 < delta <= days:
-                emp = await db.employees.find_one({"employee_id": event.get("emp_code")}, {"_id": 0, "first_name": 1, "last_name": 1, "department": 1})
+                emp = await db.employees.find_one(
+                    {"$or": [{"employee_id": event.get("emp_code")}, {"emp_code": event.get("emp_code")}]},
+                    {"_id": 0, "first_name": 1, "last_name": 1, "department": 1}
+                )
                 if emp:
                     event["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
                     event["department"] = emp.get("department", "")
+                else:
+                    event["employee_name"] = event.get("emp_code", "Unknown")
                 event["days_until"] = delta
                 event["upcoming_date"] = this_year_date.strftime("%Y-%m-%d")
                 upcoming.append(event)
