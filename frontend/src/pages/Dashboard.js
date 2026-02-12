@@ -51,6 +51,7 @@ const Dashboard = () => {
   const [celebrationTheme, setCelebrationTheme] = useState(null);
   const [tourStatus, setTourStatus] = useState(null);
   const [remoteLoading, setRemoteLoading] = useState(false);
+  const [tourAttendanceCheck, setTourAttendanceCheck] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
