@@ -188,6 +188,26 @@ const Dashboard = () => {
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
+  const handleMarkTourAttendance = async (employeeId, status) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`${API_URL}/travel/mark-tour-attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({ employee_id: employeeId, date: today, status }),
+      });
+      if (res.ok) {
+        toast.success(`Marked as ${status}`);
+        setTourAttendanceCheck(prev => prev ? ({
+          ...prev,
+          unchecked_employees: prev.unchecked_employees.filter(e => e.employee_id !== employeeId),
+          unchecked_count: prev.unchecked_count - 1,
+        }) : null);
+      }
+    } catch { toast.error('Failed'); }
+  };
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
