@@ -99,6 +99,9 @@ const TourManagementPage = () => {
       if (response.ok) {
         setFieldEmployees(await response.json());
       }
+      // Also fetch overrides
+      const overrideRes = await fetch(`${API_URL}/travel/remote-checkin-overrides`, { credentials: 'include', headers: getAuthHeaders() });
+      if (overrideRes.ok) setOverrides(await overrideRes.json());
     } catch (error) {
       console.error('Error fetching field employees:', error);
     }
