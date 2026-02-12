@@ -192,6 +192,22 @@ async def update_travel_request(request_id: str, data: dict, request: Request):
     return {"message": "Request updated"}
 
 
+@router.put("/requests/{request_id}/cancel")
+async def cancel_travel_request(request_id: str, request: Request):
+    """Cancel own pending tour request"""
+    user = await get_current_user(request)
+    travel_req = await db.travel_requests.find_one({"request_id": request_id}, {"_id": 0})
+    if not travel_req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if travel_req.get("employee_id") != user.get("employee_id"):
+        raise HTTPException(status_code=403, detail="Can only cancel your own requests")
+    if travel_req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Can only cancel pending requests")
+    
+    await db.travel_requests.update_one({"request_id": request_id}, {"$set": {"status": "cancelled"}})
+    return {"message": "Tour request cancelled"}
+
+
 @router.put("/requests/{request_id}/approve")
 async def approve_travel_request(request_id: str, data: dict, request: Request):
     """Approve travel request"""
