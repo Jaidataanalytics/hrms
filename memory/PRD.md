@@ -1,65 +1,64 @@
 # Sharda HR - Product Requirements Document
 
-## Original Problem Statement
-Modern HR management platform with premium UI, mobile app support, and push notifications.
-
 ## Authentication
-- JWT + Emergent Google Auth
 - Admin: admin@shardahr.com / Admin@123 | Employee: employee@shardahr.com / Employee@123
 
 ## Tech Stack
-- Frontend: React, TailwindCSS, Shadcn/UI, Framer Motion, Lucide icons, Capacitor
-- Backend: FastAPI, Motor (async MongoDB), openpyxl, reportlab
-- Mobile: Capacitor 6 (Android WebView wrapper), Firebase FCM
-- 3rd Party: emergentintegrations, Custom Biometric API, Emergent Google Auth
+- Frontend: React, TailwindCSS, Shadcn/UI, Framer Motion, Capacitor 6
+- Backend: FastAPI, Motor (async MongoDB)
+- Mobile: Capacitor (Android WebView), Firebase FCM ready
 
 ---
 
-## What's Been Implemented
+## Implemented (Feb 12, 2026)
 
-### Mobile App Setup (NEW - Feb 11, 2026)
-- Capacitor 6 configured for Android (`com.shardahr.app`)
-- Backend URL points to `https://shardahrms.com`
-- Mobile bottom navigation: Home, Attendance, Leave, Helpdesk, More
-- Hamburger menu opens full sidebar for accessing all pages
-- Native plugins: Geolocation, Push Notifications, Status Bar, Splash Screen
-- `nativeServices.js` — abstraction layer for push/GPS with web fallback
-- Build guide at `frontend/MOBILE_BUILD_GUIDE.md`
+### Bug Fixes
+- **Expense receipt upload** — was non-functional div, now has actual file input with base64 upload
+- **Remote check-in data mismatch** — Dashboard sent `location.lat/lng`, backend expected `latitude/longitude` — fixed
+- **Meeting notifications** — looked up `user_id` on employee record (doesn't exist), now correctly looks up users collection by `employee_id`
+- **Task assignment notifications** — added notification to assignee when task is created by someone else
+- **Payroll hidden from employees** — removed from employee sidebar, HR-only
 
-### Push Notification Backend (NEW - Feb 11, 2026)
-- `/api/push/register-token` — register FCM device token
-- `/api/push/unregister-token` — remove token on logout
-- `send_push_to_user()` / `send_push_to_employee()` — helper functions
-- Ready for Firebase FCM integration (needs `FIREBASE_SERVER_KEY` in .env)
+### Two-Step Leave Approval (Dept Head → HR)
+- Leave applications now route to department head first, then HR
+- `dept_head_status` and `hr_status` tracked separately
+- Notifications sent to dept head on application
 
-### Light Glass-Morphism UI
-- Frosted glass cards with backdrop-blur on light background
-- Bold hover animations (3px lift, glow effects)
-- Neon glow on primary buttons
-- Glass dialogs, tabs, dropdowns, inputs
-- Dark sidebar as contrast anchor
+### Compensatory Off (CO) System
+- `POST /api/co-requests` — Employee requests CO for worked weekends/holidays
+- Two-step approval (dept head → HR)
+- On HR approval, CO days auto-added to leave balance
+- Cancel own pending CO requests
 
-### Employee Features
-- Sidebar access: Helpdesk, SOPs, Training, Tour Management
-- Remote check-in dashboard shortcut with GPS
-- Auth headers fix for cross-domain (11 pages patched)
+### Employee Cancel/Edit Pending Requests
+- `PUT /api/leave/{id}/cancel` — Cancel pending leave
+- `PUT /api/leave/{id}/edit` — Edit pending leave (dates, reason)
+- `PUT /api/travel/requests/{id}/cancel` — Cancel pending tour
+- `PUT /api/expenses/{id}/cancel` — Cancel pending expense
 
-### Previous: Helpdesk Phase 2, Celebrations, Attendance fixes, etc.
+### HR Remote Check-in Override
+- `POST /api/travel/remote-checkin-override` — Allow check-in for employee(s) or department for a day
+- Integrated into remote check-in eligibility check
+- Shows in `my-active-tour` status
+
+### Auto User Creation on Employee Add
+- Single employee creation now auto-creates user with `Welcome@123` default password
+- `must_change_password: true` forces password change on first login
+
+### Previous: Mobile bottom nav, Capacitor setup, Glass-morphism UI, Helpdesk Phase 2, etc.
 
 ---
 
-## Pending Setup (User Action Required)
-1. **Firebase project** — Create at console.firebase.google.com, get `google-services.json` + Server Key
-2. **Set `FIREBASE_SERVER_KEY`** in backend `.env`
-3. **Build APK** — Follow `MOBILE_BUILD_GUIDE.md` (requires Android Studio on local machine)
-4. **Redeploy** — CORS fix for custom domain
+## Still Pending (Next Session)
+### P0
+- [ ] **Login fix for asmbihar@shardadiesels.in** — user not in DB, needs re-import
+- [ ] **Frontend UI for CO requests** — backend done, need page/tab in Leave section
+- [ ] **Frontend UI for cancel/edit buttons** on leave, tour, expense pages
+- [ ] **Frontend UI for HR remote override** in Tour Management page
+- [ ] **Salary calculation fixes** — tour days count as present, LOP deduction for no-balance leaves
+- [ ] **Tour attendance popup** — daily check for unrecorded tour attendance
 
-## Prioritized Backlog
 ### P1
-- [ ] Wire push notifications into existing event handlers (leave approved, announcements, etc.)
-- [ ] Production deployment
+- [ ] Wire push notifications into event handlers
 - [ ] Admin "Unknown" name in meeting analytics
-
-### P2
-- [ ] Bulk import, Helpdesk Phase 3, employee deduplication
 - [ ] HelpdeskPage.js refactoring
