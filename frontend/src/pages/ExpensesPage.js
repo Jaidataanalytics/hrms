@@ -59,6 +59,7 @@ const ExpensesPage = () => {
   const [form, setForm] = useState({
     title: '', category: 'travel', amount: '', expense_date: '', description: ''
   });
+  const [receiptFile, setReceiptFile] = useState(null);
   const [filterEmployee, setFilterEmployee] = useState('all');
   const [employees, setEmployees] = useState([]);
   const [selectedExpense, setSelectedExpense] = useState(null);
