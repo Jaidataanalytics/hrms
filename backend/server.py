@@ -821,6 +821,30 @@ async def create_employee(emp_data: EmployeeCreate, request: Request):
     
     await db.employees.insert_one(doc)
     
+    # Auto-create user account with default password
+    default_password = "Welcome@123"
+    existing_user = await db.users.find_one({"email": emp_data.email})
+    if not existing_user:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        hashed_pw = hash_password(default_password)
+        user_doc = {
+            "user_id": user_id,
+            "email": emp_data.email,
+            "password": hashed_pw,
+            "password_hash": hashed_pw,
+            "name": f"{emp_data.first_name} {emp_data.last_name}".strip(),
+            "role": "employee",
+            "roles": ["employee"],
+            "permissions": [],
+            "employee_id": employee.employee_id,
+            "department_id": emp_data.department_id,
+            "is_active": True,
+            "must_change_password": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(user_doc)
+        logger.info(f"Auto-created user account for {emp_data.email} (must change password on first login)")
+    
     await log_audit("CREATE", "employee", "employee", employee.employee_id,
                    user["user_id"], user.get("name", ""), new_value=emp_data.model_dump(), request=request)
     
