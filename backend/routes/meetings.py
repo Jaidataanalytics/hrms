@@ -213,10 +213,11 @@ async def create_meeting(data: dict, request: Request):
     
     # Send notifications to participants
     for pid in meeting.get("participants", []):
-        emp = await db.employees.find_one({"employee_id": pid}, {"_id": 0})
-        if emp and emp.get("user_id"):
+        # Look up user by employee_id
+        participant_user = await db.users.find_one({"employee_id": pid}, {"_id": 0, "user_id": 1})
+        if participant_user:
             await create_notification(
-                emp["user_id"],
+                participant_user["user_id"],
                 "Meeting Invitation",
                 f"You've been invited to: {meeting['subject']} on {meeting['meeting_date']} at {meeting['start_time']}",
                 "info", "meetings",
