@@ -119,11 +119,57 @@ const LeavePage = () => {
         const allBalancesRes = await fetch(`${API_URL}/leave/balances/all`, { credentials: 'include', headers: authHeaders });
         if (allBalancesRes.ok) setAllBalances(await allBalancesRes.json());
       }
+
+      // Fetch CO requests
+      const coRes = await fetch(`${API_URL}/co-requests`, { credentials: 'include', headers: authHeaders });
+      if (coRes.ok) setCoRequests(await coRes.json());
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelLeave = async (leaveId) => {
+    try {
+      const res = await fetch(`${API_URL}/leave/${leaveId}/cancel`, {
+        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+      });
+      if (res.ok) { toast.success('Leave request cancelled'); fetchData(); }
+      else { const e = await res.json(); toast.error(e.detail || 'Failed to cancel'); }
+    } catch { toast.error('Failed to cancel'); }
+  };
+
+  const handleSubmitCO = async () => {
+    const dates = coForm.worked_dates.split(',').map(d => d.trim()).filter(Boolean);
+    if (dates.length === 0) { toast.error('Enter at least one worked date'); return; }
+    try {
+      const res = await fetch(`${API_URL}/co-requests`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include', body: JSON.stringify({ worked_dates: dates, reason: coForm.reason }),
+      });
+      if (res.ok) { toast.success('CO request submitted'); setShowCoDialog(false); setCoForm({ worked_dates: '', reason: '' }); fetchData(); }
+      else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
+    } catch { toast.error('Failed to submit'); }
+  };
+
+  const handleApproveCO = async (coId) => {
+    try {
+      const res = await fetch(`${API_URL}/co-requests/${coId}/approve`, {
+        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+      });
+      if (res.ok) { const d = await res.json(); toast.success(d.message); fetchData(); }
+    } catch { toast.error('Failed'); }
+  };
+
+  const handleRejectCO = async (coId) => {
+    try {
+      await fetch(`${API_URL}/co-requests/${coId}/reject`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include', body: JSON.stringify({ reason: 'Rejected' }),
+      });
+      toast.success('CO rejected'); fetchData();
+    } catch { toast.error('Failed'); }
   };
 
   const handleApplyLeave = async () => {
