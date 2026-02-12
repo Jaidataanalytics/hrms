@@ -555,6 +555,9 @@ const LeavePage = () => {
               <Badge className="ml-2 h-5 px-1.5">{myRequests.filter(r => r.status === 'pending').length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="co-requests" data-testid="tab-co-requests">
+            CO Requests
+          </TabsTrigger>
           {isManager && (
             <TabsTrigger value="approvals" data-testid="tab-approvals">
               Pending Approvals
