@@ -108,13 +108,24 @@ const ExpensesPage = () => {
     }
 
     try {
+      let receipt_data = null;
+      if (receiptFile) {
+        const reader = new FileReader();
+        receipt_data = await new Promise((resolve) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(receiptFile);
+        });
+      }
+
       const response = await fetch(`${API_URL}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({
           ...form,
-          amount: parseFloat(form.amount)
+          amount: parseFloat(form.amount),
+          receipt_data,
+          receipt_filename: receiptFile?.name
         })
       });
 
@@ -122,6 +133,7 @@ const ExpensesPage = () => {
         toast.success('Expense claim submitted');
         setShowCreate(false);
         setForm({ title: '', category: 'travel', amount: '', expense_date: '', description: '' });
+        setReceiptFile(null);
         fetchData();
       } else {
         const error = await response.json();
