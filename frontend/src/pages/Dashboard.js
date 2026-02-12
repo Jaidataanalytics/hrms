@@ -341,6 +341,40 @@ const Dashboard = () => {
         </motion.div>
       )}
 
+      {/* Tour Attendance Alert for HR */}
+      {isHR && tourAttendanceCheck?.unchecked_employees?.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="border-amber-200 bg-amber-50/50" data-testid="tour-attendance-alert">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+                <p className="font-semibold text-sm text-amber-800">Tour Employees Without Check-in Today ({tourAttendanceCheck.unchecked_count})</p>
+              </div>
+              <div className="space-y-2">
+                {tourAttendanceCheck.unchecked_employees.map(emp => (
+                  <div key={emp.employee_id} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-amber-100">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{emp.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {emp.is_field_employee ? 'Field Employee' : `Tour: ${emp.tour_purpose || ''} (${emp.tour_location || ''})`}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleMarkTourAttendance(emp.employee_id, 'present')} data-testid={`mark-present-${emp.employee_id}`}>
+                        Present
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200" onClick={() => handleMarkTourAttendance(emp.employee_id, 'absent')} data-testid={`mark-absent-${emp.employee_id}`}>
+                        Absent
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Stats Cards - Show for HR/Admin */}
       {isHR && stats && (
         <motion.div 
