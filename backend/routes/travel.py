@@ -553,11 +553,21 @@ async def get_my_active_tour(request: Request):
         "date": today
     }, {"_id": 0}).to_list(20)
     
+    # Check for HR override
+    has_override = await db.remote_checkin_overrides.find_one({
+        "date": today,
+        "$or": [
+            {"type": "employee", "employee_ids": employee_id},
+            {"type": "department", "department_id": employee.get("department_id") if employee else None}
+        ]
+    })
+    
     return {
         "has_active_tour": active_tour is not None,
         "tour": active_tour,
         "is_field_employee": is_field_employee,
-        "can_remote_checkin": active_tour is not None or is_field_employee,
+        "has_override": has_override is not None,
+        "can_remote_checkin": active_tour is not None or is_field_employee or has_override is not None,
         "todays_checkins": todays_checkins
     }
 
