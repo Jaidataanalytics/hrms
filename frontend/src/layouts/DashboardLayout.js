@@ -97,7 +97,6 @@ const DashboardLayout = () => {
     { name: 'My Calendar', path: '/dashboard/my-calendar', icon: CalendarDays },
     { name: 'Meetings', path: '/dashboard/meetings', icon: UsersRound },
     { name: 'Leave', path: '/dashboard/leave', icon: Calendar },
-    { name: 'Payroll', path: '/dashboard/payroll', icon: CreditCard },
     { name: 'Performance', path: '/dashboard/performance', icon: Target },
     { name: 'Announcements', path: '/dashboard/announcements', icon: Megaphone },
     { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
@@ -107,9 +106,10 @@ const DashboardLayout = () => {
   ];
 
   const hrMenuItems = [{ name: 'Employees', path: '/dashboard/employees', icon: Users }];
+  const hrOnlyItems = [{ name: 'Payroll', path: '/dashboard/payroll', icon: CreditCard }];
 
   const menuItems = isHR 
-    ? [baseMenuItems[0], ...hrMenuItems, ...baseMenuItems.slice(1)] 
+    ? [baseMenuItems[0], ...hrMenuItems, ...baseMenuItems.slice(1, 4), ...hrOnlyItems, ...baseMenuItems.slice(4)] 
     : baseMenuItems;
 
   const adminMenuItems = [
