@@ -617,6 +617,16 @@ const LeavePage = () => {
                               {request.from_date} to {request.to_date} ({request.days} {request.days === 1 ? 'day' : 'days'})
                             </p>
                             <p className="text-xs text-slate-400 mt-1">{request.reason}</p>
+                            {request.dept_head_status && request.dept_head_status !== 'not_required' && (
+                              <div className="flex gap-2 mt-1.5">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${request.dept_head_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  Dept Head: {request.dept_head_status}
+                                </span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${request.hr_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  HR: {request.hr_status || 'pending'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
