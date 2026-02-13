@@ -686,9 +686,22 @@ tbody td {
 }
 .celebration-theme-birthday .stat-card {
     border-top: 2px solid rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(255,251,235,0.6), rgba(254,243,199,0.3)) !important;
 }
 .celebration-theme-birthday .stat-card:hover {
-    box-shadow: 0 4px 24px -4px rgba(245, 158, 11, 0.15);
+    box-shadow: 0 4px 24px -4px rgba(245, 158, 11, 0.2);
+    border-top-color: rgba(245, 158, 11, 0.6);
+}
+.celebration-theme-birthday .dashboard-welcome {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.celebration-theme-birthday .quick-action-card {
+    border-color: rgba(245, 158, 11, 0.15);
+}
+.celebration-theme-birthday .quick-action-card:hover {
+    border-color: rgba(245, 158, 11, 0.4);
+    box-shadow: 0 4px 16px -4px rgba(245, 158, 11, 0.15);
 }
 
 /* Work Anniversary Theme — blue/indigo accents */
@@ -698,9 +711,22 @@ tbody td {
 }
 .celebration-theme-work_anniversary .stat-card {
     border-top: 2px solid rgba(59, 130, 246, 0.3);
+    background: linear-gradient(135deg, rgba(239,246,255,0.6), rgba(219,234,254,0.3)) !important;
 }
 .celebration-theme-work_anniversary .stat-card:hover {
-    box-shadow: 0 4px 24px -4px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 4px 24px -4px rgba(59, 130, 246, 0.2);
+    border-top-color: rgba(59, 130, 246, 0.6);
+}
+.celebration-theme-work_anniversary .dashboard-welcome {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+.celebration-theme-work_anniversary .quick-action-card {
+    border-color: rgba(59, 130, 246, 0.15);
+}
+.celebration-theme-work_anniversary .quick-action-card:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 16px -4px rgba(59, 130, 246, 0.15);
 }
 
 /* Marriage Anniversary Theme — rose/pink accents */
@@ -710,9 +736,22 @@ tbody td {
 }
 .celebration-theme-marriage_anniversary .stat-card {
     border-top: 2px solid rgba(236, 72, 153, 0.3);
+    background: linear-gradient(135deg, rgba(253,242,248,0.6), rgba(252,231,243,0.3)) !important;
 }
 .celebration-theme-marriage_anniversary .stat-card:hover {
-    box-shadow: 0 4px 24px -4px rgba(236, 72, 153, 0.15);
+    box-shadow: 0 4px 24px -4px rgba(236, 72, 153, 0.2);
+    border-top-color: rgba(236, 72, 153, 0.6);
+}
+.celebration-theme-marriage_anniversary .dashboard-welcome {
+    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%);
+    border: 1px solid rgba(236, 72, 153, 0.2);
+}
+.celebration-theme-marriage_anniversary .quick-action-card {
+    border-color: rgba(236, 72, 153, 0.15);
+}
+.celebration-theme-marriage_anniversary .quick-action-card:hover {
+    border-color: rgba(236, 72, 153, 0.4);
+    box-shadow: 0 4px 16px -4px rgba(236, 72, 153, 0.15);
 }
 
 /* Custom Event Theme — emerald/teal accents */
@@ -722,9 +761,22 @@ tbody td {
 }
 .celebration-theme-custom .stat-card {
     border-top: 2px solid rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, rgba(236,253,245,0.6), rgba(209,250,229,0.3)) !important;
 }
 .celebration-theme-custom .stat-card:hover {
-    box-shadow: 0 4px 24px -4px rgba(16, 185, 129, 0.15);
+    box-shadow: 0 4px 24px -4px rgba(16, 185, 129, 0.2);
+    border-top-color: rgba(16, 185, 129, 0.6);
+}
+.celebration-theme-custom .dashboard-welcome {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.celebration-theme-custom .quick-action-card {
+    border-color: rgba(16, 185, 129, 0.15);
+}
+.celebration-theme-custom .quick-action-card:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 16px -4px rgba(16, 185, 129, 0.15);
 }
 
 @keyframes shimmerBar {
