@@ -151,12 +151,13 @@ def calculate_earned_days(
     Formula:
     Earned Days = Office Days + Paid Sundays + Paid Holidays + Paid Leave Days
                 + (WFH Days × WFH%) + (Half Days × 0.5)
-                + Second Saturdays (counted as 1.0 - fully paid)
+                + Unattended 2nd Saturdays (1.0 each - fully paid)
                 - Late Deduction Days
 
     NOTE: 2nd Saturday is a half working day but FULLY PAID.
-    It is already included in office_days as 0.5 if employee attended,
-    so we add the missing 0.5 to make it 1.0 full paid day.
+    - If employee attended: already counted as 1.0 in office_days. No bonus needed.
+    - If employee didn't attend: second_saturday_count has the unattended count.
+      We add 1.0 per unattended 2nd Sat for full pay.
 
     Earned Days never exceeds calendar days.
     """
@@ -165,7 +166,7 @@ def calculate_earned_days(
 
     total = (office_days + paid_sundays + paid_holidays + paid_leave_days
              + wfh_earned + half_day_earned
-             + second_saturday_count * 0.5  # Add back the 0.5 to make 2nd Sat fully paid
+             + second_saturday_count * 1.0  # Unattended 2nd Sats: fully paid
              - late_deduction_days)
 
     # Cap at calendar days, floor at 0
