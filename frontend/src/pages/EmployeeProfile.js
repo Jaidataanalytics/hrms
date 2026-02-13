@@ -968,6 +968,16 @@ const EmployeeProfile = () => {
               <h4 className="font-medium mb-3 text-slate-700">Personal Information</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>Biometric Code</Label>
+                  <Input
+                    value={editForm.emp_code || ''}
+                    onChange={(e) => setEditForm({ ...editForm, emp_code: e.target.value })}
+                    placeholder="e.g. F0001, S0019"
+                    data-testid="edit-emp-code"
+                  />
+                  <p className="text-xs text-muted-foreground">Code used to match with biometric device</p>
+                </div>
+                <div className="space-y-2">
                   <Label>First Name</Label>
                   <Input
                     value={editForm.first_name || ''}
