@@ -2386,7 +2386,7 @@ async def export_payroll_to_excel(payroll_id: str, request: Request):
         ws.cell(row=total_row, column=2, value=f"{len(export_data)} Employees")
         
         # Sum columns for totals
-        sum_cols = [3, 4, 5, 6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29, 30]
+        sum_cols = [3, 4, 5, 6, 7, 8, 9, 10, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]
         for col in sum_cols:
             total = sum(row.get(headers[col-1], 0) or 0 for row in export_data)
             cell = ws.cell(row=total_row, column=col, value=total)
