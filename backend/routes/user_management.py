@@ -176,7 +176,7 @@ async def update_user(user_id: str, data: dict, request: Request):
 
 @router.delete("/{user_id}")
 async def delete_user(user_id: str, request: Request):
-    """Delete user (Admin only) - Soft delete"""
+    """Delete user (Admin only) - Permanent delete"""
     current_user = await get_current_user(request)
     if current_user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -194,27 +194,11 @@ async def delete_user(user_id: str, request: Request):
     if existing.get("role") == "super_admin" and current_user.get("role") != "super_admin":
         raise HTTPException(status_code=403, detail="Only super admin can delete super admin users")
     
-    # Soft delete - mark as inactive and append timestamp to email
-    await db.users.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "is_active": False,
-            "email": f"{existing['email']}_deleted_{datetime.now().timestamp()}",
-            "deleted_at": datetime.now(timezone.utc).isoformat(),
-            "deleted_by": current_user["user_id"]
-        }}
-    )
+    # Permanently delete user
+    await db.users.delete_one({"user_id": user_id})
     
-    # Also deactivate employee if linked
-    if existing.get("employee_id"):
-        await db.employees.update_one(
-            {"employee_id": existing["employee_id"]},
-            {"$set": {
-                "employment_status": "terminated",
-                "is_active": False,
-                "termination_date": datetime.now(timezone.utc).date().isoformat()
-            }}
-        )
+    # Remove any active sessions
+    await db.user_sessions.delete_many({"user_id": user_id})
     
     return {"message": "User deleted successfully"}
 
