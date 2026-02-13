@@ -49,6 +49,18 @@ On-the-fly normalization during payroll processing:
 - Fixed bare `except` clauses in server.py (4 instances) and bulk_import.py (2 instances)
 - Changed to `except Exception:` or `except (ValueError, TypeError):`
 
+### Biometric Employee Code Feature (Feb 13, 2026)
+- Added `emp_code` to `EmployeeCreate` model so HR can set biometric code during manual employee creation
+- Added "Biometric Code" input field to Add Employee dialog (EmployeeDirectory.js)
+- Added "Biometric Code" input field to Edit Employee dialog (EmployeeProfile.js)
+- Field is optional, with placeholder "e.g. F0001, S0019" and helper text
+
+### Celebration Dashboard Theming (Feb 13, 2026)
+- Enhanced CSS for celebration-based dashboard theming (birthday, work anniversary, marriage anniversary, custom events)
+- Added themed backgrounds to stat-cards, dashboard-welcome section, and quick-action-card
+- Added `dashboard-welcome` class to Dashboard welcome section, `quick-action-card` class to quick actions card
+- Themes include: amber/gold (birthday), blue/indigo (work anniversary), rose/pink (marriage anniversary), emerald/teal (custom)
+
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
 - Token-based auth across all pages
