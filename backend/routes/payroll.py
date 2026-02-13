@@ -298,6 +298,26 @@ async def process_payroll(payroll_id: str, request: Request):
         # Import payroll helpers at the start
         from routes.payroll_v2 import calculate_sunday_pay_status, get_working_days_in_month, is_second_saturday
         
+        # Status normalization mapping (fix corrupted/truncated statuses)
+        STATUS_NORMALIZATION = {
+            "t": "tour",
+            "p": "present",
+            "a": "absent",
+            "l": "leave",
+            "w": "wfh",
+            "h": "holiday",
+            "hd": "half_day",
+            "new year": "holiday",
+            "newyear": "holiday",
+        }
+        
+        # Normalize attendance statuses before processing
+        for att in attendance:
+            status = att.get("status", "").lower().strip()
+            if status in STATUS_NORMALIZATION:
+                att["status"] = STATUS_NORMALIZATION[status]
+                att["original_status"] = status  # Keep original for audit
+        
         # Identify 2nd Saturday dates for this month
         second_saturday_dates = set()
         for day in range(1, total_days + 1):
