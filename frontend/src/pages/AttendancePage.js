@@ -264,6 +264,12 @@ const AttendancePage = () => {
       toast.error('Please provide a reason for the edit');
       return;
     }
+    
+    // Validate leave type when status is leave
+    if (gridEditForm.status === 'leave' && !gridEditForm.leave_type) {
+      toast.error('Please select a leave type');
+      return;
+    }
 
     try {
       let response;
