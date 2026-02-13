@@ -208,13 +208,13 @@ async def process_payroll(payroll_id: str, request: Request):
     # Merge config and rules
     payroll_config = {
         "epf_employee_percentage": float((payroll_rules or {}).get("epf_employee_percentage", 12.0)),
-        "epf_wage_ceiling": float((config or {}).get("pf_wage_ceiling", 15000)),
+        "epf_max_deduction": float((payroll_rules or {}).get("epf_max_deduction", 15000)),
         "esi_employee_percentage": float((payroll_rules or {}).get("esi_employee_percentage", 0.75)),
         "esi_wage_ceiling": float((config or {}).get("esi_wage_ceiling", 21000)),
         "sewa_percentage": float((payroll_rules or {}).get("sewa_percentage", 2.0)),
         "wfh_pay_percentage": float((payroll_rules or {}).get("wfh_pay_percentage", 50.0)),
         "late_deduction_enabled": (payroll_rules or {}).get("late_deduction_enabled", True),
-        "late_count_threshold": int((payroll_rules or {}).get("late_count_threshold", 2)),
+        "late_count_threshold": int((payroll_rules or {}).get("late_count_threshold", 3)),
     }
     
     # Get salary data from BOTH collections and merge
