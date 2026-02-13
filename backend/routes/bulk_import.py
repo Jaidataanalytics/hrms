@@ -859,17 +859,39 @@ async def import_attendance(
                         if status_val:
                             date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
                             
-                            # Map status codes
+                            # Map status codes - comprehensive mapping to prevent truncated values
                             status_map = {
                                 "P": "present",
+                                "PRESENT": "present",
                                 "A": "absent",
+                                "ABSENT": "absent",
                                 "L": "leave",
+                                "LEAVE": "leave",
                                 "H": "holiday",
+                                "HOLIDAY": "holiday",
+                                "T": "tour",  # Added - was missing!
+                                "TOUR": "tour",
                                 "WFH": "wfh",
+                                "W": "wfh",
                                 "W/O": "weekly_off",
-                                "HD": "half_day"
+                                "WEEKLY_OFF": "weekly_off",
+                                "HD": "half_day",
+                                "HALF_DAY": "half_day",
+                                "HALF DAY": "half_day",
+                                "NEW YEAR": "holiday",
+                                "NEWYEAR": "holiday",
+                                "SUNDAY": "sunday",
+                                "SUN": "sunday",
+                                "LOP": "lop",
+                                "LWP": "lwp"
                             }
                             status = status_map.get(status_val, status_val.lower())
+                            
+                            # Final validation - ensure no single-letter statuses slip through
+                            if len(status) == 1:
+                                # Likely a truncation issue - try to map common single letters
+                                single_letter_map = {"p": "present", "a": "absent", "l": "leave", "h": "holiday", "t": "tour", "w": "wfh"}
+                                status = single_letter_map.get(status.lower(), status)
                             
                             attendance_doc = {
                                 "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
