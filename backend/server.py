@@ -2238,6 +2238,7 @@ async def add_manual_attendance(
         "late_minutes": data.get("late_minutes", 0),
         "overtime_hours": 0,
         "remarks": data.get("remarks"),
+        "leave_type": data.get("leave_type", ""),  # Added leave_type field
         "source": "manual",
         "is_manually_edited": True,
         "created_by": user.get("user_id"),
@@ -2253,10 +2254,81 @@ async def add_manual_attendance(
         }]
     }
     
+    # Handle leave-specific logic for new records
+    new_status = data.get("status", "").lower()
+    leave_type = data.get("leave_type", "").upper() if data.get("leave_type") else ""
+    create_leave_request = data.get("create_leave_request", False)
+    deduct_balance = data.get("deduct_balance", False)
+    
+    leave_request_created = False
+    balance_deducted = False
+    
+    if new_status == "leave" and (create_leave_request or deduct_balance):
+        leave_type_map = {
+            "CL": "lt_casual",
+            "SL": "lt_sick", 
+            "EL": "lt_earned",
+            "ML": "lt_maternity",
+            "PL": "lt_privilege",
+            "LOP": "lt_lop"
+        }
+        leave_type_id = leave_type_map.get(leave_type, "lt_casual")
+        
+        if create_leave_request:
+            leave_request = {
+                "leave_request_id": f"lr_{uuid.uuid4().hex[:12]}",
+                "employee_id": employee_id,
+                "leave_type_id": leave_type_id,
+                "from_date": date,
+                "to_date": date,
+                "duration": 1,
+                "reason": data.get("edit_reason", "Backdated leave - marked by HR"),
+                "status": "approved",
+                "dept_head_status": "approved",
+                "hr_status": "approved",
+                "approved_by": user.get("user_id"),
+                "approved_by_name": user.get("name"),
+                "approved_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_backdated": True,
+                "backdated_by": user.get("user_id"),
+                "backdated_by_name": user.get("name"),
+                "original_attendance_id": attendance["attendance_id"]
+            }
+            await db.leave_requests.insert_one(leave_request)
+            leave_request_created = True
+            attendance["leave_request_id"] = leave_request["leave_request_id"]
+        
+        if deduct_balance and leave_type and leave_type != "LOP":
+            balance = await db.leave_balances.find_one({
+                "employee_id": employee_id,
+                "leave_type_id": leave_type_id
+            })
+            
+            if balance and balance.get("balance", 0) >= 1:
+                await db.leave_balances.update_one(
+                    {"employee_id": employee_id, "leave_type_id": leave_type_id},
+                    {
+                        "$inc": {"balance": -1, "used": 1},
+                        "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+                    }
+                )
+                balance_deducted = True
+                attendance["balance_deducted"] = True
+                attendance["balance_deducted_from"] = leave_type_id
+    
     await db.attendance.insert_one(attendance)
     attendance.pop("_id", None)
     
-    return {"message": "Attendance record created", "attendance": attendance}
+    response = {"message": "Attendance record created", "attendance": attendance}
+    
+    if leave_request_created:
+        response["leave_request_created"] = True
+    if balance_deducted:
+        response["balance_deducted"] = True
+        response["deducted_from"] = leave_type
+    
+    return response
 
 
 @api_router.get("/attendance/{attendance_id}/history")
