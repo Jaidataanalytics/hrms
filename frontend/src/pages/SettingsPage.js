@@ -321,6 +321,196 @@ const SettingsPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Dev Tools Tab - Admin Only */}
+        {isAdmin && (
+          <TabsContent value="devtools">
+            <div className="grid gap-6">
+              {/* Sync from Deployed */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    <Cloud className="w-5 h-5 text-primary" />
+                    Sync from Deployed Environment
+                  </CardTitle>
+                  <CardDescription>
+                    Pull data from the production/deployed environment to this preview instance.
+                    Useful for testing payroll calculations with real data.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-amber-800">Warning</p>
+                        <p className="text-sm text-amber-700">
+                          This will replace local preview data with data from the deployed environment.
+                          The deployed database will NOT be affected.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sync-email">Deployed Admin Email</Label>
+                      <Input
+                        id="sync-email"
+                        type="email"
+                        value={syncCredentials.email}
+                        onChange={(e) => setSyncCredentials(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="admin@company.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sync-password">Deployed Admin Password</Label>
+                      <Input
+                        id="sync-password"
+                        type="password"
+                        value={syncCredentials.password}
+                        onChange={(e) => setSyncCredentials(prev => ({ ...prev, password: e.target.value }))}
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button 
+                      onClick={handleSyncFromDeployed}
+                      disabled={syncing}
+                      className="gap-2"
+                      data-testid="sync-all-btn"
+                    >
+                      {syncing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      Sync All Data
+                    </Button>
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={handleSyncAttendanceOnly}
+                      disabled={syncing}
+                      className="gap-2"
+                      data-testid="sync-attendance-btn"
+                    >
+                      {syncing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Database className="w-4 h-4" />
+                      )}
+                      Sync Attendance Only (Jan 2026)
+                    </Button>
+                  </div>
+
+                  {/* Sync Results */}
+                  {syncResults && (
+                    <div className={`rounded-lg p-4 ${
+                      syncResults.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                    }`}>
+                      <div className="flex items-start gap-2">
+                        {syncResults.success ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                          <p className={`font-medium ${syncResults.success ? 'text-green-800' : 'text-red-800'}`}>
+                            {syncResults.success ? 'Sync Completed' : 'Sync Completed with Issues'}
+                          </p>
+                          
+                          {/* Show imported counts */}
+                          {syncResults.synced_collections && Object.keys(syncResults.synced_collections).length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              <p className="text-sm text-slate-700 font-medium">Imported:</p>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                {Object.entries(syncResults.synced_collections).map(([key, value]) => (
+                                  <div key={key} className="flex justify-between bg-white/50 px-2 py-1 rounded">
+                                    <span className="text-slate-600 capitalize">{key.replace(/_/g, ' ')}</span>
+                                    <span className="font-medium">{value.imported || 0}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Quick counts for attendance-only sync */}
+                          {syncResults.attendance_imported !== undefined && (
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex justify-between bg-white/50 px-2 py-1 rounded">
+                                <span>Employees</span>
+                                <span className="font-medium">{syncResults.employees_imported || 0}</span>
+                              </div>
+                              <div className="flex justify-between bg-white/50 px-2 py-1 rounded">
+                                <span>Attendance</span>
+                                <span className="font-medium">{syncResults.attendance_imported || 0}</span>
+                              </div>
+                              <div className="flex justify-between bg-white/50 px-2 py-1 rounded">
+                                <span>Salaries</span>
+                                <span className="font-medium">{syncResults.salaries_imported || 0}</span>
+                              </div>
+                              <div className="flex justify-between bg-white/50 px-2 py-1 rounded">
+                                <span>Holidays</span>
+                                <span className="font-medium">{syncResults.holidays_imported || 0}</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Show errors */}
+                          {syncResults.errors && syncResults.errors.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-sm text-red-700 font-medium">Errors:</p>
+                              <ul className="text-sm text-red-600 list-disc list-inside">
+                                {syncResults.errors.map((err, idx) => (
+                                  <li key={idx}>{err}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {syncResults.synced_at && (
+                            <p className="text-xs text-slate-500 mt-2">
+                              Synced at: {new Date(syncResults.synced_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Environment Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    <Database className="w-5 h-5 text-primary" />
+                    Environment Info
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-slate-500">Current Environment</p>
+                      <p className="font-medium text-slate-900">Preview</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-slate-500">API URL</p>
+                      <p className="font-medium text-slate-900 text-xs break-all">{API_URL}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg col-span-2">
+                      <p className="text-slate-500">Deployed URL (Source)</p>
+                      <p className="font-medium text-slate-900 text-xs">https://hr-calc-resolver.emergentagent.com</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
