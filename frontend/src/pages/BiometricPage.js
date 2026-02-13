@@ -396,7 +396,7 @@ const APIManagerPage = () => {
                 <div className="text-sm text-slate-600 space-y-2">
                   <p><strong>API URL:</strong> http://115.245.227.203:81</p>
                   <p><strong>Sync Frequency:</strong> Every 3 hours</p>
-                  <p><strong>Late Threshold:</strong> 09:45 AM</p>
+                  <p><strong>Late Threshold:</strong> 10:00 AM</p>
                 </div>
               </CardContent>
             </Card>
@@ -535,7 +535,7 @@ const APIManagerPage = () => {
                     <Clock className="w-5 h-5 text-purple-600 mt-0.5" />
                     <div>
                       <p className="font-medium">Recalculate Late Status</p>
-                      <p className="text-sm text-slate-600">Re-apply 09:45 late threshold to all records</p>
+                      <p className="text-sm text-slate-600">Re-apply 10:00 late threshold to all records</p>
                     </div>
                   </div>
                   <Button onClick={handleRecalculateLate} disabled={syncing} variant="outline" className="w-full border-purple-300 hover:bg-purple-100">
