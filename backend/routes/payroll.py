@@ -427,6 +427,7 @@ async def process_payroll(payroll_id: str, request: Request):
             "attendance": payslip_data["attendance"],
             "earnings": payslip_data["earnings"],
             "deductions": payslip_data["deductions"],
+            "validation": payslip_data["validation"],
             
             # Summary fields (for backwards compatibility)
             "working_days": total_days,
@@ -434,8 +435,14 @@ async def process_payroll(payroll_id: str, request: Request):
             "lwp_days": unpaid_leave_days,
             "paid_leave_days": paid_leave_days,
             "paid_days": payslip_data["attendance"]["total_earned_days"],
-            "basic": payslip_data["earnings"]["basic_da_earned"],
+            "basic": payslip_data["earnings"]["basic_earned"],
+            "da": payslip_data["earnings"]["da_earned"],
+            "basic_da": payslip_data["earnings"]["basic_da_earned"],
             "hra": payslip_data["earnings"]["hra_earned"],
+            "conveyance": payslip_data["earnings"]["conveyance_earned"],
+            "grade_pay": payslip_data["earnings"]["grade_pay_earned"],
+            "other_allowance": payslip_data["earnings"]["other_allowance_earned"],
+            "medical_allowance": payslip_data["earnings"]["medical_allowance_earned"],
             "special_allowance": payslip_data["earnings"]["other_allowance_earned"] + payslip_data["earnings"]["medical_allowance_earned"],
             "gross_salary": payslip_data["gross_salary"],
             "pf_employee": payslip_data["deductions"]["epf"],
