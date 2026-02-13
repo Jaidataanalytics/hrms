@@ -511,7 +511,7 @@ async def import_leave_balance(request: Request, file: UploadFile = File(...)):
             return 0.0
         try:
             return float(val)
-        except:
+        except (ValueError, TypeError):
             return 0.0
     
     for idx, row in enumerate(rows, start=header_row + 2 if header_row else 2):
@@ -1025,7 +1025,7 @@ async def import_salary(request: Request, file: UploadFile = File(...)):
                     return default
                 try:
                     return float(val) if isinstance(default, (int, float)) else str(val)
-                except:
+                except (ValueError, TypeError):
                     return default
         return row.get(key, default)
     
