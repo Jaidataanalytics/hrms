@@ -440,7 +440,7 @@ async def get_sync_status(request: Request):
         try:
             count = await db[collection_name].count_documents({})
             local_counts[name] = count
-        except:
+        except Exception:
             local_counts[name] = 0
     
     return {
