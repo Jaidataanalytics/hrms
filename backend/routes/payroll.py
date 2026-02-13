@@ -393,12 +393,12 @@ async def process_payroll(payroll_id: str, request: Request):
             for bal in leave_balances:
                 leave_type_id = bal.get("leave_type_id", "")
                 balance_map[leave_type_id] = {
-                    "balance": bal.get("balance", 0),
+                    "balance": bal.get("available", bal.get("balance", 0)),
                     "doc": bal
                 }
             
             # Priority order: EL → CL → SL
-            priority_order = ["lt_earned", "lt_casual", "lt_sick"]
+            priority_order = ["lt_el", "lt_cl", "lt_sl"]
             
             for sunday_info in sundays_as_leave:
                 sunday_date = sunday_info["date"]
@@ -415,7 +415,7 @@ async def process_payroll(payroll_id: str, request: Request):
                         await db.leave_balances.update_one(
                             {"employee_id": employee_id, "leave_type_id": leave_type_id},
                             {
-                                "$inc": {"balance": -1, "used": 1},
+                                "$inc": {"available": -1, "used": 1},
                                 "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
                             }
                         )
