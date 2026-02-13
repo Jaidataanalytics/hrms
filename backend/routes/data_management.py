@@ -1,13 +1,18 @@
-"""Data Management API Routes - Bulk Delete Operations"""
+"""Data Management API Routes - Bulk Delete Operations and Production Sync"""
 from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime, timezone
 from typing import Optional
 import uuid
+import httpx
+import os
 
 router = APIRouter(prefix="/data-management", tags=["Data Management"])
 
 # Import db from server.py - will be set up when router is included
 db = None
+
+# Deployed/Production URL - this is the source of truth
+DEPLOYED_URL = os.environ.get("DEPLOYED_API_URL", "https://hr-calc-resolver.emergentagent.com")
 
 def set_db(database):
     global db
@@ -25,6 +30,26 @@ async def verify_admin_access(request: Request):
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized - Admin/HR only")
     return user
+
+
+# Collections to sync from deployed environment
+SYNC_COLLECTIONS = {
+    "users": "users",
+    "employees": "employees",
+    "attendance": "attendance",
+    "leave_requests": "leave_requests",
+    "leave_balances": "leave_balances",
+    "leave_types": "leave_types",
+    "departments": "departments",
+    "payslips": "payslips",
+    "payroll_runs": "payroll_runs",
+    "payroll_config": "payroll_config",
+    "payroll_rules": "payroll_rules",
+    "employee_salaries": "employee_salaries",
+    "salary_structures": "salary_structures",
+    "holidays": "holidays",
+    "sewa_advances": "sewa_advances",
+}
 
 
 # Data type to collection mapping
