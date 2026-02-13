@@ -280,10 +280,18 @@ def process_employee_salary(
     total_fixed = r2(basic_fixed + da_fixed + hra_fixed + conveyance_fixed
                      + grade_pay_fixed + other_allowance_fixed + medical_allowance_fixed)
 
-    # Legacy fallback
+    # Legacy fallback: handle flat salary format (from sync/display data)
     if total_fixed <= 0:
-        total_fixed = r2(employee_salary.get("total_fixed", 0)) or r2(employee_salary.get("gross", 0))
-        basic_fixed = r2(employee_salary.get("basic", total_fixed * 0.4))
+        total_fixed = r2(
+            employee_salary.get("total_fixed", 0)
+            or employee_salary.get("gross", 0)
+            or employee_salary.get("gross_salary", 0)
+        )
+        basic_fixed = r2(
+            employee_salary.get("basic", 0)
+            or employee_salary.get("basic_salary", 0)
+            or total_fixed * 0.4
+        )
         da_fixed = r2(employee_salary.get("da", 0))
         hra_fixed = r2(employee_salary.get("hra", basic_fixed * 0.4))
         conveyance_fixed = r2(employee_salary.get("conveyance", 0))
