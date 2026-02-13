@@ -362,16 +362,17 @@ async def get_my_sops(request: Request):
     ).sort("created_at", -1).to_list(50)
     
     # Find SOPs where user is also involved (directly or via designation/department)
+    or_conditions = [{"also_involved": employee_id}]
+    if designation_id:
+        or_conditions.append({"designations": designation_id})
+    if department_id:
+        or_conditions.append({"departments": department_id})
+
     also_involved_query = {
         "is_active": True,
         "status": "published",
-        "main_responsible": {"$ne": employee_id},  # Exclude ones where they're main responsible
-        "$or": [
-            {"also_involved": employee_id},  # Directly assigned
-            {"designations": designation_id} if designation_id else {"_id": {"$exists": False}},
-            {"departments": department_id} if department_id else {"_id": {"$exists": False}},
-            {"designations": {"$size": 0}, "departments": {"$size": 0}, "also_involved": {"$size": 0}}  # For all
-        ]
+        "main_responsible": {"$ne": employee_id},
+        "$or": or_conditions
     }
     
     also_involved_sops = await db.sops.find(
