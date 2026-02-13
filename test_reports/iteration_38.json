@@ -1,0 +1,88 @@
+{
+  "summary": "Iteration 38: Comprehensive testing of refactored payroll calculation engine. All 31 backend API tests passed. Verified: PF=min(12%×BasicDA_earned, 15000), ESI=0.75%×Total_earned (only if ≤21000), SEWA=2%×FIXED_basic, proration=round(Fixed/CalDays×EarnedDays,2), late_threshold=3, 2nd_Saturday_fully_paid, validation field, Excel export with 34 columns.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Auth: Admin login returns access_token and role=super_admin",
+    "Rules: GET /api/payroll/rules returns late_count_threshold=3",
+    "Rules: EPF percentage = 12%, max_deduction = 15000",
+    "Rules: ESI percentage = 0.75%, wage_ceiling = 21000",
+    "Rules: SEWA percentage = 2%",
+    "Runs: GET /api/payroll/runs lists payroll runs",
+    "Runs: GET /api/payroll/runs/pr_4c136ed43193 returns 27 payslips",
+    "Runs: POST duplicate payroll run returns 400 'already exists'",
+    "Structure: Payslips have fixed_components sub-object (basic, da, hra, total_fixed)",
+    "Structure: Payslips have attendance sub-object (late_count, late_deduction_days, second_saturday_count)",
+    "Structure: Payslips have earnings sub-object (basic_earned, da_earned, basic_da_earned)",
+    "Structure: Payslips have deductions sub-object (epf, esi, sewa, total_deductions)",
+    "Structure: Payslips have validation sub-object (passed, difference, formula)",
+    "PF: Calculated as 12% of earned Basic+DA",
+    "PF: Never exceeds 15000 max deduction cap",
+    "ESI: Only applied when total_salary_earned ≤ 21000",
+    "ESI: Exactly 0.75% of total_salary_earned when applicable",
+    "ESI: Equals 0 when salary > 21000 (verified S0007: earned 46548.39, ESI=0)",
+    "SEWA: Calculated as 2% of FIXED basic (not earned)",
+    "SEWA: Verified S0025: 2%×13020 = 260.4",
+    "Proration: round(Fixed/CalDays × EarnedDays, 2) verified for basic/hra",
+    "Proration: Total earned = sum of all component earnings",
+    "Late: 3 lates = 1 day deduction (threshold verified)",
+    "Late: <3 lates = 0 deduction (S0004: 1 late, 0 deduction)",
+    "2nd Saturday: Unattended counts as 1.0 earned day (fully paid)",
+    "2nd Saturday: Verified S0030: 6 office + 4 sundays + 2 holidays + 1 2nd_sat = 13 days",
+    "WFH: 50% pay verified (S0016: 5 WFH days = 2.5 earned)",
+    "Validation: All 27 payslips have validation.passed=true",
+    "Validation: All validation.difference ≤ 0.01",
+    "Validation: Net = Total_Earned - Total_Deductions formula correct",
+    "Export: GET /api/payroll/runs/{id}/export returns Excel file",
+    "Export: Contains new columns (Basic (Earned), DA (Earned), Late Count, Late Deduction Days, Validation)",
+    "Config: Payslips store config_used for audit trail"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_payroll_engine.py",
+    "/app/test_reports/pytest/payroll_engine_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "payroll_v2.py: calculate_epf() correctly implements min(12%×BasicDA, 15000) cap on DEDUCTION",
+    "payroll_v2.py: calculate_esi() correctly checks total_salary_earned ≤ 21000 for eligibility",
+    "payroll_v2.py: calculate_sewa() correctly uses FIXED basic (not earned)",
+    "payroll_v2.py: prorate_component() formula r2((fixed / cal_days) * earned_days) is correct",
+    "payroll_v2.py: calculate_late_deduction_days() uses threshold 3 (late_count // 3)",
+    "payroll_v2.py: calculate_earned_days() adds second_saturday_count × 1.0 (fully paid)",
+    "payroll.py: process_payroll() correctly computes second_saturday_unattended for full pay",
+    "payroll.py: Payslip document stores validation, earnings, deductions, fixed_components as sub-objects",
+    "generate_payroll_export_data() includes all 34 columns with Late Count, Late Deduction Days, Validation"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_payroll_engine.py"
+  ],
+  "success_rate": {
+    "backend": "100% (31/31 tests passed)",
+    "frontend": "N/A (backend only testing)"
+  },
+  "test_credentials": {
+    "admin_email": "admin@shardahr.com",
+    "admin_password": "Admin@123"
+  },
+  "seed_data_creation": "Used existing payroll run pr_4c136ed43193 (Jan 2026, 27 payslips)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Payroll engine refactored with new calculation rules. Key changes: (1) PF cap is on deduction (15000), not base. (2) ESI eligibility checks earned salary (not fixed). (3) SEWA uses FIXED basic. (4) Late threshold=3. (5) 2nd Saturday fully paid. All formulas verified mathematically. Test file at /app/backend/tests/test_payroll_engine.py covers 31 test cases across 12 test classes.",
+  "formulas_verified": {
+    "pf": "min(12% × (basic_earned + da_earned), 15000)",
+    "esi": "0.75% × total_salary_earned (only if earned ≤ 21000)",
+    "sewa": "2% × fixed_basic",
+    "proration": "round(fixed / calendar_days × earned_days, 2)",
+    "late_deduction": "late_count // 3 (days)",
+    "wfh_contribution": "wfh_days × 50%",
+    "2nd_saturday": "unattended counts as 1.0 day (fully paid)",
+    "validation": "|net - (earned - deductions)| ≤ 0.01"
+  }
+}
