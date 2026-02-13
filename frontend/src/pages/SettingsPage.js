@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -8,6 +8,7 @@ import { Separator } from '../components/ui/separator';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { toast } from 'sonner';
 import {
   User,
   Mail,
@@ -15,15 +16,97 @@ import {
   Bell,
   Palette,
   Key,
-  Building2
+  Building2,
+  RefreshCw,
+  Database,
+  Cloud,
+  CheckCircle2,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
 const SettingsPage = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const [syncing, setSyncing] = useState(false);
+  const [syncResults, setSyncResults] = useState(null);
+  const [syncCredentials, setSyncCredentials] = useState({
+    email: 'admin@shardamotor.com',
+    password: 'admin123'
+  });
 
   const getInitials = (name) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin';
+
+  const handleSyncFromDeployed = async () => {
+    setSyncing(true);
+    setSyncResults(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/data-management/sync/from-deployed`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(syncCredentials)
+      });
+      
+      const data = await response.json();
+      setSyncResults(data);
+      
+      if (data.success) {
+        toast.success('Data synced successfully from deployed environment');
+      } else if (data.synced_collections && Object.keys(data.synced_collections).length > 0) {
+        toast.warning('Partial sync completed with some errors');
+      } else {
+        toast.error('Sync failed: ' + (data.errors?.[0] || 'Unknown error'));
+      }
+    } catch (error) {
+      toast.error('Sync failed: ' + error.message);
+      setSyncResults({ success: false, errors: [error.message] });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleSyncAttendanceOnly = async () => {
+    setSyncing(true);
+    setSyncResults(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/data-management/sync/attendance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...syncCredentials,
+          month: 1,
+          year: 2026
+        })
+      });
+      
+      const data = await response.json();
+      setSyncResults(data);
+      
+      if (data.success) {
+        toast.success(`Synced ${data.attendance_imported} attendance records`);
+      } else {
+        toast.error('Sync failed: ' + (data.errors?.[0] || 'Unknown error'));
+      }
+    } catch (error) {
+      toast.error('Sync failed: ' + error.message);
+      setSyncResults({ success: false, errors: [error.message] });
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (
