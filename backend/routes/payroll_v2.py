@@ -368,7 +368,7 @@ def process_employee_salary(
             "office_days": office_days,
             "wfh_days": wfh_days,
             "half_day_count": half_day_count,
-            "second_saturday_count": second_saturday_count,
+            "second_saturday_attended": second_saturday_attended,
             "late_count": late_count,
             "late_deduction_days": late_deduction_days,
             "total_earned_days": r2(total_earned_days),
