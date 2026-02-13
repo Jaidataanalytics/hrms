@@ -209,7 +209,8 @@ const UserManagementPage = () => {
     try {
       const response = await fetch(`${API_URL}/users/${showDeleteConfirm.user_id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
@@ -230,7 +231,8 @@ const UserManagementPage = () => {
       const endpoint = activate ? 'activate' : 'deactivate';
       const response = await fetch(`${API_URL}/users/${targetUser.user_id}/${endpoint}`, {
         method: 'PUT',
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
