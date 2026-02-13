@@ -67,22 +67,15 @@ def is_second_saturday(year: int, month: int, day: int) -> bool:
 
 def calculate_sunday_pay_status(attendance_records: list, year: int, month: int) -> dict:
     """
-    Calculate Sunday pay status based on the rule:
-    - Sundays are PAID unless employee takes >2 leaves that week
-    - If >2 leaves in a week, that week's Sunday becomes unpaid
+    Calculate Sunday pay status.
+    
+    UPDATED RULE: ALL Sundays are PAID regardless of leave count.
+    The previous rule (unpaid Sunday if >2 leaves/week) has been removed
+    to match the manual salary sheet calculation.
 
-    Returns: {paid_sundays, unpaid_sundays, weekly_breakdown}
+    Returns: {paid_sundays, unpaid_sundays, total_sundays, weekly_breakdown}
     """
     total_days = monthrange(year, month)[1]
-
-    # Build attendance lookup by date
-    att_by_date = {}
-    for att in attendance_records:
-        att_by_date[att.get("date")] = att.get("status", "").lower()
-
-    paid_sundays = 0
-    unpaid_sundays = 0
-    weekly_breakdown = []
 
     # Find all Sundays in the month
     sundays_in_month = []
@@ -91,38 +84,15 @@ def calculate_sunday_pay_status(attendance_records: list, year: int, month: int)
         if d.weekday() == 6:  # Sunday
             sundays_in_month.append(d)
 
+    # ALL Sundays are paid
+    paid_sundays = len(sundays_in_month)
+    unpaid_sundays = 0
+    
+    weekly_breakdown = []
     for sunday in sundays_in_month:
-        # Get the week (Mon-Sun) containing this Sunday
-        week_start = sunday - timedelta(days=6)  # Monday of this week
-        if week_start.month != month:
-            week_start = date(year, month, 1)
-
-        week_end = sunday
-
-        leaves_this_week = 0
-        current = week_start
-        while current <= week_end:
-            if current.month == month:
-                date_str = current.strftime("%Y-%m-%d")
-                status = att_by_date.get(date_str, "")
-                if status in ["leave", "absent", "lop", "lwp", "loss_of_pay"]:
-                    leaves_this_week += 1
-            current += timedelta(days=1)
-
-        sunday_str = sunday.strftime("%Y-%m-%d")
-        if leaves_this_week > 2:
-            unpaid_sundays += 1
-            sunday_paid = False
-        else:
-            paid_sundays += 1
-            sunday_paid = True
-
         weekly_breakdown.append({
-            "sunday_date": sunday_str,
-            "week_start": week_start.strftime("%Y-%m-%d"),
-            "week_end": week_end.strftime("%Y-%m-%d"),
-            "leaves_in_week": leaves_this_week,
-            "sunday_paid": sunday_paid
+            "sunday_date": sunday.strftime("%Y-%m-%d"),
+            "sunday_paid": True
         })
 
     return {
