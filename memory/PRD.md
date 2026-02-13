@@ -93,7 +93,6 @@ On-the-fly normalization during payroll processing:
 
 ### P3 (Future)
 - [ ] Helpdesk Phase 2 (360 feedback, survey analytics)
-- [ ] Dynamic dashboard theming (celebrations)
 - [ ] Push notifications wiring
 - [ ] Bulk import improvements
 - [ ] Employee deduplication
