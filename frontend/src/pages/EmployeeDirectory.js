@@ -366,6 +366,17 @@ const EmployeeDirectory = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="emp_code">Biometric Code</Label>
+                    <Input
+                      id="emp_code"
+                      value={newEmployee.emp_code}
+                      onChange={(e) => setNewEmployee({ ...newEmployee, emp_code: e.target.value })}
+                      placeholder="e.g. F0001, S0019"
+                      data-testid="input-emp-code"
+                    />
+                    <p className="text-xs text-muted-foreground">Code used to match with biometric device</p>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="department">Department</Label>
                     <Select
                       value={newEmployee.department_id}
