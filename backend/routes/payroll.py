@@ -2337,16 +2337,19 @@ async def export_payroll_to_excel(payroll_id: str, request: Request):
         ws = wb.active
         ws.title = "Salary Structure"
         
-        # Define headers (matching template)
+        # Define headers (matching template - with split Basic and DA earned)
         headers = [
             "Emp Code", "Name of Employees", "BASIC", "DA", "HRA", "Conveyance",
             "GRADE PAY", "OTHER ALLOW", "Med./Spl. Allow", "Total Salary (FIXED)",
-            "Work from office", "Sunday + Holiday Leave Days", "Leave Days",
-            "Work from Home @50%", "Late Deduction", "Basic+DA (Earned)",
+            "Work from office", "Sunday + Holiday", "Leave Days",
+            "Work from Home @50%", "Late Count", "Late Deduction Days",
+            "Total Earned Days",
+            "Basic (Earned)", "DA (Earned)", "Basic+DA (Earned)",
             "HRA (Earned)", "Conveyance (Earned)", "GRADE PAY (Earned)",
-            "OTHER ALLOW (Earned)", "Med./Spl. Allow (Earned)", "Total Earned Days",
+            "OTHER ALLOW (Earned)", "Med./Spl. Allow (Earned)",
             "Total Salary Earned", "EPF Employees", "ESI Employees", "SEWA",
-            "Sewa Advance", "Other Deduction", "Total Deduction", "NET PAYABLE"
+            "Sewa Advance", "Other Deduction", "Total Deduction", "NET PAYABLE",
+            "Validation"
         ]
         
         # Write headers
