@@ -465,7 +465,10 @@ def generate_payroll_export_data(payslips: list, month: int, year: int) -> list:
     export_data = []
 
     for slip in payslips:
-        working_info = att.get("working_days_info", {})
+        fc = slip.get("fixed_components", {})
+        att = slip.get("attendance", {})
+        earn = slip.get("earnings", {})
+        ded = slip.get("deductions", {})
         validation = slip.get("validation", {})
 
         row = {
