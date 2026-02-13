@@ -805,3 +805,148 @@ async def sync_attendance_only(request: Request, data: dict = None):
     results["synced_at"] = datetime.now(timezone.utc).isoformat()
     
     return results
+
+
+
+# ==================== DATA FIX ENDPOINTS ====================
+
+# Valid attendance status values
+VALID_ATTENDANCE_STATUSES = {
+    "present", "absent", "leave", "wfh", "tour", "half_day", "hd",
+    "sunday", "holiday", "lop", "lwp", "loss_of_pay", "no_record"
+}
+
+# Status normalization mapping
+STATUS_NORMALIZATION = {
+    "t": "tour",
+    "p": "present",
+    "a": "absent",
+    "l": "leave",
+    "w": "wfh",
+    "h": "holiday",
+    "hd": "half_day",
+    "new year": "holiday",
+    "newyear": "holiday",
+    "christmas": "holiday",
+    "diwali": "holiday",
+    "republic day": "holiday",
+    "independence day": "holiday",
+}
+
+
+@router.post("/fix/attendance-status")
+async def fix_attendance_status(request: Request, data: dict = None):
+    """
+    Fix corrupted attendance status values.
+    
+    This endpoint:
+    1. Finds all attendance records with invalid/truncated status values
+    2. Normalizes them to valid status values
+    3. Updates the records
+    
+    data: {
+        "dry_run": true/false  # If true, just report what would be fixed
+    }
+    """
+    user = await verify_admin_access(request)
+    
+    data = data or {}
+    dry_run = data.get("dry_run", True)
+    
+    results = {
+        "dry_run": dry_run,
+        "records_checked": 0,
+        "records_fixed": 0,
+        "fixes_applied": [],
+        "errors": []
+    }
+    
+    try:
+        # Find all attendance records
+        all_records = await db.attendance.find({}).to_list(50000)
+        results["records_checked"] = len(all_records)
+        
+        fixes = []
+        
+        for record in all_records:
+            status = record.get("status", "")
+            att_id = record.get("attendance_id")
+            
+            if not status or not att_id:
+                continue
+            
+            status_lower = status.lower().strip()
+            
+            # Check if status needs normalization
+            if status_lower in STATUS_NORMALIZATION:
+                new_status = STATUS_NORMALIZATION[status_lower]
+                fixes.append({
+                    "attendance_id": att_id,
+                    "employee_id": record.get("employee_id"),
+                    "date": record.get("date"),
+                    "old_status": status,
+                    "new_status": new_status
+                })
+        
+        results["fixes_applied"] = fixes
+        results["records_fixed"] = len(fixes)
+        
+        # Apply fixes if not dry run
+        if not dry_run and fixes:
+            for fix in fixes:
+                await db.attendance.update_one(
+                    {"attendance_id": fix["attendance_id"]},
+                    {
+                        "$set": {
+                            "status": fix["new_status"],
+                            "status_fixed_at": datetime.now(timezone.utc).isoformat(),
+                            "status_fixed_by": user.get("name", user.get("email")),
+                            "original_status": fix["old_status"]
+                        }
+                    }
+                )
+            
+            results["message"] = f"Fixed {len(fixes)} attendance records"
+        else:
+            results["message"] = f"Found {len(fixes)} records that need fixing (dry run - no changes made)"
+        
+    except Exception as e:
+        results["errors"].append(str(e))
+    
+    return results
+
+
+@router.get("/fix/attendance-status/preview")
+async def preview_attendance_status_fixes(request: Request):
+    """Preview what attendance status fixes would be applied"""
+    await verify_admin_access(request)
+    
+    # Find records with potentially invalid statuses
+    all_records = await db.attendance.find({}).to_list(50000)
+    
+    status_counts = {}
+    invalid_records = []
+    
+    for record in all_records:
+        status = record.get("status", "")
+        status_lower = status.lower().strip() if status else ""
+        
+        status_counts[status] = status_counts.get(status, 0) + 1
+        
+        if status_lower in STATUS_NORMALIZATION:
+            invalid_records.append({
+                "attendance_id": record.get("attendance_id"),
+                "employee_id": record.get("employee_id"),
+                "date": record.get("date"),
+                "current_status": status,
+                "will_become": STATUS_NORMALIZATION[status_lower]
+            })
+    
+    return {
+        "total_records": len(all_records),
+        "status_distribution": status_counts,
+        "records_needing_fix": len(invalid_records),
+        "invalid_records": invalid_records[:50],  # Limit to first 50
+        "status_normalization_rules": STATUS_NORMALIZATION
+    }
+
