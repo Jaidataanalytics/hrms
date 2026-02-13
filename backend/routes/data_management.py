@@ -626,7 +626,7 @@ async def sync_via_export_endpoint(client, headers, results):
                         "imported": len(records),
                         "via": "export"
                     }
-    except:
+    except Exception:
         pass  # Export endpoint may not exist
 
 
@@ -660,7 +660,7 @@ async def sync_attendance_only(request: Request, data: dict = None):
         "year": 2026  # Optional - specific year
     }
     """
-    user = await verify_admin_access(request)
+    await verify_admin_access(request)
     
     data = data or {}
     email = data.get("email", "admin@shardamotor.com")
