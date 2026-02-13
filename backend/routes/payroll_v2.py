@@ -511,7 +511,7 @@ def generate_payroll_export_data(payslips: list, month: int, year: int) -> list:
             "Sewa Advance": ded.get("sewa_advance", 0),
             "Other Deduction": ded.get("other_deduction", 0),
             "Total Deduction": ded.get("total_deductions", 0),
-            "NET PAYABLE": slip.get("net_payable", 0),
+            "NET PAYABLE": slip.get("net_salary", slip.get("net_payable", 0)),
 
             # Validation
             "Validation": "PASS" if validation.get("passed", True) else f"FAIL ({validation.get('difference', 0)})",
