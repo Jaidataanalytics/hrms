@@ -160,6 +160,21 @@ async def complete_training(enrollment_id: str, data: dict, request: Request):
     return {"message": "Training marked as completed"}
 
 
+
+@router.delete("/enrollments/{enrollment_id}")
+async def remove_enrollment(enrollment_id: str, request: Request):
+    """Remove employee from training program"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    result = await db.training_enrollments.delete_one({"enrollment_id": enrollment_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+    return {"message": "Enrollment removed"}
+
+
+
 # ==================== CERTIFICATIONS ====================
 
 @router.get("/certifications")
