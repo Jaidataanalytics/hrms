@@ -12,7 +12,7 @@ router = APIRouter(prefix="/data-management", tags=["Data Management"])
 db = None
 
 # Deployed/Production URL - this is the source of truth
-DEPLOYED_URL = os.environ.get("DEPLOYED_API_URL", "https://hr-calc-resolver.emergentagent.com")
+DEPLOYED_URL = os.environ.get("DEPLOYED_API_URL", "https://shardahrms.com")
 
 def set_db(database):
     global db
