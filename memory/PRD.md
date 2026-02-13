@@ -76,8 +76,10 @@ On-the-fly normalization during payroll processing:
 - [x] Jan 1 holiday addition (DONE)
 - [x] Leave balance priority/field fixes (DONE)
 - [x] SOP visibility fix (DONE)
+- [x] Biometric employee code in manual employee creation & edit (DONE - Feb 13, 2026)
 
 ### P1 (High)
+- [x] Dynamic dashboard celebration theming (DONE - Feb 13, 2026)
 - [ ] Full E2E testing of leave approvals, CO requests, cancellations
 - [ ] Mobile app build fix (MainActivity.java + Gradle config)
 - [ ] Mobile location permissions
