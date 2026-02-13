@@ -1541,8 +1541,7 @@ async def update_payroll_rules(data: dict, request: Request):
         "wfh_pay_percentage": float(data.get("wfh_pay_percentage", 50)),
         
         "late_deduction_enabled": data.get("late_deduction_enabled", True),
-        "late_count_threshold": int(data.get("late_count_threshold", 3)),
-        
+        "late_count_threshold": int(data.get("late_count_threshold", 3)),        
         "salary_change_requires_approval": data.get("salary_change_requires_approval", True),
         
         "updated_at": datetime.now(timezone.utc).isoformat(),
