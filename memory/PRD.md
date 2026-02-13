@@ -99,6 +99,7 @@ On-the-fly normalization during payroll processing:
 - **SOP Visibility**: 11/11 tests passed - backend + frontend (iteration_40)
 - **Employee Biometric Code + Celebration Theming**: 100% pass rate backend (7/7) + frontend (iteration_41)
 - **Training CRUD + Employee Status + Biometric Schedule**: 100% pass rate backend (15/15) + frontend (iteration_42)
+- **User Management Bug Fixes**: 100% pass rate backend (8/8) + frontend (iteration_43)
 - Test files: `/app/backend/tests/test_payroll_sunday_rule.py`, `/app/backend/tests/test_sop_visibility.py`, `/app/backend/tests/test_emp_code_biometric.py`, `/app/backend/tests/test_training_employee_features.py`
 
 ## Prioritized Backlog
