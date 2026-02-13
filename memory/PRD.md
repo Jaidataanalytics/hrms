@@ -12,24 +12,28 @@ Comprehensive HR management system with premium UI/UX, mobile app capabilities, 
 
 ## What's Been Implemented
 
-### Payroll Engine v2 - CORRECTED (Feb 13, 2026)
+### Payroll Engine v2 - FINAL (Feb 13, 2026)
 Complete refactoring of payroll calculation engine for statutory compliance:
 
-#### Earned Days Formula (CORRECTED)
+#### Earned Days Formula
 ```
-Earned Days = Office Days + Paid Sundays + Paid Holidays + Paid Leave - Late Deductions
+Earned Days = Office Days + Paid Sundays + Paid Holidays + Paid Leave Days
+            + (WFH Days × WFH%) + (Half Days × 0.5)
+            - Late Deduction Days
 ```
 
-Where:
-- **Office Days**: Days physically present at work
-  - 2nd Saturday: If attended, counts as 1.0 (full day for half day work)
-  - If not attended, no pay (not in office_days)
-- **Paid Sundays**: Based on weekly leave rule
-  - Default: All 4 Sundays paid
-  - If >2 leaves in a week, that week's Sunday becomes UNPAID
-- **Paid Holidays**: All company holidays (e.g., Jan 14 Makar Sankranti, Jan 26 Republic Day)
-- **Paid Leave**: CL, SL, EL, ML etc. added to earned days
-- **Late Deductions**: 3 lates = 1 day deducted (cumulative: 6 lates = 2 days)
+#### Sunday-as-Leave Rule (IMPLEMENTED Feb 13, 2026)
+- If employee takes >2 leaves in a week (Mon-Sun), that week's Sunday is converted to a leave day
+- System creates a `leave_request` record for audit trail (`is_system_generated: true`)
+- Leave balance deducted following priority: **EL → CL → SL** (leave_type_ids: `lt_el → lt_cl → lt_sl`)
+- If no balance available, Sunday becomes **LOP** (Loss of Pay)
+- Balance reads from `available` field in `leave_balances` collection
+
+#### Status Normalization (IMPLEMENTED Feb 13, 2026)
+On-the-fly normalization during payroll processing:
+- `"t"` → `"tour"` (counted as present/office day)
+- `"new year"` → `"holiday"` (not counted as absent)
+- `"p"` → `"present"`, `"a"` → `"absent"`, etc.
 
 #### Statutory Deductions
 - **PF**: `min(12% × Earned Basic+DA, ₹15,000 max deduction)` — cap on deduction, not base
@@ -39,18 +43,16 @@ Where:
 #### Component Proration
 Each component prorated individually: `round(Fixed / CalendarDays × EarnedDays, 2)`
 
-### Enhanced Leave Marking (Feb 13, 2026)
-When HR marks an employee as "leave" in the attendance grid:
-- **Leave Type Selection**: Choose CL, SL, EL, PL, or LOP
-- **Backdated Leave Request**: Option to auto-create an approved leave request
-- **Balance Deduction**: Option to automatically deduct from employee's leave balance
-- This ensures payroll accuracy and proper leave balance tracking
+#### Legacy Salary Format Support (ADDED Feb 13, 2026)
+Payroll engine now handles both:
+- Full `fixed_components` structure (basic, da, hra, conveyance, grade_pay, other_allowance, medical_allowance)
+- Flat format (`gross_salary`, `basic_salary`) with automatic component estimation
 
-### Data Fix Utilities (Feb 13, 2026)
-- **Status Normalization Endpoint**: Fixes corrupted attendance status values
-  - Maps `"t"` → `"tour"`, `"new year"` → `"holiday"`, etc.
-- **Bulk Import Validation**: Enhanced to prevent truncated status values
-- **Dev Tools Sync**: Sync preview environment with deployed data
+### Data Sync & Fixes (Feb 13, 2026)
+- Re-synced `employee_salaries` with full `fixed_components` from deployed
+- Re-synced `leave_balances` (201 records) 
+- Jan 1 (New Year) added as holiday alongside existing Jan 14 and Jan 26
+- Admin password reset to `Admin@123`
 
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
@@ -62,34 +64,35 @@ When HR marks an employee as "leave" in the attendance grid:
 - HR remote check-in overrides
 - Remote check-in admin view
 - Biometric sync integration
+- Enhanced manual leave marking with type selection
+- Dev Tools data sync feature
 
-## Known Issues Found (Feb 13, 2026)
-1. **Corrupted Attendance Status**: Some records have `status: "t"` instead of `"tour"` (from bulk import)
-2. **"new year" Holiday**: Some records have `status: "new year"` instead of `"holiday"`
-3. **Need to run fix on deployed**: The data fix endpoint needs to be deployed and run on production
+## Testing Status
+- **Payroll Engine**: 21/21 backend tests passed (Feb 13, 2026)
+- Test file: `/app/backend/tests/test_payroll_sunday_rule.py`
+- Verified: Manoj Kumar (S0013) — office=11, sundays=4, holidays=3, leave=1, earned=19
 
 ## Prioritized Backlog
 
 ### P0 (Critical)
-- [x] Payroll earned days formula fix (COMPLETED)
-- [x] Enhanced leave marking with type selection (COMPLETED)
-- [ ] **Deploy and run data fix on production** to fix corrupted status values
-- [ ] Full E2E testing of payroll with production data after fix
+- [x] Payroll "Sunday as leave" rule implementation (COMPLETED)
+- [x] Status normalization in payroll (COMPLETED)
+- [x] Jan 1 holiday addition (COMPLETED)
+- [x] Leave balance priority order fix (lt_el/lt_cl/lt_sl) (COMPLETED)
+- [x] Leave balance field fix (available, not balance) (COMPLETED)
+- [ ] **Data completeness**: Preview attendance data only has ~16/31 records for Manoj Kumar. Production has more. Need to investigate deployed attendance data completeness for accurate payroll verification.
 
 ### P1 (High)
 - [ ] SOP role-based access fix (employees see all SOPs instead of only assigned)
 - [ ] Mobile app build fix (MainActivity.java errors, Gradle config)
 - [ ] Mobile location permissions (runtime permission request)
-- [ ] Finalize salary logic: deduct pay for leave without balance
-
-### P2 (Medium)
-- [ ] Tour attendance daily check automation
 - [ ] Full E2E testing of new workflows (leave approval, CO, cancellations)
 
 ### P2 (Medium)
-- [ ] Tour attendance automated daily check
+- [ ] Tour attendance daily check automation
 - [ ] Biometric sync error handling improvements
 - [ ] ESLint warnings cleanup (react-hooks/exhaustive-deps)
+- [ ] Frontend routing bug (/payroll occasionally shows dashboard)
 
 ### P3 (Future)
 - [ ] Helpdesk Phase 2 (360° feedback, survey analytics)
@@ -99,16 +102,20 @@ When HR marks an employee as "leave" in the attendance grid:
 - [ ] Employee deduplication
 
 ## Key Files
+- `/app/backend/routes/payroll.py` — Payroll API routes + Sunday-as-leave orchestration
 - `/app/backend/routes/payroll_v2.py` — Payroll calculation engine
-- `/app/backend/routes/payroll.py` — Payroll API routes
-- `/app/backend/models/payroll.py` — Payroll data models
+- `/app/backend/routes/data_management.py` — Data sync endpoints
+- `/app/backend/server.py` — Auth, attendance edit endpoints
 - `/app/frontend/src/pages/PayrollPage.js` — Payroll UI
-- `/app/backend/tests/test_payroll_engine.py` — Payroll test suite (31 tests)
+- `/app/backend/tests/test_payroll_sunday_rule.py` — Payroll test suite
 
 ## Key DB Schema
-- **payslips**: `{payslip_id, payroll_id, employee_id, emp_code, employee_name, fixed_components{}, attendance{}, earnings{basic_earned, da_earned, ...}, deductions{epf, esi, sewa, ...}, validation{passed, difference}, net_salary, config_used{}}`
-- **payroll_runs**: `{payroll_id, month, year, status, total_employees, ...}`
-- **employee_salaries**: `{employee_id, fixed_components{basic, da, hra, ...}, deduction_config{epf_applicable, esi_applicable, sewa_applicable}}`
+- **employee_salaries**: `{salary_id, employee_id, fixed_components{basic, da, hra, conveyance, grade_pay, other_allowance, medical_allowance}, total_fixed, deduction_config{epf_applicable, esi_applicable, sewa_applicable}, is_active}`
+- **payslips**: `{payslip_id, payroll_id, employee_id, fixed_components{}, attendance{office_days, paid_sundays, paid_holidays, paid_leave_days, total_earned_days, ...}, earnings{}, deductions{epf, esi, sewa}, validation{passed, difference}}`
+- **leave_balances**: `{employee_id, leave_type_id, available, used, year}`
+- **leave_requests**: `{leave_request_id, employee_id, leave_type_id, is_system_generated, generation_rule}`
+- **holidays**: `{holiday_id, date, name, type, is_half_day}`
 
 ## Credentials
 - Admin: admin@shardahr.com / Admin@123 (role: super_admin)
+- Deployed: jai@j.com / j
