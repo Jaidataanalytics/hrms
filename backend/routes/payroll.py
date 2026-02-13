@@ -378,23 +378,8 @@ async def process_payroll(payroll_id: str, request: Request):
             except Exception:
                 pass
         
-        # Count how many 2nd Saturdays the employee actually attended
-        # IMPORTANT: 2nd Saturday attendance should NOT be in office_days
-        # It gets a full day bonus (1.0) added separately
-        second_sat_attended = 0
-        for att_rec in attendance:
-            att_date = att_rec.get("date", "")
-            att_status = att_rec.get("status", "").lower()
-            if att_date in second_saturday_dates and att_status in ["present", "tour", "wfh", "half_day", "hd", "half-day"]:
-                second_sat_attended += 1
-        
-        # 2nd Saturday rule:
-        # - It's officially a half day
-        # - If attended: full pay (1.0 day added to Sun+Hol)
-        # - If not attended: no pay
-        # NOTE: 2nd Saturday attendance should NOT be counted in office_days
-        
         # Build attendance data with NEW STRUCTURE
+        # Note: second_sat_attended was already counted in the attendance loop above
         attendance_data = {
             "office_days": office_days,
             "wfh_days": wfh_days,
