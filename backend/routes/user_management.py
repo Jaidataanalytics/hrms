@@ -51,7 +51,7 @@ async def list_users(
             {"email": {"$regex": search, "$options": "i"}}
         ]
     
-    users = await db.users.find(query, {"_id": 0, "password_hash": 0}).skip(skip).limit(limit).to_list(limit)
+    users = await db.users.find(query, {"_id": 0, "password_hash": 0, "password": 0}).skip(skip).limit(limit).to_list(limit)
     total = await db.users.count_documents(query)
     
     return {"users": users, "total": total}
