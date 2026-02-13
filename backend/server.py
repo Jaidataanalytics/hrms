@@ -3911,7 +3911,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://premium-hr-app.preview.emergentagent.com",
+        "https://hr-calc-resolver.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
         "https://shardahrms.com",
