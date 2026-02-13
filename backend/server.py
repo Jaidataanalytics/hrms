@@ -4080,7 +4080,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://payroll-sunday-fix.preview.emergentagent.com",
+        "https://payroll-hr-system-2.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
         "https://shardahrms.com",
