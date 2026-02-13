@@ -334,7 +334,7 @@ async def delete_everything(request: Request, data: dict):
                 if result.deleted_count > 0:
                     deleted_summary[coll_name] = result.deleted_count
                     total_deleted += result.deleted_count
-        except:
+        except Exception:
             pass
     
     return {
@@ -348,7 +348,7 @@ async def delete_everything(request: Request, data: dict):
 @router.post("/restore")
 async def restore_soft_deleted(request: Request, data: dict):
     """Restore soft-deleted records"""
-    user = await verify_admin_access(request)
+    await verify_admin_access(request)
     
     data_type = data.get("data_type")
     
