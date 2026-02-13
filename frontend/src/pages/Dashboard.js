@@ -634,7 +634,7 @@ const Dashboard = () => {
           )}
 
           {/* Quick Actions */}
-          <Card data-testid="quick-actions-card">
+          <Card className="quick-action-card" data-testid="quick-actions-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
                 Quick Actions
