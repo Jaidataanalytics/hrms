@@ -2051,7 +2051,22 @@ async def edit_attendance_record(
     data: dict,
     request: Request
 ):
-    """HR can edit any attendance record with audit trail"""
+    """
+    HR can edit any attendance record with audit trail.
+    
+    When marking as 'leave', can optionally:
+    - Specify leave_type (CL, SL, EL, etc.)
+    - Create a backdated leave request
+    - Deduct from leave balance
+    
+    data: {
+        "status": "leave",
+        "leave_type": "CL",  # Optional - CL, SL, EL, ML, etc.
+        "create_leave_request": true,  # Optional - create backdated leave request
+        "deduct_balance": true,  # Optional - deduct from leave balance
+        "edit_reason": "Employee was on sick leave"
+    }
+    """
     user = await get_current_user(request)
     
     if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
@@ -2072,8 +2087,8 @@ async def edit_attendance_record(
         "reason": data.get("edit_reason", "")
     }
     
-    # Fields that can be edited
-    editable_fields = ["status", "first_in", "last_out", "remarks", "is_late", "late_minutes", "total_hours"]
+    # Fields that can be edited - added leave_type
+    editable_fields = ["status", "leave_type", "first_in", "last_out", "remarks", "is_late", "late_minutes", "total_hours"]
     update_data = {}
     
     for field in editable_fields:
@@ -2093,12 +2108,94 @@ async def edit_attendance_record(
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["is_manually_edited"] = True
     
+    # Handle leave-specific logic
+    new_status = data.get("status", "").lower()
+    leave_type = data.get("leave_type", "").upper() if data.get("leave_type") else ""
+    create_leave_request = data.get("create_leave_request", False)
+    deduct_balance = data.get("deduct_balance", False)
+    
+    leave_request_created = False
+    balance_deducted = False
+    
+    if new_status == "leave" and (create_leave_request or deduct_balance):
+        employee_id = record.get("employee_id")
+        leave_date = record.get("date")
+        
+        # Map leave_type to leave_type_id
+        leave_type_map = {
+            "CL": "lt_casual",
+            "SL": "lt_sick", 
+            "EL": "lt_earned",
+            "ML": "lt_maternity",
+            "PL": "lt_privilege",
+            "LOP": "lt_lop"
+        }
+        leave_type_id = leave_type_map.get(leave_type, "lt_casual")  # Default to CL
+        
+        if create_leave_request:
+            # Create backdated leave request (auto-approved)
+            leave_request = {
+                "leave_request_id": f"lr_{uuid.uuid4().hex[:12]}",
+                "employee_id": employee_id,
+                "leave_type_id": leave_type_id,
+                "from_date": leave_date,
+                "to_date": leave_date,
+                "duration": 1,
+                "reason": data.get("edit_reason", "Backdated leave - marked by HR"),
+                "status": "approved",
+                "dept_head_status": "approved",
+                "hr_status": "approved",
+                "approved_by": user.get("user_id"),
+                "approved_by_name": user.get("name"),
+                "approved_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_backdated": True,
+                "backdated_by": user.get("user_id"),
+                "backdated_by_name": user.get("name"),
+                "original_attendance_id": attendance_id
+            }
+            await db.leave_requests.insert_one(leave_request)
+            leave_request_created = True
+            update_data["leave_request_id"] = leave_request["leave_request_id"]
+        
+        if deduct_balance and leave_type and leave_type != "LOP":
+            # Deduct from leave balance
+            balance = await db.leave_balances.find_one({
+                "employee_id": employee_id,
+                "leave_type_id": leave_type_id
+            })
+            
+            if balance and balance.get("balance", 0) >= 1:
+                await db.leave_balances.update_one(
+                    {"employee_id": employee_id, "leave_type_id": leave_type_id},
+                    {
+                        "$inc": {"balance": -1, "used": 1},
+                        "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+                    }
+                )
+                balance_deducted = True
+                update_data["balance_deducted"] = True
+                update_data["balance_deducted_from"] = leave_type_id
+    
     await db.attendance.update_one(
         {"attendance_id": attendance_id},
         {"$set": update_data}
     )
     
-    return {"message": "Attendance record updated", "attendance_id": attendance_id}
+    response = {
+        "message": "Attendance record updated",
+        "attendance_id": attendance_id
+    }
+    
+    if leave_request_created:
+        response["leave_request_created"] = True
+        response["leave_request_id"] = update_data.get("leave_request_id")
+    
+    if balance_deducted:
+        response["balance_deducted"] = True
+        response["deducted_from"] = leave_type
+    
+    return response
 
 
 @api_router.post("/attendance/manual")
