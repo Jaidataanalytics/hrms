@@ -39,6 +39,19 @@ Where:
 #### Component Proration
 Each component prorated individually: `round(Fixed / CalendarDays × EarnedDays, 2)`
 
+### Enhanced Leave Marking (Feb 13, 2026)
+When HR marks an employee as "leave" in the attendance grid:
+- **Leave Type Selection**: Choose CL, SL, EL, PL, or LOP
+- **Backdated Leave Request**: Option to auto-create an approved leave request
+- **Balance Deduction**: Option to automatically deduct from employee's leave balance
+- This ensures payroll accuracy and proper leave balance tracking
+
+### Data Fix Utilities (Feb 13, 2026)
+- **Status Normalization Endpoint**: Fixes corrupted attendance status values
+  - Maps `"t"` → `"tour"`, `"new year"` → `"holiday"`, etc.
+- **Bulk Import Validation**: Enhanced to prevent truncated status values
+- **Dev Tools Sync**: Sync preview environment with deployed data
+
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
 - Token-based auth across all pages (~11 pages updated)
@@ -50,14 +63,21 @@ Each component prorated individually: `round(Fixed / CalendarDays × EarnedDays,
 - Remote check-in admin view
 - Biometric sync integration
 
+## Known Issues Found (Feb 13, 2026)
+1. **Corrupted Attendance Status**: Some records have `status: "t"` instead of `"tour"` (from bulk import)
+2. **"new year" Holiday**: Some records have `status: "new year"` instead of `"holiday"`
+3. **Need to run fix on deployed**: The data fix endpoint needs to be deployed and run on production
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
 - [x] Payroll earned days formula fix (COMPLETED)
-- [ ] Full E2E testing of payroll with production data
-- [ ] SOP role-based access fix (employees see all SOPs instead of only assigned)
+- [x] Enhanced leave marking with type selection (COMPLETED)
+- [ ] **Deploy and run data fix on production** to fix corrupted status values
+- [ ] Full E2E testing of payroll with production data after fix
 
 ### P1 (High)
+- [ ] SOP role-based access fix (employees see all SOPs instead of only assigned)
 - [ ] Mobile app build fix (MainActivity.java errors, Gradle config)
 - [ ] Mobile location permissions (runtime permission request)
 - [ ] Finalize salary logic: deduct pay for leave without balance
