@@ -295,27 +295,51 @@ async def process_payroll(payroll_id: str, request: Request):
                 ).to_list(50)
         
         # Calculate attendance breakdown with NEW leave type distinction
+        # Import payroll helpers at the start
+        from routes.payroll_v2 import calculate_sunday_pay_status, get_working_days_in_month, is_second_saturday
+        
+        # First, identify 2nd Saturday dates for this month
+        second_saturday_dates = set()
+        for day in range(1, total_days + 1):
+            if is_second_saturday(year, month, day):
+                date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
+                second_saturday_dates.add(date_str)
+        
         office_days = 0
         wfh_days = 0
         paid_leave_days = 0    # EL, CL, SL - these count as earned
         unpaid_leave_days = 0  # LOP, absent - these don't count
         late_count = 0
         half_day_count = 0
+        second_sat_attended = 0  # Track 2nd Saturday attendance separately
         
         # Paid leave types (case-insensitive)
         paid_leave_types = ["el", "cl", "sl", "ml", "earned_leave", "casual_leave", 
                            "sick_leave", "maternity_leave", "privilege_leave", "leave"]
         
         for att in attendance:
+            att_date = att.get("date", "")
             status = att.get("status", "").lower()
             leave_type = att.get("leave_type", "").lower() if att.get("leave_type") else ""
             
+            # Check if this is a 2nd Saturday - count separately, NOT in office_days
+            is_2nd_sat = att_date in second_saturday_dates
+            
             if status in ["present", "tour"]:
-                office_days += 1
+                if is_2nd_sat:
+                    second_sat_attended += 1  # 2nd Sat attended → full day bonus
+                else:
+                    office_days += 1
             elif status == "wfh":
-                wfh_days += 1
+                if is_2nd_sat:
+                    second_sat_attended += 1  # WFH on 2nd Sat also counts
+                else:
+                    wfh_days += 1
             elif status in ["half_day", "hd", "half-day"]:
-                half_day_count += 1
+                if is_2nd_sat:
+                    second_sat_attended += 1  # Half day on 2nd Sat = full pay
+                else:
+                    half_day_count += 1
             elif status in ["leave"]:
                 # Check if it's a paid leave type
                 if leave_type in paid_leave_types or leave_type == "":
@@ -329,10 +353,7 @@ async def process_payroll(payroll_id: str, request: Request):
             if att.get("is_late"):
                 late_count += 1
         
-        # Import Sunday pay calculation
-        from routes.payroll_v2 import calculate_sunday_pay_status, get_working_days_in_month, is_second_saturday
-        
-        # Calculate Sunday pay status using the weekly rule
+        # Calculate Sunday pay status - ALL Sundays are paid
         sunday_pay_result = calculate_sunday_pay_status(attendance, year, month)
         paid_sundays = sunday_pay_result["paid_sundays"]
         unpaid_sundays = sunday_pay_result["unpaid_sundays"]
@@ -340,10 +361,8 @@ async def process_payroll(payroll_id: str, request: Request):
         # Calculate working days breakdown
         working_days_info = get_working_days_in_month(year, month, holidays)
         
-        # Calculate holidays and second Saturdays
+        # Calculate holidays
         paid_holidays = 0
-        second_saturday_total = 0
-        second_saturday_dates = set()
         
         for day in range(1, total_days + 1):
             date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
@@ -351,11 +370,8 @@ async def process_payroll(payroll_id: str, request: Request):
                 from datetime import date as dt_date
                 d = dt_date(year, month, day)
                 
-                # Track 2nd Saturdays
-                if is_second_saturday(year, month, day):
-                    second_saturday_total += 1
-                    second_saturday_dates.add(date_str)
-                elif d.weekday() != 6 and date_str in holiday_dates:  # Not Sunday and is holiday
+                # Count holidays (not Sunday, not 2nd Saturday)
+                if d.weekday() != 6 and date_str not in second_saturday_dates and date_str in holiday_dates:
                     holiday = holiday_dates[date_str]
                     if not holiday.get("is_half_day"):
                         paid_holidays += 1
