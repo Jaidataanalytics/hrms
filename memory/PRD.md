@@ -62,9 +62,15 @@ On-the-fly normalization during payroll processing:
 - Themes include: amber/gold (birthday), blue/indigo (work anniversary), rose/pink (marriage anniversary), emerald/teal (custom)
 
 ### Biometric Sync & Late Deadline Update (Feb 13, 2026)
-- Changed biometric API sync scheduler from every 3 hours to daily at 10:00 AM IST (CronTrigger hour=4, minute=30 UTC)
-- Updated late threshold display on BiometricPage to 10:00 AM (was 09:45)
-- Backend late threshold already set to 10:00 in biometric_sync.py and biometric.py
+- Biometric API sync: every 3 hours (IntervalTrigger) + mandatory daily at 10:00 AM IST (CronTrigger hour=4 minute=30 UTC)
+- Manual sync options remain available on the Biometric page
+- Updated late threshold display on BiometricPage to 10:00 AM
+
+### User Management Bug Fixes (Feb 13, 2026)
+- Fixed "Failed to update user status" — missing auth headers in handleToggleStatus
+- Fixed "Failed to delete user" — missing auth headers in handleDeleteUser
+- Fixed "Deleted users still showing" — changed delete to permanent (delete_one) instead of soft delete (email mangling)
+- Excluded `password` field from user list API response
 
 ### Training Program Management (Feb 13, 2026)
 - Added Edit and Delete buttons for training programs (pencil/trash icons on program cards)
