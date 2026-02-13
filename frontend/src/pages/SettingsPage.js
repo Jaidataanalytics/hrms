@@ -133,6 +133,12 @@ const SettingsPage = () => {
             <Bell className="w-4 h-4" />
             Notifications
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="devtools" className="gap-2" data-testid="tab-devtools">
+              <Database className="w-4 h-4" />
+              Dev Tools
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="profile">
