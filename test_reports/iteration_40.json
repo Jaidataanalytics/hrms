@@ -1,0 +1,79 @@
+{
+  "summary": "SOP visibility fix testing completed. Both backend and frontend verified. Admin sees all 5 SOPs (all draft status). Employee sees 0 SOPs correctly - the /my-sops endpoint only returns published SOPs where employee is assigned. No _id leak in API responses.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Admin login returns access_token (POST /api/auth/login)",
+    "GET /api/sop/list (admin) returns all 5 active SOPs",
+    "Employee login returns access_token",
+    "GET /api/sop/my-sops (employee) returns 0 SOPs - CORRECT: all SOPs are draft, endpoint only returns published",
+    "SOP visibility fix verified: Admin sees 5 SOPs, Employee sees 0 SOPs",
+    "GET /api/sop/{sop_id} returns SOP details without _id",
+    "SOP Status Distribution: All 5 SOPs are draft",
+    "Frontend: Admin can see 5 SOPs in table",
+    "Frontend: Admin can see 'Upload SOP' button",
+    "Frontend: Employee sees 'No SOPs found' message (CORRECT)",
+    "Frontend: Employee cannot see 'Upload SOP' button (CORRECT)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_sop_visibility.py",
+    "/app/test_reports/pytest/sop_visibility_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "sop.py line 336-386: /my-sops endpoint correctly fixed - no longer has catch-all condition for empty arrays",
+    "sop.py line 358: status='published' filter ensures employees only see published SOPs",
+    "sop.py lines 365-376: $or conditions only match actual assignments (employee_id, designation_id, department_id)",
+    "SOPPage.js line 114: isHR check correctly routes employees to /my-sops endpoint",
+    "SOPPage.js line 119-127: Employee fetch uses /api/sop/my-sops correctly",
+    "All responses exclude MongoDB _id (verified in tests)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_sop_visibility.py"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 tests passed)",
+    "frontend": "100% (all UI checks passed)"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "admin@shardahr.com",
+      "password": "Admin@123"
+    },
+    "employee": {
+      "email": "employee@shardahr.com",
+      "password": "Admin@123"
+    }
+  },
+  "seed_data_creation": "Used existing 5 SOPs (all in draft status)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "SOP visibility fix fully verified. Key implementation: (1) /my-sops endpoint at sop.py:336-386 removed catch-all condition, now only returns published SOPs where employee is explicitly assigned via main_responsible, also_involved, designation, or department. (2) All 5 current SOPs are in 'draft' status, so /my-sops returns 0 for all employees. (3) Frontend correctly routes HR users to /list and employees to /my-sops based on role check at SOPPage.js:114. (4) No MongoDB _id leak in any response.",
+  "verified_implementations": {
+    "backend_fix": {
+      "file": "sop.py",
+      "endpoint": "/my-sops (lines 336-386)",
+      "fix_description": "Removed catch-all $or condition that matched SOPs with empty departments/designations/also_involved arrays",
+      "status_filter": "Only returns status='published' SOPs",
+      "assignment_check": "Only matches via employee_id in main_responsible/also_involved, or via designation_id/department_id"
+    },
+    "frontend_implementation": {
+      "file": "SOPPage.js",
+      "role_check": "line 114: isHR = user?.role === 'super_admin' || user?.role === 'hr_admin'",
+      "employee_fetch": "line 121: calls /api/sop/my-sops for non-HR users",
+      "admin_fetch": "line 129: calls /api/sop/list for HR users"
+    },
+    "sop_data": {
+      "total_sops": 5,
+      "status_distribution": {"draft": 5, "published": 0},
+      "sop_ids": ["SOP-650268B7", "SOP-3F9E77EC", "SOP-4764CDE8", "SOP-C0C2AFB0", "SOP-0D1F12FE"]
+    }
+  }
+}
