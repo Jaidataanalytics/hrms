@@ -363,18 +363,20 @@ async def process_payroll(payroll_id: str, request: Request):
                 pass
         
         # Count how many 2nd Saturdays the employee actually attended
-        # (those are already counted in office_days as 1.0)
+        # IMPORTANT: 2nd Saturday attendance should NOT be in office_days
+        # It gets a full day bonus (1.0) added separately
         second_sat_attended = 0
         for att_rec in attendance:
             att_date = att_rec.get("date", "")
             att_status = att_rec.get("status", "").lower()
-            if att_date in second_saturday_dates and att_status in ["present", "tour", "wfh"]:
+            if att_date in second_saturday_dates and att_status in ["present", "tour", "wfh", "half_day", "hd", "half-day"]:
                 second_sat_attended += 1
         
-        # 2nd Saturday: half working day but FULLY PAID
-        # - Attended: already in office_days as 1.0 → no adjustment needed
-        # - Not attended: NOT in office_days → add 1.0 for full pay
-        second_saturday_unattended = second_saturday_total - second_sat_attended
+        # 2nd Saturday rule:
+        # - It's officially a half day
+        # - If attended: full pay (1.0 day added to Sun+Hol)
+        # - If not attended: no pay
+        # NOTE: 2nd Saturday attendance should NOT be counted in office_days
         
         # Build attendance data with NEW STRUCTURE
         attendance_data = {
@@ -382,9 +384,9 @@ async def process_payroll(payroll_id: str, request: Request):
             "wfh_days": wfh_days,
             "late_count": late_count,
             "half_day_count": half_day_count,
-            "second_saturday_count": second_saturday_unattended,
+            "second_saturday_attended": second_sat_attended,  # Number of 2nd Sats attended (gets +1.0 bonus each)
             
-            # Sunday pay status from weekly rule
+            # Sunday pay status - ALL Sundays are paid
             "paid_sundays": paid_sundays,
             "unpaid_sundays": unpaid_sundays,
             
