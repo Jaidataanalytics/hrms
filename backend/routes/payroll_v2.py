@@ -69,9 +69,15 @@ def calculate_sunday_pay_status(attendance_records: list, year: int, month: int)
     """
     Calculate Sunday pay status based on the rule:
     - Sundays are PAID unless employee takes >2 leaves that week
-    - If >2 leaves in a week, that week's Sunday becomes unpaid
+    - If >2 leaves in a week, that week's Sunday becomes a LEAVE DAY
+      (not directly unpaid - it's treated as leave and deducted from balance)
 
-    Returns: {paid_sundays, unpaid_sundays, total_sundays, weekly_breakdown}
+    Returns: {
+        paid_sundays: count of normally paid Sundays,
+        sundays_as_leave: list of Sundays that should be treated as leave,
+        total_sundays: total count,
+        weekly_breakdown: detailed breakdown
+    }
     """
     total_days = monthrange(year, month)[1]
 
@@ -81,7 +87,7 @@ def calculate_sunday_pay_status(attendance_records: list, year: int, month: int)
         att_by_date[att.get("date")] = att.get("status", "").lower()
 
     paid_sundays = 0
-    unpaid_sundays = 0
+    sundays_as_leave = []  # Sundays that become leave days due to >2 leaves rule
     weekly_breakdown = []
 
     # Find all Sundays in the month
@@ -111,8 +117,14 @@ def calculate_sunday_pay_status(attendance_records: list, year: int, month: int)
 
         sunday_str = sunday.strftime("%Y-%m-%d")
         if leaves_this_week > 2:
-            unpaid_sundays += 1
-            sunday_paid = False
+            # Sunday becomes a leave day (not directly unpaid)
+            sundays_as_leave.append({
+                "date": sunday_str,
+                "leaves_in_week": leaves_this_week,
+                "week_start": week_start.strftime("%Y-%m-%d"),
+                "week_end": week_end.strftime("%Y-%m-%d")
+            })
+            sunday_paid = "leave"  # Will be paid if balance available, LOP if not
         else:
             paid_sundays += 1
             sunday_paid = True
@@ -127,7 +139,7 @@ def calculate_sunday_pay_status(attendance_records: list, year: int, month: int)
 
     return {
         "paid_sundays": paid_sundays,
-        "unpaid_sundays": unpaid_sundays,
+        "sundays_as_leave": sundays_as_leave,
         "total_sundays": len(sundays_in_month),
         "weekly_breakdown": weekly_breakdown
     }
