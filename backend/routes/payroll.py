@@ -353,10 +353,93 @@ async def process_payroll(payroll_id: str, request: Request):
             if att.get("is_late"):
                 late_count += 1
         
-        # Calculate Sunday pay status (with >2 leaves/week = unpaid rule)
+        # Calculate Sunday pay status (with >2 leaves/week rule)
         sunday_pay_result = calculate_sunday_pay_status(attendance, year, month)
         paid_sundays = sunday_pay_result["paid_sundays"]
-        unpaid_sundays = sunday_pay_result["unpaid_sundays"]
+        sundays_as_leave = sunday_pay_result.get("sundays_as_leave", [])
+        
+        # Handle Sundays that become leave days due to >2 leaves/week rule
+        # Priority: EL → CL → SL, if no balance → LOP
+        sunday_leave_deductions = []
+        sundays_as_lop = 0
+        
+        if sundays_as_leave:
+            # Get employee's leave balances
+            leave_balances = await db.leave_balances.find({
+                "employee_id": employee_id
+            }).to_list(100)
+            
+            balance_map = {}
+            for bal in leave_balances:
+                leave_type_id = bal.get("leave_type_id", "")
+                balance_map[leave_type_id] = {
+                    "balance": bal.get("balance", 0),
+                    "doc": bal
+                }
+            
+            # Priority order: EL → CL → SL
+            priority_order = ["lt_earned", "lt_casual", "lt_sick"]
+            
+            for sunday_info in sundays_as_leave:
+                sunday_date = sunday_info["date"]
+                deducted_from = None
+                
+                # Try to deduct from leave balance in priority order
+                for leave_type_id in priority_order:
+                    if leave_type_id in balance_map and balance_map[leave_type_id]["balance"] >= 1:
+                        # Deduct from this balance
+                        balance_map[leave_type_id]["balance"] -= 1
+                        deducted_from = leave_type_id
+                        
+                        # Update database
+                        await db.leave_balances.update_one(
+                            {"employee_id": employee_id, "leave_type_id": leave_type_id},
+                            {
+                                "$inc": {"balance": -1, "used": 1},
+                                "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+                            }
+                        )
+                        
+                        # Create leave request record for audit
+                        leave_request = {
+                            "leave_request_id": f"lr_sun_{uuid.uuid4().hex[:8]}",
+                            "employee_id": employee_id,
+                            "leave_type_id": leave_type_id,
+                            "from_date": sunday_date,
+                            "to_date": sunday_date,
+                            "duration": 1,
+                            "reason": f"Sunday converted to leave (>2 leaves in week {sunday_info['week_start']} to {sunday_info['week_end']})",
+                            "status": "approved",
+                            "dept_head_status": "approved",
+                            "hr_status": "approved",
+                            "approved_by": "system",
+                            "approved_at": datetime.now(timezone.utc).isoformat(),
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "is_system_generated": True,
+                            "generation_rule": "sunday_excess_leave_rule"
+                        }
+                        await db.leave_requests.insert_one(leave_request)
+                        
+                        paid_leave_days += 1  # Add to paid leave count
+                        sunday_leave_deductions.append({
+                            "date": sunday_date,
+                            "deducted_from": leave_type_id,
+                            "leave_request_id": leave_request["leave_request_id"]
+                        })
+                        break
+                
+                if not deducted_from:
+                    # No balance available - becomes LOP
+                    sundays_as_lop += 1
+                    unpaid_leave_days += 1
+                    sunday_leave_deductions.append({
+                        "date": sunday_date,
+                        "deducted_from": "LOP",
+                        "reason": "No leave balance available"
+                    })
+        
+        # Adjust paid_sundays to not double-count
+        # paid_sundays from the function is already only counting normally paid ones
         
         # Calculate working days breakdown
         working_days_info = get_working_days_in_month(year, month, holidays)
@@ -385,9 +468,11 @@ async def process_payroll(payroll_id: str, request: Request):
             "late_count": late_count,
             "half_day_count": half_day_count,
             
-            # Sunday pay status (with weekly leave rule applied)
+            # Sunday pay status
             "paid_sundays": paid_sundays,
-            "unpaid_sundays": unpaid_sundays,
+            "sundays_as_leave": len(sundays_as_leave),
+            "sundays_as_lop": sundays_as_lop,
+            "sunday_leave_deductions": sunday_leave_deductions,
             
             # Holiday count
             "paid_holidays": paid_holidays,
