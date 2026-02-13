@@ -277,7 +277,7 @@ def process_employee_salary(
     wfh_days = float(attendance_data.get("wfh_days", 0))
     late_count = int(attendance_data.get("late_count", 0))
     half_day_count = float(attendance_data.get("half_day_count", 0))
-    second_saturday_count = float(attendance_data.get("second_saturday_count", 0))
+    second_saturday_attended = float(attendance_data.get("second_saturday_attended", 0))
 
     paid_leave_days = float(attendance_data.get("paid_leave_days", 0))
     unpaid_leave_days = float(attendance_data.get("unpaid_leave_days", 0))
@@ -300,7 +300,7 @@ def process_employee_salary(
         paid_leave_days=paid_leave_days,
         wfh_days=wfh_days,
         half_day_count=half_day_count,
-        second_saturday_count=second_saturday_count,
+        second_saturday_attended=second_saturday_attended,
         late_deduction_days=late_deduction_days,
         wfh_percentage=wfh_percentage,
         calendar_days=calendar_days
