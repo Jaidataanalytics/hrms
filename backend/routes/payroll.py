@@ -342,7 +342,8 @@ async def process_payroll(payroll_id: str, request: Request):
         
         # Calculate holidays and second Saturdays
         paid_holidays = 0
-        second_saturday_count = 0
+        second_saturday_total = 0
+        second_saturday_dates = set()
         
         for day in range(1, total_days + 1):
             date_str = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}"
@@ -350,9 +351,10 @@ async def process_payroll(payroll_id: str, request: Request):
                 from datetime import date as dt_date
                 d = dt_date(year, month, day)
                 
-                # Check if it's a second Saturday (half-day work, half-day pay)
+                # Track 2nd Saturdays
                 if is_second_saturday(year, month, day):
-                    second_saturday_count += 1
+                    second_saturday_total += 1
+                    second_saturday_dates.add(date_str)
                 elif d.weekday() != 6 and date_str in holiday_dates:  # Not Sunday and is holiday
                     holiday = holiday_dates[date_str]
                     if not holiday.get("is_half_day"):
@@ -360,26 +362,40 @@ async def process_payroll(payroll_id: str, request: Request):
             except Exception:
                 pass
         
+        # Count how many 2nd Saturdays the employee actually attended
+        # (those are already counted in office_days as 1.0)
+        second_sat_attended = 0
+        for att_rec in attendance:
+            att_date = att_rec.get("date", "")
+            att_status = att_rec.get("status", "").lower()
+            if att_date in second_saturday_dates and att_status in ["present", "tour", "wfh"]:
+                second_sat_attended += 1
+        
+        # 2nd Saturday: half working day but FULLY PAID
+        # - Attended: already in office_days as 1.0 → no adjustment needed
+        # - Not attended: NOT in office_days → add 1.0 for full pay
+        second_saturday_unattended = second_saturday_total - second_sat_attended
+        
         # Build attendance data with NEW STRUCTURE
         attendance_data = {
             "office_days": office_days,
             "wfh_days": wfh_days,
             "late_count": late_count,
             "half_day_count": half_day_count,
-            "second_saturday_count": second_saturday_count,
+            "second_saturday_count": second_saturday_unattended,
             
-            # NEW: Sunday pay status from weekly rule
+            # Sunday pay status from weekly rule
             "paid_sundays": paid_sundays,
             "unpaid_sundays": unpaid_sundays,
             
-            # NEW: Holiday count
+            # Holiday count
             "paid_holidays": paid_holidays,
             
-            # NEW: Leave breakdown
+            # Leave breakdown
             "paid_leave_days": paid_leave_days,
             "unpaid_leave_days": unpaid_leave_days,
             
-            # NEW: Working days info
+            # Working days info
             "working_days_info": working_days_info
         }
         
