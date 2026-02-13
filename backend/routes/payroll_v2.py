@@ -110,7 +110,7 @@ def calculate_earned_days(
     paid_leave_days: float,
     wfh_days: float,
     half_day_count: float = 0,
-    second_saturday_count: float = 0,
+    second_saturday_attended: float = 0,
     late_deduction_days: float = 0,
     wfh_percentage: float = 50.0,
     calendar_days: int = 31
@@ -121,22 +121,28 @@ def calculate_earned_days(
     Formula:
     Earned Days = Office Days + Paid Sundays + Paid Holidays + Paid Leave Days
                 + (WFH Days × WFH%) + (Half Days × 0.5)
-                + Unattended 2nd Saturdays (1.0 each - fully paid)
+                + 2nd Saturday Bonus (0.5 if attended - since they worked half day but get full pay)
                 - Late Deduction Days
 
-    NOTE: 2nd Saturday is a half working day but FULLY PAID.
-    - If employee attended: already counted as 1.0 in office_days. No bonus needed.
-    - If employee didn't attend: second_saturday_count has the unattended count.
-      We add 1.0 per unattended 2nd Sat for full pay.
+    NOTE: 2nd Saturday is a half working day but FULLY PAID if attended.
+    - If employee attended: They already get 0.5 in office_days (or 1.0 if recorded as full).
+      We add 0.5 bonus so they get full day pay for half day work.
+    - If employee didn't attend: No pay for that day.
 
     Earned Days never exceeds calendar days.
     """
     wfh_earned = wfh_days * (wfh_percentage / 100.0)
     half_day_earned = half_day_count * 0.5
+    
+    # 2nd Saturday bonus: If they attended (half day work), they get full pay
+    # This means we add 0.5 bonus on top of the 0.5 work recorded
+    # But if attendance recorded them as 1.0 (full present), no bonus needed
+    # The caller should pass 0 if already counted as full, or 0.5 if counted as half
+    second_sat_bonus = second_saturday_attended * 0.5
 
     total = (office_days + paid_sundays + paid_holidays + paid_leave_days
              + wfh_earned + half_day_earned
-             + second_saturday_count * 1.0  # Unattended 2nd Sats: fully paid
+             + second_sat_bonus
              - late_deduction_days)
 
     # Cap at calendar days, floor at 0
