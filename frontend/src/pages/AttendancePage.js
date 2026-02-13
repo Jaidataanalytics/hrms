@@ -102,10 +102,13 @@ const AttendancePage = () => {
   const [gridEditingCell, setGridEditingCell] = useState(null);
   const [gridEditForm, setGridEditForm] = useState({
     status: 'present',
+    leave_type: '',
     first_in: '',
     last_out: '',
     remarks: '',
-    edit_reason: ''
+    edit_reason: '',
+    create_leave_request: false,
+    deduct_balance: false
   });
   const [departments, setDepartments] = useState([]);
 
