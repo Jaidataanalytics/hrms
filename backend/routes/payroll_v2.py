@@ -140,7 +140,6 @@ def calculate_earned_days(
     paid_leave_days: float,
     wfh_days: float,
     half_day_count: float = 0,
-    second_saturday_attended: float = 0,
     late_deduction_days: float = 0,
     wfh_percentage: float = 50.0,
     calendar_days: int = 31
@@ -151,26 +150,24 @@ def calculate_earned_days(
     Formula:
     Earned Days = Office Days + Paid Sundays + Paid Holidays + Paid Leave Days
                 + (WFH Days × WFH%) + (Half Days × 0.5)
-                + 2nd Saturday Bonus (1.0 if attended - full day for half day work)
                 - Late Deduction Days
 
-    NOTE: 2nd Saturday is a half working day but FULLY PAID if attended.
-    - 2nd Saturday attendance is NOT counted in office_days
-    - If employee attended: They get full day (1.0) bonus
-    - If employee didn't attend: No pay for that day
+    NOTE on 2nd Saturday:
+    - It's a half working day but pays full if attended
+    - If attended: counted as 1.0 in office_days (no separate bonus needed)
+    - If not attended: not in office_days (no pay)
+
+    NOTE on Sundays:
+    - Sundays are paid UNLESS employee takes >2 leaves that week
+    - If >2 leaves in a week, that Sunday becomes unpaid (not in paid_sundays)
 
     Earned Days never exceeds calendar days.
     """
     wfh_earned = wfh_days * (wfh_percentage / 100.0)
     half_day_earned = half_day_count * 0.5
-    
-    # 2nd Saturday bonus: If they attended (half day work), they get full day pay
-    # This is added as 1.0 per 2nd Saturday attended
-    second_sat_bonus = second_saturday_attended * 1.0
 
     total = (office_days + paid_sundays + paid_holidays + paid_leave_days
              + wfh_earned + half_day_earned
-             + second_sat_bonus
              - late_deduction_days)
 
     # Cap at calendar days, floor at 0
