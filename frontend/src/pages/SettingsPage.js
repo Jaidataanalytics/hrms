@@ -28,7 +28,7 @@ import {
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const SettingsPage = () => {
-  const { user, token } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [syncResults, setSyncResults] = useState(null);
   const [syncCredentials, setSyncCredentials] = useState({
@@ -52,7 +52,7 @@ const SettingsPage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...getAuthHeaders()
         },
         body: JSON.stringify(syncCredentials)
       });
@@ -84,7 +84,7 @@ const SettingsPage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...getAuthHeaders()
         },
         body: JSON.stringify({
           ...syncCredentials,
