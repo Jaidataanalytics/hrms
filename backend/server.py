@@ -362,7 +362,7 @@ async def get_current_user(request: Request) -> dict:
             user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
             if user:
                 return user
-        except:
+        except Exception:
             pass  # Token invalid, try other methods
     
     # Check Authorization header for JWT
@@ -374,7 +374,7 @@ async def get_current_user(request: Request) -> dict:
             user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
             if user:
                 return user
-        except:
+        except Exception:
             pass
     
     raise HTTPException(status_code=401, detail="Not authenticated")
@@ -715,7 +715,7 @@ async def refresh_token(request: Request, response: Response):
         )
         
         return {"access_token": token, "message": "Token refreshed"}
-    except:
+    except Exception:
         raise HTTPException(status_code=401, detail="Unable to refresh token")
 
 
@@ -1350,7 +1350,7 @@ async def get_attendance(
                         t1 = dt.strptime(existing["first_in"], "%H:%M:%S" if existing["first_in"].count(":") == 2 else "%H:%M")
                         t2 = dt.strptime(existing["last_out"], "%H:%M:%S" if existing["last_out"].count(":") == 2 else "%H:%M")
                         existing["total_hours"] = round((t2 - t1).seconds / 3600, 2)
-                    except:
+                    except Exception:
                         pass
         else:
             seen[dedup_key] = att
