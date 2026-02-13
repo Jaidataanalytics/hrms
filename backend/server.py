@@ -4097,7 +4097,7 @@ app.add_middleware(
 # ==================== SCHEDULER FOR BIOMETRIC SYNC ====================
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 scheduler = AsyncIOScheduler()
 
@@ -4107,17 +4107,17 @@ async def start_scheduler():
     from services.biometric_sync import sync_biometric_data, sync_historical_data
     import asyncio
     
-    # Add job to run every 3 hours
+    # Add job to run daily at 10:00 AM IST (04:30 UTC)
     scheduler.add_job(
         sync_biometric_data,
-        IntervalTrigger(hours=3),
+        CronTrigger(hour=4, minute=30),
         id="biometric_sync",
-        name="Biometric API Sync (every 3 hours)",
+        name="Biometric API Sync (daily 10:00 AM IST)",
         replace_existing=True
     )
     
     scheduler.start()
-    logger.info("Biometric sync scheduler started - running every 3 hours")
+    logger.info("Biometric sync scheduler started - running daily at 10:00 AM IST")
     
     # Run initial sync on startup (in background to not block startup)
     # This ensures production gets data immediately after deployment
