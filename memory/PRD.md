@@ -61,6 +61,19 @@ On-the-fly normalization during payroll processing:
 - Added `dashboard-welcome` class to Dashboard welcome section, `quick-action-card` class to quick actions card
 - Themes include: amber/gold (birthday), blue/indigo (work anniversary), rose/pink (marriage anniversary), emerald/teal (custom)
 
+### Biometric Sync & Late Deadline Update (Feb 13, 2026)
+- Changed biometric API sync scheduler from every 3 hours to daily at 10:00 AM IST (CronTrigger hour=4, minute=30 UTC)
+- Updated late threshold display on BiometricPage to 10:00 AM (was 09:45)
+- Backend late threshold already set to 10:00 in biometric_sync.py and biometric.py
+
+### Training Program Management (Feb 13, 2026)
+- Added Edit and Delete buttons for training programs (pencil/trash icons on program cards)
+- Added program detail dialog showing enrolled employees with enrollment dates and status
+- Added ability to add employees to a training program from the detail dialog
+- Added ability to remove employees from a training program
+- Backend: Added DELETE /api/training/enrollments/{enrollment_id} endpoint
+- Full CRUD for training programs with role-based access (HR/Admin only)
+
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
 - Token-based auth across all pages
