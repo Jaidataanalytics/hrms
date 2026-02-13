@@ -1528,7 +1528,7 @@ const AttendancePage = () => {
               <Label>Status</Label>
               <Select
                 value={gridEditForm.status}
-                onValueChange={(v) => setGridEditForm({ ...gridEditForm, status: v })}
+                onValueChange={(v) => setGridEditForm({ ...gridEditForm, status: v, leave_type: v !== 'leave' ? '' : gridEditForm.leave_type })}
               >
                 <SelectTrigger data-testid="grid-edit-status-select">
                   <SelectValue />
@@ -1543,6 +1543,64 @@ const AttendancePage = () => {
                 </SelectContent>
               </Select>
             </div>
+            
+            {/* Leave Type Selection - only shown when status is "leave" */}
+            {gridEditForm.status === 'leave' && (
+              <div className="space-y-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="space-y-2">
+                  <Label className="text-amber-800">Leave Type *</Label>
+                  <Select
+                    value={gridEditForm.leave_type}
+                    onValueChange={(v) => setGridEditForm({ ...gridEditForm, leave_type: v })}
+                  >
+                    <SelectTrigger data-testid="grid-edit-leave-type-select">
+                      <SelectValue placeholder="Select leave type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CL">Casual Leave (CL)</SelectItem>
+                      <SelectItem value="SL">Sick Leave (SL)</SelectItem>
+                      <SelectItem value="EL">Earned Leave (EL)</SelectItem>
+                      <SelectItem value="PL">Privilege Leave (PL)</SelectItem>
+                      <SelectItem value="LOP">Loss of Pay (LOP)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="create_leave_request"
+                    checked={gridEditForm.create_leave_request}
+                    onChange={(e) => setGridEditForm({ ...gridEditForm, create_leave_request: e.target.checked })}
+                    className="rounded border-amber-300"
+                  />
+                  <Label htmlFor="create_leave_request" className="text-sm text-amber-800">
+                    Create backdated leave request (auto-approved)
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="deduct_balance"
+                    checked={gridEditForm.deduct_balance}
+                    onChange={(e) => setGridEditForm({ ...gridEditForm, deduct_balance: e.target.checked })}
+                    className="rounded border-amber-300"
+                    disabled={gridEditForm.leave_type === 'LOP'}
+                  />
+                  <Label htmlFor="deduct_balance" className="text-sm text-amber-800">
+                    Deduct from leave balance
+                  </Label>
+                </div>
+                
+                {gridEditForm.leave_type === 'LOP' && (
+                  <p className="text-xs text-amber-600">
+                    Note: LOP does not affect leave balance
+                  </p>
+                )}
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>In Time</Label>
