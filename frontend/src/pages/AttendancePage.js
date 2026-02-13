@@ -303,9 +303,28 @@ const AttendancePage = () => {
       }
 
       if (response.ok) {
-        toast.success('Attendance updated');
+        const result = await response.json();
+        let message = 'Attendance updated';
+        if (result.leave_request_created) {
+          message += ' (Leave request created)';
+        }
+        if (result.balance_deducted) {
+          message += ` (${result.deducted_from} balance deducted)`;
+        }
+        toast.success(message);
         setGridEditDialogOpen(false);
         setGridEditingCell(null);
+        // Reset form
+        setGridEditForm({
+          status: 'present',
+          leave_type: '',
+          first_in: '',
+          last_out: '',
+          remarks: '',
+          edit_reason: '',
+          create_leave_request: false,
+          deduct_balance: false
+        });
         fetchGridData();
       } else {
         const data = await response.json();
