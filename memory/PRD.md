@@ -12,19 +12,32 @@ Comprehensive HR management system with premium UI/UX, mobile app capabilities, 
 
 ## What's Been Implemented
 
-### Payroll Engine v2 (Feb 13, 2026)
+### Payroll Engine v2 - CORRECTED (Feb 13, 2026)
 Complete refactoring of payroll calculation engine for statutory compliance:
+
+#### Earned Days Formula (CORRECTED)
+```
+Earned Days = Office Days + Paid Sundays + Paid Holidays + Paid Leave - Late Deductions
+```
+
+Where:
+- **Office Days**: Days physically present at work
+  - 2nd Saturday: If attended, counts as 1.0 (full day for half day work)
+  - If not attended, no pay (not in office_days)
+- **Paid Sundays**: Based on weekly leave rule
+  - Default: All 4 Sundays paid
+  - If >2 leaves in a week, that week's Sunday becomes UNPAID
+- **Paid Holidays**: All company holidays (e.g., Jan 14 Makar Sankranti, Jan 26 Republic Day)
+- **Paid Leave**: CL, SL, EL, ML etc. added to earned days
+- **Late Deductions**: 3 lates = 1 day deducted (cumulative: 6 lates = 2 days)
+
+#### Statutory Deductions
 - **PF**: `min(12% × Earned Basic+DA, ₹15,000 max deduction)` — cap on deduction, not base
-- **ESI**: `0.75% × Total Salary Earned` — only when earned ≤ ₹21,000 (eligibility on earned gross)
+- **ESI**: `0.75% × Total Salary Earned` — only when earned ≤ ₹21,000
 - **SEWA**: `2% × FIXED Basic` (not earned, not basic+DA)
-- **Component Proration**: Each component individually: `round(Fixed / CalendarDays × EarnedDays, 2)`
-- **Late Deduction**: 3 lates = 1 day reduction from earned days (cumulative)
-- **2nd Saturday**: Half working day but FULLY PAID — unattended 2nd Saturdays add 1.0 earned day
-- **Earned Days**: `Office + Paid Sundays + Paid Holidays + Paid Leave + WFH×50% + 2ndSat(unattended) - LateDedDays`, capped at calendar days
-- **Separate Basic & DA**: Split into individual earned components in payslip and export
-- **Validation**: `|Net - (Earned - Deductions)| ≤ ₹0.01`, triggers alert on mismatch
-- **Excel Export**: 34 columns including Basic(Earned), DA(Earned), Late Count, Late Deduction Days, Validation
-- **Audit Trail**: Each payslip stores `config_used` with all rates used
+
+#### Component Proration
+Each component prorated individually: `round(Fixed / CalendarDays × EarnedDays, 2)`
 
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
@@ -40,13 +53,18 @@ Complete refactoring of payroll calculation engine for statutory compliance:
 ## Prioritized Backlog
 
 ### P0 (Critical)
+- [x] Payroll earned days formula fix (COMPLETED)
+- [ ] Full E2E testing of payroll with production data
 - [ ] SOP role-based access fix (employees see all SOPs instead of only assigned)
-- [ ] Full E2E testing of new workflows (leave approval, CO, cancellations)
 
 ### P1 (High)
 - [ ] Mobile app build fix (MainActivity.java errors, Gradle config)
 - [ ] Mobile location permissions (runtime permission request)
 - [ ] Finalize salary logic: deduct pay for leave without balance
+
+### P2 (Medium)
+- [ ] Tour attendance daily check automation
+- [ ] Full E2E testing of new workflows (leave approval, CO, cancellations)
 
 ### P2 (Medium)
 - [ ] Tour attendance automated daily check
