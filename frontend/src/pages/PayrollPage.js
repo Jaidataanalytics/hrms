@@ -2376,44 +2376,103 @@ const PayrollPage = () => {
           {selectedPayslip && (
             <div className="space-y-4">
               <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">Attendance</h4>
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-lg text-sm">
+                  <span>Earned Days: <b>{selectedPayslip.attendance?.total_earned_days || selectedPayslip.paid_days || '-'}</b></span>
+                  <span>Office: <b>{selectedPayslip.attendance?.office_days || selectedPayslip.present_days || '-'}</b></span>
+                  <span>Calendar: <b>{selectedPayslip.attendance?.total_days_in_month || selectedPayslip.working_days || '-'}</b></span>
+                  {selectedPayslip.attendance?.late_count > 0 && (
+                    <span className="text-amber-600">Lates: <b>{selectedPayslip.attendance.late_count}</b> ({selectedPayslip.attendance.late_deduction_days} day ded.)</span>
+                  )}
+                </div>
+              </div>
+              <div>
                 <h4 className="text-sm font-semibold text-slate-700 mb-2">Earnings</h4>
                 <div className="space-y-2 bg-emerald-50 p-3 rounded-lg">
-                  <div className="flex justify-between text-sm">
-                    <span>Basic</span>
-                    <span>{formatCurrency(selectedPayslip.basic)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>HRA</span>
-                    <span>{formatCurrency(selectedPayslip.hra)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Special Allowance</span>
-                    <span>{formatCurrency(selectedPayslip.special_allowance)}</span>
-                  </div>
+                  {(selectedPayslip.earnings?.basic_earned > 0 || selectedPayslip.basic > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>Basic</span>
+                      <span>{formatCurrency(selectedPayslip.earnings?.basic_earned || selectedPayslip.basic)}</span>
+                    </div>
+                  )}
+                  {(selectedPayslip.earnings?.da_earned > 0 || selectedPayslip.da > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>DA</span>
+                      <span>{formatCurrency(selectedPayslip.earnings?.da_earned || selectedPayslip.da)}</span>
+                    </div>
+                  )}
+                  {(selectedPayslip.earnings?.hra_earned > 0 || selectedPayslip.hra > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>HRA</span>
+                      <span>{formatCurrency(selectedPayslip.earnings?.hra_earned || selectedPayslip.hra)}</span>
+                    </div>
+                  )}
+                  {selectedPayslip.earnings?.conveyance_earned > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Conveyance</span>
+                      <span>{formatCurrency(selectedPayslip.earnings.conveyance_earned)}</span>
+                    </div>
+                  )}
+                  {selectedPayslip.earnings?.grade_pay_earned > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Grade Pay</span>
+                      <span>{formatCurrency(selectedPayslip.earnings.grade_pay_earned)}</span>
+                    </div>
+                  )}
+                  {selectedPayslip.earnings?.other_allowance_earned > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Other Allowance</span>
+                      <span>{formatCurrency(selectedPayslip.earnings.other_allowance_earned)}</span>
+                    </div>
+                  )}
+                  {selectedPayslip.earnings?.medical_allowance_earned > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Medical/Spl. Allowance</span>
+                      <span>{formatCurrency(selectedPayslip.earnings.medical_allowance_earned)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-semibold border-t pt-2">
-                    <span>Gross Salary</span>
-                    <span>{formatCurrency(selectedPayslip.gross_salary)}</span>
+                    <span>Total Salary Earned</span>
+                    <span>{formatCurrency(selectedPayslip.earnings?.total_salary_earned || selectedPayslip.gross_salary)}</span>
                   </div>
                 </div>
               </div>
               <div>
                 <h4 className="text-sm font-semibold text-slate-700 mb-2">Deductions</h4>
                 <div className="space-y-2 bg-red-50 p-3 rounded-lg">
-                  <div className="flex justify-between text-sm">
-                    <span>PF (Employee)</span>
-                    <span>{formatCurrency(selectedPayslip.pf_employee)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>ESI (Employee)</span>
-                    <span>{formatCurrency(selectedPayslip.esi_employee)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Professional Tax</span>
-                    <span>{formatCurrency(selectedPayslip.professional_tax)}</span>
-                  </div>
+                  {(selectedPayslip.deductions?.epf > 0 || selectedPayslip.pf_employee > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>EPF (Employee)</span>
+                      <span>{formatCurrency(selectedPayslip.deductions?.epf || selectedPayslip.pf_employee)}</span>
+                    </div>
+                  )}
+                  {(selectedPayslip.deductions?.esi > 0 || selectedPayslip.esi_employee > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>ESI (Employee)</span>
+                      <span>{formatCurrency(selectedPayslip.deductions?.esi || selectedPayslip.esi_employee)}</span>
+                    </div>
+                  )}
+                  {(selectedPayslip.deductions?.sewa > 0 || selectedPayslip.sewa > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>SEWA</span>
+                      <span>{formatCurrency(selectedPayslip.deductions?.sewa || selectedPayslip.sewa)}</span>
+                    </div>
+                  )}
+                  {(selectedPayslip.deductions?.sewa_advance > 0 || selectedPayslip.sewa_advance > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>SEWA Advance</span>
+                      <span>{formatCurrency(selectedPayslip.deductions?.sewa_advance || selectedPayslip.sewa_advance)}</span>
+                    </div>
+                  )}
+                  {(selectedPayslip.deductions?.other_deduction > 0 || selectedPayslip.other_deduction > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span>Other Deduction</span>
+                      <span>{formatCurrency(selectedPayslip.deductions?.other_deduction || selectedPayslip.other_deduction)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-semibold border-t pt-2">
                     <span>Total Deductions</span>
-                    <span>{formatCurrency(selectedPayslip.total_deductions)}</span>
+                    <span>{formatCurrency(selectedPayslip.deductions?.total_deductions || selectedPayslip.total_deductions)}</span>
                   </div>
                 </div>
               </div>
@@ -2425,11 +2484,11 @@ const PayrollPage = () => {
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
-                <span>Working Days: {selectedPayslip.working_days}</span>
-                <span>Present: {selectedPayslip.present_days}</span>
-                <span>LWP: {selectedPayslip.lwp_days}</span>
-              </div>
+              {selectedPayslip.validation && (
+                <div className={`text-xs p-2 rounded ${selectedPayslip.validation.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  Validation: {selectedPayslip.validation.passed ? 'PASS' : `FAIL (diff: ${selectedPayslip.validation.difference})`}
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
