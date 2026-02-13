@@ -10,7 +10,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://hr-calc-resolver.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://payroll-sunday-fix.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@shardahr.com"
