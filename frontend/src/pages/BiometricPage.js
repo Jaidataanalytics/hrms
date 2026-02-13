@@ -82,7 +82,7 @@ const APIManagerPage = () => {
   // Sync settings
   const [syncSettings, setSyncSettings] = useState({
     syncFrequency: '3', // hours
-    lateThreshold: '09:45',
+    lateThreshold: '10:00',
     autoSyncEnabled: true
   });
   
