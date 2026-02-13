@@ -199,6 +199,7 @@ const EmployeeDirectory = () => {
           last_name: '',
           email: '',
           phone: '',
+          emp_code: '',
           department_id: '',
           employment_type: 'management'
         });
