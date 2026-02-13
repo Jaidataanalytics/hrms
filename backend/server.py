@@ -132,6 +132,7 @@ class EmployeeCreate(BaseModel):
     last_name: str
     email: EmailStr
     phone: Optional[str] = None
+    emp_code: Optional[str] = None
     department_id: Optional[str] = None
     designation_id: Optional[str] = None
     location_id: Optional[str] = None
