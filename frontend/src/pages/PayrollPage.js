@@ -737,6 +737,7 @@ const PayrollPage = () => {
         const att = slip.attendance || {};
         const earn = slip.earnings || {};
         const ded = slip.deductions || {};
+        const val = slip.validation || {};
         
         return {
           'Emp Code': slip.emp_code || slip.employee_id,
@@ -750,25 +751,29 @@ const PayrollPage = () => {
           'Med./Spl. Allow': fc.medical_allowance || 0,
           'Total Salary (FIXED)': fc.total_fixed || (slip.basic + slip.hra + (slip.special_allowance || 0)),
           'Work from office': att.office_days || slip.present_days || 0,
-          'Sunday + Holiday Leave Days': att.sundays_holidays || 0,
-          'Leave Days': att.leave_days || slip.lwp_days || 0,
+          'Sunday + Holiday': (att.paid_sundays || 0) + (att.paid_holidays || 0),
+          'Leave Days': att.total_leave_days || slip.lwp_days || 0,
           'Work from Home @50%': att.wfh_days || 0,
-          'Late Deduction': earn.late_deduction || 0,
+          'Late Count': att.late_count || 0,
+          'Late Deduction Days': att.late_deduction_days || 0,
+          'Total Earned Days': att.total_earned_days || slip.paid_days || 0,
+          'Basic (Earned)': earn.basic_earned || 0,
+          'DA (Earned)': earn.da_earned || 0,
           'Basic+DA (Earned)': earn.basic_da_earned || slip.basic || 0,
           'HRA (Earned)': earn.hra_earned || slip.hra || 0,
           'Conveyance (Earned)': earn.conveyance_earned || 0,
           'GRADE PAY (Earned)': earn.grade_pay_earned || 0,
           'OTHER ALLOW (Earned)': earn.other_allowance_earned || 0,
           'Med./Spl. Allow (Earned)': earn.medical_allowance_earned || slip.special_allowance || 0,
-          'Total Earned Days': att.total_earned_days || slip.paid_days || 0,
-          'Total Salary Earned': slip.gross_salary || 0,
+          'Total Salary Earned': earn.total_salary_earned || slip.gross_salary || 0,
           'EPF Employees': ded.epf || slip.pf_employee || 0,
           'ESI Employees': ded.esi || slip.esi_employee || 0,
           'SEWA': ded.sewa || slip.sewa || 0,
           'Sewa Advance': ded.sewa_advance || slip.sewa_advance || 0,
           'Other Deduction': ded.other_deduction || slip.other_deduction || 0,
-          'Total Deduction': slip.total_deductions || 0,
+          'Total Deduction': ded.total_deductions || slip.total_deductions || 0,
           'NET PAYABLE': slip.net_salary || 0,
+          'Validation': val.passed ? 'PASS' : `FAIL (${val.difference || 0})`,
         };
       });
 
