@@ -1159,8 +1159,11 @@ async def mark_attendance(mark_data: AttendanceMarkRequest, request: Request):
     if not employee_id:
         raise HTTPException(status_code=400, detail="No employee profile linked")
     
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    now_time = datetime.now(timezone.utc).strftime("%H:%M")
+    # Use IST (UTC+5:30) for Indian business context
+    IST = timezone(timedelta(hours=5, minutes=30))
+    now_ist = datetime.now(IST)
+    today = now_ist.strftime("%Y-%m-%d")
+    now_time = now_ist.strftime("%H:%M")
     
     # Find or create today's attendance
     existing = await db.attendance.find_one({"employee_id": employee_id, "date": today}, {"_id": 0})
