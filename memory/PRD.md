@@ -66,6 +66,10 @@ On-the-fly normalization during payroll processing:
 - Manual sync options remain available on the Biometric page
 - Updated late threshold display on BiometricPage to 10:00 AM
 
+### Mobile Check-in/Check-out Time Fix (Feb 14, 2026)
+- Fixed wrong time recording: was using UTC, now uses IST (UTC+5:30) for punch times and dates
+- Affected: /api/attendance/mark endpoint - `today` date and `now_time` punch time now use IST
+
 ### User Management Bug Fixes (Feb 13, 2026)
 - Fixed "Failed to update user status" — missing auth headers in handleToggleStatus
 - Fixed "Failed to delete user" — missing auth headers in handleDeleteUser
