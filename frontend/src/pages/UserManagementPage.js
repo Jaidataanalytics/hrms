@@ -133,13 +133,16 @@ const UserManagementPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          ...form,
+          employee_id: form.employee_id || undefined
+        })
       });
 
       if (response.ok) {
         toast.success('User created successfully');
         setShowAddUser(false);
-        setForm({ name: '', email: '', password: '', role: 'employee' });
+        setForm({ name: '', email: '', password: '', role: 'employee', employee_id: '' });
         fetchData();
       } else {
         const err = await response.json();
