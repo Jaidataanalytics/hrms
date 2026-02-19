@@ -30,6 +30,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const SettingsPage = () => {
   const { user, getAuthHeaders } = useAuth();
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin';
   const [syncing, setSyncing] = useState(false);
   const [syncResults, setSyncResults] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
