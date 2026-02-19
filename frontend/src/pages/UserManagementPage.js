@@ -103,9 +103,10 @@ const UserManagementPage = () => {
       if (filterRole !== 'all') url += `role=${filterRole}&`;
       if (filterStatus !== 'all') url += `status=${filterStatus}&`;
       
-      const [usersRes, rolesRes] = await Promise.all([
+      const [usersRes, rolesRes, empRes] = await Promise.all([
         fetch(url, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/users/roles/list`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(`${API_URL}/users/roles/list`, { credentials: 'include', headers: getAuthHeaders() }),
+        fetch(`${API_URL}/employees?limit=500`, { credentials: 'include', headers: getAuthHeaders() })
       ]);
 
       if (usersRes.ok) {
