@@ -328,17 +328,19 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
         "unmatched_codes": set()
     }
     
+    # ---- Group API records by (emp_code, date) ----
+    from collections import defaultdict
+    grouped: Dict[str, Dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    
     for record in biometric_data:
         emp_code = record.get("EmployeeCode")
         log_date = record.get("LogDate")
-        punch_direction = record.get("PunchDirection")
         device_serial = record.get("SerialNumber")
         
         if not emp_code or not log_date:
             stats["errors"] += 1
             continue
         
-        # Check if employee exists
         emp_info = emp_map.get(emp_code)
         if not emp_info:
             stats["unmatched"] += 1
@@ -347,27 +349,54 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
         
         stats["matched"] += 1
         
-        # Parse date and time
         date_str, time_str = parse_log_datetime(log_date)
         if not date_str or not time_str:
             stats["errors"] += 1
             continue
         
-        # Update attendance - use time-based IN/OUT detection
-        punch_type = parse_punch_direction(punch_direction, time_str)
-        success = await update_attendance_record(
-            employee_id=emp_info["employee_id"],
-            emp_code=emp_code,
-            date=date_str,
-            punch_time=time_str,
-            punch_type=punch_type,
-            device_serial=device_serial
-        )
-        
-        if success:
-            stats["updated"] += 1
-        else:
-            stats["errors"] += 1
+        grouped[emp_code][date_str].append({
+            "time": time_str,
+            "device": device_serial,
+            "employee_id": emp_info["employee_id"]
+        })
+    
+    # ---- Process each employee-date group ----
+    for emp_code, dates in grouped.items():
+        emp_info = emp_map[emp_code]
+        for date_str, punches in dates.items():
+            # Sort punches by time
+            punches.sort(key=lambda p: p["time"])
+            
+            # Build punch records: first = IN, last = OUT (if >1 punch)
+            # Middle punches use time-based logic
+            punch_records = []
+            for i, p in enumerate(punches):
+                if i == 0:
+                    punch_type = "IN"
+                elif i == len(punches) - 1 and len(punches) > 1:
+                    punch_type = "OUT"
+                else:
+                    punch_type = parse_punch_direction(None, p["time"])
+                
+                punch_records.append({
+                    "type": punch_type,
+                    "time": p["time"],
+                    "source": "biometric_api",
+                    "device": p["device"]
+                })
+            
+            # Write to attendance
+            success = await update_attendance_batch(
+                employee_id=emp_info["employee_id"],
+                emp_code=emp_code,
+                date=date_str,
+                punch_records=punch_records
+            )
+            
+            if success:
+                stats["updated"] += 1
+            else:
+                stats["errors"] += 1
     
     # Log sync completion
     await log_sync_result(from_date, to_date, stats)
