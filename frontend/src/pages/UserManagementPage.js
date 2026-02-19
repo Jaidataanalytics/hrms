@@ -88,6 +88,7 @@ const UserManagementPage = () => {
   });
   
   const [newPassword, setNewPassword] = useState('');
+  const [employees, setEmployees] = useState([]);
 
   const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin';
   const isSuperAdmin = user?.role === 'super_admin';
