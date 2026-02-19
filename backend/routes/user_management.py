@@ -103,11 +103,13 @@ async def create_user(data: dict, request: Request):
     user = {
         "user_id": f"user_{uuid.uuid4().hex[:12]}",
         "email": data.get("email"),
+        "password": pwd_context.hash(data.get("password")),
         "password_hash": pwd_context.hash(data.get("password")),
         "name": data.get("name"),
         "role": data.get("role", "employee"),
         "employee_id": data.get("employee_id"),
         "is_active": True,
+        "must_change_password": True,
         "created_by": current_user["user_id"],
         "created_at": datetime.now(timezone.utc).isoformat()
     }
