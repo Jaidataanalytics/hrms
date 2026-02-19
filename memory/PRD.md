@@ -95,6 +95,13 @@ On-the-fly normalization during payroll processing:
 - Backend: Added DELETE /api/training/enrollments/{enrollment_id} endpoint
 - Full CRUD for training programs with role-based access (HR/Admin only)
 
+### SEWA Advance Calculation Bug Fix (Feb 19, 2026)
+- Root cause 1: Payroll engine didn't check `start_month`/`start_year` before applying SEWA advance deduction — advances were deducted before their start date
+- Root cause 2: When payroll was deleted and re-run, SEWA advance `total_paid` accumulated without reversal (4 re-runs × ₹5,000 = ₹20,000 for Rudra)
+- Fix 1: Added start_month/year gate in `payroll_v2.py` — advance only deducts when `current month >= start month`
+- Fix 2: Added SEWA advance reversal in `delete_payroll_run` in `payroll.py` — deleting payroll now reverses advance tracking
+- Data fix: Reset Rudra (EMP31088E46) and Rahul (EMP2CD56E12) SEWA advance records to correct state
+
 ### Complete Sync from Production Fix (Feb 19, 2026)
 - Root cause: `SYNC_COLLECTIONS` was hardcoded to ~15 collections while the DB has 68+ collections
 - Fix: Replaced static dict with dynamic `get_all_collection_names()` that queries `db.list_collection_names()` at runtime
