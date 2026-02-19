@@ -370,10 +370,13 @@ def process_employee_salary(
     esi_deduction = calculate_esi(total_salary_earned, esi_applicable, esi_percentage, esi_ceiling)
     sewa_deduction = calculate_sewa(basic_fixed, sewa_applicable, sewa_percentage)
 
-    # SEWA Advance (per-employee configured amount)
+    # SEWA Advance (per-employee configured amount) - only if active AND current month >= start month
     sewa_advance = 0.0
     if sewa_advance_info and sewa_advance_info.get("is_active"):
-        sewa_advance = r2(sewa_advance_info.get("monthly_amount", 0))
+        adv_start_month = sewa_advance_info.get("start_month", 1)
+        adv_start_year = sewa_advance_info.get("start_year", year)
+        if (year > adv_start_year) or (year == adv_start_year and month >= adv_start_month):
+            sewa_advance = r2(sewa_advance_info.get("monthly_amount", 0))
 
     # One-time / other deductions
     other_deduction = 0.0
