@@ -3,66 +3,83 @@
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack React/FastAPI/MongoDB HR management system. The core payroll engine () and associated logic have been successfully refactored and extensively tested to handle complex business rules, including the Sunday as leave policy. A critical role-based access control (RBAC) bug, which made all SOPs visible to all employees, has been fixed and verified. The backend code quality has been improved by resolving several linting issues. The agent has just begun investigating the user's latest feature request to add a biometric employee code.
+The application is a full-stack React/FastAPI/MongoDB HR management system. A significant number of critical features and bug fixes have been implemented and verified across payroll, user management, role-based access control, and attendance data integrity.
+
+Key resolved issues include:
+- A complete rewrite of the biometric attendance sync logic to correctly calculate punch-in/out times.
+- A deep fix of the user management and role assignment system, ensuring role changes are respected and user accounts can be created from existing employee records.
+- Correction of a timezone bug in mobile check-ins.
+- Implementation of a biometric employee code field.
+
+The agent was investigating a user request to enhance the data synchronization feature between the preview and production environments.
 
 **Last working item**:
--   **Last item agent was working**: The agent was starting to investigate the user's new request to add a field for a biometric employee code on the manual employee creation screen. The agent has identified the relevant files for this task:  for the backend logic and  for the frontend UI.
--   **Status**: NOT STARTED
+-   **Last item agent was working**: The user requested a fix for the sync preview to deployed version feature, stating that it doesn't sync everything. The agent began investigating the  function in  and the corresponding frontend UI in .
+-   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Both. A frontend testing agent should be used to verify the new input field is added to the employee creation form and functions correctly. A backend testing agent should verify that the new  is correctly saved to the database upon employee creation.
+-   **Which testing method agent to use?**: backend testing agent
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Mobile APK build failure (P2)**
-    -   **Description**: The Android build process is failing due to errors in  and Gradle configuration. This issue was identified in a previous session and has not been addressed.
-    -   **Status**: NOT STARTED
+-   **Issue 1: Sync from preview to production does not sync everything (P0)**
+    -   **Description**: The user reported that the existing feature to sync data from the preview environment to the deployed (production) version is incomplete and needs to sync everything.
+    -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Both (if it involves native-to-web communication).
--   **Issue 2: Frontend Routing Bug (P2)**
-    -   **Description**: An intermittent bug where navigating to the  page occasionally fails to load the correct content and shows the dashboard instead.
-    -   **Attempted fixes**: The agent investigated the routing logic but could not reproduce the issue, so no fix was applied.
-    -   **Next debug checklist**:
-        1.  Review React Router setup in  or the main routing file.
-        2.  Check for race conditions in data fetching or state management (e.g., Redux, Context) that might cause a redirect or render the wrong component.
-        3.  Attempt to find a reliable way to reproduce the bug.
+    -   **Should Test frontend/backend/both after fix?**: Backend.
+-   **Issue 2: SEWA advance calculations review (P1)**
+    -   **Description**: The user reported that SEWA advance calculations are incorrect. A preliminary investigation found the logic to be working, but the user deferred the discussion for later. This is blocked pending specific feedback from the user.
+    -   **Status**: BLOCKED
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Backend.
+-   **Issue 3: Mobile APK build failure (P2)**
+    -   **Description**: The Android build process is failing. This is a known, unaddressed backlog item from a previous session.
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Both.
+-   **Issue 4: Frontend Routing Bug (P2)**
+    -   **Description**: An intermittent bug where navigating to the  page occasionally loads the dashboard content instead.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend.
--   **Issue 3: Frontend ESLint Warnings (P3)**
-    -   **Description**: The frontend codebase has numerous  warnings that should be addressed to improve code quality and prevent potential bugs.
+-   **Issue 5: Frontend ESLint Warnings (P3)**
+    -   **Description**: The frontend codebase has numerous  warnings that should be addressed.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend.
 
 **In progress Task List**:
--   **Task 1: Allow HR to add a manual biometric employee code (P0)**
-    -   **Where to resume**:
-        -   **Backend**: Modify the employee creation endpoint in  to accept and save the new  field.
-        -   **Frontend**: Modify the employee creation form/modal, likely within  or a child component, to include a new text input for the biometric code.
-    -   **What will be achieved with this?**: This will allow HR managers to set the unique identifier used by the biometric attendance system when adding new employees, ensuring attendance data can be correctly matched.
-    -   **Status**: NOT STARTED
-    -   **Should Test frontend/backend/both after fix?**: Both.
+-   **Task 1: Enhance Sync to Production (P0)**
+    -   **Where to resume**: Resume by analyzing the  function in . The goal is to identify which collections are currently excluded from the sync process and modify the function to include all data collections required for a complete sync.
+    -   **What will be achieved with this?**: The Sync to Production feature will become a reliable tool for migrating all necessary application data from the preview environment to the live version.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Backend.
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
-    *   (P1) Implement dynamic dashboard theming.
+    *   (P1) Revisit and resolve the sewa advance calculations issue once the user provides more specific details.
+    *   (P1) Implement dynamic dashboard theming (deferred from a previous session).
 *   **Future Tasks**:
     *   (P2) Fix Mobile App build and remote check-in functionality.
     *   (P2) Complete Helpdesk Phase 2 UI for feedback and survey analytics.
-    *   (P3) Perform full end-to-end testing on secondary features like two-step leave approvals, request cancellations, and CO requests.
+    - (P3) Perform end-to-end testing on secondary features (e.g., two-step leave approvals).
 
 **Completed work in this session**
--   **Payroll Engine Overhaul (RESOLVED)**: Successfully implemented the final Sunday as leave policy, fixed data-related bugs ( IDs,  vs.  field), and corrected data sync issues. The fix was validated with comprehensive backend tests and a testing agent run, which passed 100%.
--   **SOP Visibility Bug (RESOLVED)**: Fixed a critical access control issue where employees could see all SOPs regardless of their role. The fix was verified by testing with both admin and regular employee accounts.
--   **Backend Linting Cleanup**: Addressed several  warnings in backend Python files (, , ) to improve code robustness.
+-   **Missing Punch-Out Times (RESOLVED)**: Overhauled the biometric sync logic in . The new process groups punches by employee and date, then correctly assigns the first punch as 'IN' and the last as 'OUT', fixing widespread data integrity issues.
+-   **HR Role & User Creation (RESOLVED)**: Fixed a complex issue where an HR admin couldn't see the correct dashboard. The fix involved enhancing the Add User form in  to link new user accounts to existing employee records and correcting password hashing inconsistencies in .
+-   **User Role Management Integrity (RESOLVED)**: Fixed a critical bug in  where the API returned incorrect, UUID-based role IDs. The endpoint now provides clean, canonical role IDs (, ), ensuring permission checks work correctly.
+-   **User Management Bugs (RESOLVED)**: Fixed failures in user activation and deletion on the  by adding missing authorization headers to API calls and changing the backend delete logic to perform a permanent removal.
+-   **Mobile Check-in Timezone (RESOLVED)**: Corrected a bug in  where mobile check-ins were recorded in UTC instead of IST.
+-   **Biometric Employee Code (RESOLVED)**: Added a new  field for biometric matching. This involved changes to , , and .
+-   **Biometric Sync Scheduler (RESOLVED)**: Updated the scheduler in  to run both every 3 hours and at 10 AM daily.
+-   **Dashboard Theming (RESOLVED)**: Implemented minor enhancements to the celebration-based dashboard theme.
 
 **Earlier issues found/mentioned but not fixed**
--   **Mobile APK build failure**: Mentioned in the initial problem statement and still pending.
--   **Frontend Routing Bug**: An intermittent issue where the  page fails to load. The agent investigated but did not fix it.
+-   **Mobile APK build failure**: Mentioned in previous sessions and still pending.
+-   **Frontend Routing Bug**: An intermittent issue on the  page. Not yet addressed.
 -   **Frontend ESLint Warnings**: Identified but not addressed.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork**: The primary recurring issue was the payroll calculation discrepancy.
+-   **Issue recurrence in previous fork**: Payroll calculation discrepancies.
 -   **Recurrence count**: 3+
 -   **Status**: RESOLVED
 
@@ -70,82 +87,77 @@ The application is a full-stack React/FastAPI/MongoDB HR management system. The 
 
 
 **Key Technical Concepts**
--   **Complex Business Logic**: Implementation of nuanced payroll rules, including converting day types and prioritized leave balance deductions (EL -> CL -> SL -> LOP).
--   **Role-Based Access Control (RBAC)**: Fixed a database query in the  endpoint to correctly filter results based on the authenticated user's ID, designation, and department.
--   **Data-Driven Debugging**: Utilized data synced from a production environment to reproduce and solve complex, data-specific bugs in the payroll system.
--   **Automated Testing**: Leveraged the  to run comprehensive regression tests on the backend (payroll) and frontend (SOPs), ensuring fixes did not introduce new issues.
--   **API Test Automation**: Wrote a dedicated Pytest file () to codify and validate the core payroll calculation logic.
+-   **Data Synchronization**: The current task involves expanding a data sync process between two MongoDB instances (preview and production).
+-   **Batch Processing**: A record-by-record attendance sync was refactored into an efficient batch process that groups records by employee/date before processing, dramatically improving data integrity.
+-   **Timezone Handling**: Fixed a critical bug by correctly converting UTC  objects to the local timezone (IST) for user-facing timestamps.
+-   **Authentication & Authorization**: Performed extensive debugging of the auth flow, fixing issues with missing headers, inconsistent password hashing, and incorrect role ID propagation.
 
 **key DB schema**
--   : The schema will be updated to include a new  field for the biometric ID.
--   : The query logic on , , and  fields was fixed to enforce correct access control.
--   , , : Schemas are stable after the payroll fixes.
+-   : Schema now ensures  and  are both stored for compatibility. The  field correctly stores canonical role codes (e.g., ). It is now linked to  via .
+-   : The  field has been added.
+-   : The logic for populating  and  has been completely overhauled to ensure accuracy.
+-   : Queries were fixed to return canonical role codes instead of database-generated IDs.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
 -   **Modified/Created**:
+    -    (biometric sync part)
     -   
     -   
     -   
     -   
     -   
-    -    (New)
+    -   
+    -   
 -   **To Be Modified**:
-    -   
-    -   
+    -    (sync to prod part)
     -   
 -   **Important for Context**:
     -   
 
-**Areas that need refactoring**:
--   The frontend codebase requires attention to fix  ESLint warnings.
--   The intermittent frontend routing bug may require a review of the app's routing or global state management architecture.
-
-**key api endpoints**
--    (POST): Needs to be modified to accept the new .
--    (POST): The main payroll calculation endpoint, now stable and tested.
--    (GET): The endpoint for fetching SOPs, now with correct RBAC logic.
--    (POST): Used for authentication to test other endpoints.
-
 **Critical Info for New Agent**
--   The user's highest priorities have shifted. You must first implement the ability for HR to add a biometric **employee code** during manual employee creation.
--   After completing the employee code feature, the next priority is to work on **dynamic dashboard theming**.
--   The critical, long-standing payroll issue is **RESOLVED** and heavily tested. Do not revisit this unless the user reports a new, specific problem. The SOP visibility bug is also **RESOLVED**.
--   Begin by modifying  to add the UI input field and  to handle the data persistence.
+-   The current highest priority (P0) is to fix the sync preview to production feature. The user wants it to sync everything. You must analyze the existing sync logic in  to determine which data collections are missing and add them.
+-   The SEWA advance issue is blocked pending user clarification. Do not work on it until the user provides specific details on the perceived miscalculation.
+-   Numerous critical bugs related to user management, authentication, role permissions, and attendance data integrity have been resolved. The codebase in these areas is now significantly more stable. Be aware of the fixes in , , and  to avoid re-introducing bugs.
 
 **documents and test reports created in this job**
 -   
 -   
 -   
 -   
+-    (updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **LATEST/PENDING**:  - The user has provided the new, current set of priorities.
-2.   - User approved the plan to fix the SOP issue after the payroll task was completed. (This is now done).
-3.   - User gave initial approval to fix the P0 payroll bug.
+1.  **LATEST/PENDING**:  - User provided the new P0 task and deferred the SEWA issue.
+2.   - Initiated the investigation into SEWA advances.
+3.   - User requested a full regression test after the role management fix.
+4.   - User requested verification of the role-change flow, which led to discovering a critical bug.
+5.   - User provided a specific case (Nandini Kumari) that unblocked the HR permissions debugging.
+6.   - User reported a general login failure.
+7.   - User provided crucial clarification for the punch-out time fix.
+8.   - Initial report of HR permission issues and the missing punch-out data bug.
+9.   - User reported the mobile check-in timezone bug.
+10.  &  - User provided new requirements for the sync scheduler and critical screenshots that helped solve user management bugs.
 
 **Project Health Check:**
 -   **Broken**: The mobile APK build process remains non-functional.
 -   **Mocked**: None.
--   **Incomplete**: The new feature to add a biometric employee code is not started. The dynamic dashboard task and other backlog items (Helpdesk UI) are also pending.
+-   **Incomplete**: The sync to production feature is the current work-in-progress.
 
 **3rd Party Integrations**
--   **Capacitor**: Used for the web-to-mobile app build process, which is currently broken.
+-   **Capacitor**: Used for the web-to-mobile app build process (currently broken).
 
 **Testing status**
--   **Testing agent used after significant changes**: YES. The testing agent was used twice: once to validate the payroll fixes and a second time to perform a full health check after the SOP fix. Both runs passed with a 100% success rate.
+-   **Testing agent used after significant changes**: YES. The testing agent was used multiple times to verify complex bug fixes in user management, training management, and role permissions, with all runs passing.
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: []
--   **Known regressions**: None. The recent fixes have been confirmed as stable.
+-   **Test files created**: None in this session.
+-   **Known regressions**: None. All fixes were tested and verified.
 
 **Credentials to test flow:**
--   **Preview App Login**:  / 
+-   **Admin Login**:  / 
+-   **HR Login**:  / 
 
 **What agent forgot to execute**
--   The agent successfully completed the high-priority tasks it was assigned. The remaining work consists of previously known backlog items that have not yet been prioritized by the user until now:
-    -   Fixing the mobile APK build failure.
-    -   Investigating the intermittent frontend routing bug.
-    -   Resolving frontend ESLint warnings.
-    -   Implementing Helpdesk Phase 2 UI.</analysis>
+-   The agent has systematically addressed all user requests in order of priority. The remaining work consists of known backlog items that have not yet been prioritized by the user (mobile build, intermittent routing bug).</analysis>

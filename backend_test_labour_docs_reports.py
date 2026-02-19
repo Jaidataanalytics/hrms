@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 class LabourDocsReportsAPITester:
-    def __init__(self, base_url="https://payroll-hr-system-2.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://sync-prod-engine.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.session = requests.Session()
