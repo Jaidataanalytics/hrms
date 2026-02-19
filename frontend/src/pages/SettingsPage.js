@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -22,7 +22,8 @@ import {
   Cloud,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  Download
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
