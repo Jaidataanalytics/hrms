@@ -421,13 +421,14 @@ def get_date_field(data_type: str) -> str:
 
 @router.get("/sync/status")
 async def get_sync_status(request: Request):
-    """Get sync status and deployed URL info"""
+    """Get sync status with counts for ALL collections"""
     await verify_admin_access(request)
     
+    all_collections = await get_all_collection_names()
     local_counts = {}
-    for name, collection_name in SYNC_COLLECTIONS.items():
+    for name in all_collections:
         try:
-            count = await db[collection_name].count_documents({})
+            count = await db[name].count_documents({})
             local_counts[name] = count
         except Exception:
             local_counts[name] = 0
@@ -435,39 +436,98 @@ async def get_sync_status(request: Request):
     return {
         "deployed_url": DEPLOYED_URL,
         "local_counts": local_counts,
-        "sync_collections": list(SYNC_COLLECTIONS.keys())
+        "sync_collections": all_collections,
+        "total_collections": len(all_collections)
     }
+
+
+@router.get("/export-all")
+async def export_all_data(request: Request):
+    """Export ALL collections from the database for backup or transfer"""
+    await verify_admin_access(request)
+    
+    all_collections = await get_all_collection_names()
+    export_data = {}
+    
+    for collection_name in all_collections:
+        try:
+            records = await db[collection_name].find({}, {"_id": 0}).to_list(50000)
+            export_data[collection_name] = records
+        except Exception as e:
+            export_data[collection_name] = []
+    
+    return export_data
+
+
+@router.post("/import-all")
+async def import_all_data(request: Request, data: dict = None):
+    """
+    Import bulk data into ALL collections. Replaces existing data.
+    Used by sync-to-deployed and sync-from-deployed.
+    
+    data: {
+        "collections": {
+            "employees": [{...}, {...}],
+            "attendance": [{...}, {...}],
+            ...
+        }
+    }
+    """
+    user = await verify_admin_access(request)
+    
+    data = data or {}
+    collections_data = data.get("collections", {})
+    
+    if not collections_data:
+        raise HTTPException(status_code=400, detail="No collection data provided")
+    
+    results = {"imported": {}, "errors": [], "total_records": 0}
+    
+    for collection_name, records in collections_data.items():
+        if collection_name in SKIP_COLLECTIONS:
+            continue
+        if not isinstance(records, list) or not records:
+            results["imported"][collection_name] = 0
+            continue
+        try:
+            # Remove _id fields
+            for record in records:
+                record.pop("_id", None)
+            
+            await db[collection_name].delete_many({})
+            await db[collection_name].insert_many(records)
+            results["imported"][collection_name] = len(records)
+            results["total_records"] += len(records)
+        except Exception as e:
+            results["errors"].append(f"{collection_name}: {str(e)}")
+    
+    results["success"] = len(results["errors"]) == 0
+    results["imported_at"] = datetime.now(timezone.utc).isoformat()
+    results["imported_by"] = user.get("name", user.get("email"))
+    return results
 
 
 @router.post("/sync/from-deployed")
 async def sync_from_deployed(request: Request, data: dict = None):
     """
-    Sync data from deployed/production environment to preview.
-    
-    This fetches all data from the deployed API and imports it into
-    the local preview database, replacing existing data.
-    
-    data: {
-        "email": "admin@shardamotor.com",  # Deployed admin credentials
-        "password": "admin123",
-        "collections": ["employees", "attendance", ...]  # Optional - specific collections
-    }
+    Sync ALL data from deployed/production environment to this preview instance.
+    Uses the export-all endpoint for comprehensive sync of every collection.
     """
     user = await verify_admin_access(request)
     
     data = data or {}
     email = data.get("email", "admin@shardamotor.com")
     password = data.get("password", "admin123")
-    collections_to_sync = data.get("collections", list(SYNC_COLLECTIONS.keys()))
     
     results = {
         "success": False,
         "synced_collections": {},
         "errors": [],
-        "deployed_url": DEPLOYED_URL
+        "deployed_url": DEPLOYED_URL,
+        "total_records": 0
     }
     
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         # Step 1: Login to deployed environment
         try:
             login_response = await client.post(
@@ -492,148 +552,137 @@ async def sync_from_deployed(request: Request, data: dict = None):
             results["errors"].append(f"Connection error to deployed environment: {str(e)}")
             return results
         
-        # Step 2: Fetch and sync each collection
-        for collection_key in collections_to_sync:
-            if collection_key not in SYNC_COLLECTIONS:
-                continue
-                
-            collection_name = SYNC_COLLECTIONS[collection_key]
-            
-            try:
-                # Determine the API endpoint for this collection
-                endpoint = get_sync_endpoint(collection_key)
-                
-                if not endpoint:
-                    results["errors"].append(f"No sync endpoint for {collection_key}")
-                    continue
-                
-                # Fetch data from deployed
-                response = await client.get(
-                    f"{DEPLOYED_URL}{endpoint}",
-                    headers=headers
-                )
-                
-                if response.status_code != 200:
-                    results["errors"].append(f"Failed to fetch {collection_key}: {response.status_code}")
-                    continue
-                
-                remote_data = response.json()
-                
-                # Handle different response formats
-                if isinstance(remote_data, dict):
-                    if "data" in remote_data:
-                        records = remote_data["data"]
-                    elif collection_key in remote_data:
-                        records = remote_data[collection_key]
-                    elif "employees" in remote_data:
-                        records = remote_data["employees"]
-                    elif "payslips" in remote_data:
-                        records = remote_data["payslips"]
-                    else:
-                        records = [remote_data] if remote_data else []
-                else:
-                    records = remote_data if isinstance(remote_data, list) else []
-                
-                if not records:
-                    results["synced_collections"][collection_key] = {"imported": 0, "note": "No data found"}
-                    continue
-                
-                # Clear local collection and insert new data
-                await db[collection_name].delete_many({})
-                
-                # Remove _id fields to avoid conflicts
-                for record in records:
-                    if "_id" in record:
-                        del record["_id"]
-                
-                if records:
-                    await db[collection_name].insert_many(records)
-                
-                results["synced_collections"][collection_key] = {
-                    "imported": len(records)
-                }
-                
-            except Exception as e:
-                results["errors"].append(f"Error syncing {collection_key}: {str(e)}")
-        
-        # Step 3: Sync additional data via direct MongoDB export if available
-        # This handles collections that don't have direct API endpoints
+        # Step 2: Try bulk export first (most comprehensive)
         try:
-            await sync_via_export_endpoint(client, headers, results)
+            export_response = await client.get(
+                f"{DEPLOYED_URL}/api/data-management/export-all",
+                headers=headers,
+                timeout=120.0
+            )
+            
+            if export_response.status_code == 200:
+                export_data = export_response.json()
+                
+                for collection_name, records in export_data.items():
+                    if not isinstance(records, list) or not records:
+                        results["synced_collections"][collection_name] = {"imported": 0}
+                        continue
+                    
+                    try:
+                        for record in records:
+                            record.pop("_id", None)
+                        
+                        await db[collection_name].delete_many({})
+                        await db[collection_name].insert_many(records)
+                        count = len(records)
+                        results["synced_collections"][collection_name] = {"imported": count}
+                        results["total_records"] += count
+                    except Exception as e:
+                        results["errors"].append(f"Import {collection_name}: {str(e)}")
+            else:
+                results["errors"].append(f"Export-all returned {export_response.status_code}. Deployed environment may need code update.")
+                
         except Exception as e:
-            results["errors"].append(f"Export sync error: {str(e)}")
+            results["errors"].append(f"Export-all failed: {str(e)}")
     
-    results["success"] = len(results["errors"]) == 0
+    results["success"] = results["total_records"] > 0 and len(results["errors"]) == 0
     results["synced_at"] = datetime.now(timezone.utc).isoformat()
     results["synced_by"] = user.get("name", user.get("email"))
     
     return results
 
 
-def get_sync_endpoint(collection_key: str) -> str:
-    """Get the API endpoint for fetching collection data"""
-    endpoints = {
-        "employees": "/api/employees",
-        "attendance": "/api/attendance/all",  # Assuming this endpoint exists
-        "leave_requests": "/api/leave/requests",
-        "leave_balances": "/api/leave/balances",
-        "leave_types": "/api/leave/types",
-        "departments": "/api/departments",
-        "payslips": "/api/payroll/payslips",
-        "payroll_runs": "/api/payroll/runs",
-        "payroll_config": "/api/payroll/config",
-        "payroll_rules": "/api/payroll/rules",
-        "holidays": "/api/calendar/holidays",
-        "users": "/api/users",
+@router.post("/sync/to-deployed")
+async def sync_to_deployed(request: Request, data: dict = None):
+    """
+    Sync ALL data from this preview instance TO the deployed/production environment.
+    Exports all local data and pushes it to the production import-all endpoint.
+    """
+    user = await verify_admin_access(request)
+    
+    data = data or {}
+    email = data.get("email", "admin@shardamotor.com")
+    password = data.get("password", "admin123")
+    
+    results = {
+        "success": False,
+        "synced_collections": {},
+        "errors": [],
+        "deployed_url": DEPLOYED_URL,
+        "total_records": 0
     }
-    return endpoints.get(collection_key)
-
-
-async def sync_via_export_endpoint(client, headers, results):
-    """Try to sync data via a bulk export endpoint if available"""
-    try:
-        # Try fetching bulk data export if the endpoint exists
-        export_response = await client.get(
-            f"{DEPLOYED_URL}/api/data-management/export-all",
-            headers=headers
-        )
-        
-        if export_response.status_code == 200:
-            export_data = export_response.json()
-            
-            for collection_name, records in export_data.items():
-                if collection_name in SYNC_COLLECTIONS.values() and records:
-                    # Remove _id fields
-                    for record in records:
-                        if "_id" in record:
-                            del record["_id"]
-                    
-                    await db[collection_name].delete_many({})
-                    await db[collection_name].insert_many(records)
-                    
-                    results["synced_collections"][collection_name] = {
-                        "imported": len(records),
-                        "via": "export"
-                    }
-    except Exception:
-        pass  # Export endpoint may not exist
-
-
-@router.get("/export-all")
-async def export_all_data(request: Request):
-    """Export all syncable data for backup or transfer"""
-    await verify_admin_access(request)
     
-    export_data = {}
+    # Step 1: Export all local data
+    all_collections = await get_all_collection_names()
+    local_export = {}
     
-    for collection_key, collection_name in SYNC_COLLECTIONS.items():
+    for collection_name in all_collections:
         try:
-            records = await db[collection_name].find({}, {"_id": 0}).to_list(10000)
-            export_data[collection_name] = records
+            records = await db[collection_name].find({}, {"_id": 0}).to_list(50000)
+            if records:
+                local_export[collection_name] = records
         except Exception as e:
-            export_data[collection_name] = {"error": str(e)}
+            results["errors"].append(f"Local export {collection_name}: {str(e)}")
     
-    return export_data
+    if not local_export:
+        results["errors"].append("No local data to sync")
+        return results
+    
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        # Step 2: Login to deployed environment
+        try:
+            login_response = await client.post(
+                f"{DEPLOYED_URL}/api/auth/login",
+                json={"email": email, "password": password}
+            )
+            
+            if login_response.status_code != 200:
+                results["errors"].append(f"Failed to login to deployed: {login_response.text}")
+                return results
+            
+            login_data = login_response.json()
+            token = login_data.get("access_token") or login_data.get("token")
+            
+            if not token:
+                results["errors"].append("No token received from deployed environment")
+                return results
+            
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+        except Exception as e:
+            results["errors"].append(f"Connection error: {str(e)}")
+            return results
+        
+        # Step 3: Push data to deployed import-all endpoint
+        try:
+            import_response = await client.post(
+                f"{DEPLOYED_URL}/api/data-management/import-all",
+                json={"collections": local_export},
+                headers=headers,
+                timeout=120.0
+            )
+            
+            if import_response.status_code == 200:
+                import_result = import_response.json()
+                results["synced_collections"] = import_result.get("imported", {})
+                results["total_records"] = import_result.get("total_records", 0)
+                if import_result.get("errors"):
+                    results["errors"].extend(import_result["errors"])
+            else:
+                results["errors"].append(
+                    f"Import-all returned {import_response.status_code}. "
+                    f"Deployed environment may need code update to support import-all endpoint."
+                )
+        except Exception as e:
+            results["errors"].append(f"Push to deployed failed: {str(e)}")
+    
+    results["success"] = results["total_records"] > 0 and len(results["errors"]) == 0
+    results["synced_at"] = datetime.now(timezone.utc).isoformat()
+    results["synced_by"] = user.get("name", user.get("email"))
+    
+    return results
 
 
 @router.post("/sync/attendance")
@@ -641,13 +690,6 @@ async def sync_attendance_only(request: Request, data: dict = None):
     """
     Sync only attendance data from deployed environment.
     Useful for testing payroll calculations with real attendance.
-    
-    data: {
-        "email": "admin@shardamotor.com",
-        "password": "admin123",
-        "month": 1,  # Optional - specific month
-        "year": 2026  # Optional - specific year
-    }
     """
     await verify_admin_access(request)
     
@@ -667,20 +709,16 @@ async def sync_attendance_only(request: Request, data: dict = None):
     }
     
     async with httpx.AsyncClient(timeout=60.0) as client:
-        # Login
         try:
             login_response = await client.post(
                 f"{DEPLOYED_URL}/api/auth/login",
                 json={"email": email, "password": password}
             )
-            
             if login_response.status_code != 200:
                 results["errors"].append(f"Login failed: {login_response.text}")
                 return results
-            
             token = login_response.json().get("access_token")
             headers = {"Authorization": f"Bearer {token}"}
-            
         except Exception as e:
             results["errors"].append(f"Connection error: {str(e)}")
             return results
@@ -692,7 +730,6 @@ async def sync_attendance_only(request: Request, data: dict = None):
                 employees = emp_response.json()
                 if isinstance(employees, dict):
                     employees = employees.get("employees", employees.get("data", []))
-                
                 if employees:
                     for emp in employees:
                         emp.pop("_id", None)
@@ -708,14 +745,11 @@ async def sync_attendance_only(request: Request, data: dict = None):
             if sal_response.status_code == 200:
                 sal_data = sal_response.json()
                 salaries = sal_data.get("data", []) if isinstance(sal_data, dict) else sal_data
-                
-                # Also try employee_salaries endpoint
                 sal2_response = await client.get(f"{DEPLOYED_URL}/api/payroll/employee-salaries", headers=headers)
                 if sal2_response.status_code == 200:
                     sal2_data = sal2_response.json()
                     if isinstance(sal2_data, list):
                         salaries.extend(sal2_data)
-                
                 if salaries:
                     for sal in salaries:
                         sal.pop("_id", None)
@@ -728,34 +762,27 @@ async def sync_attendance_only(request: Request, data: dict = None):
         
         # Sync attendance
         try:
-            # Build query params for specific month/year
             params = {}
             if month and year:
                 params["month"] = month
                 params["year"] = year
-            
             att_response = await client.get(
                 f"{DEPLOYED_URL}/api/attendance/all",
                 headers=headers,
                 params=params
             )
-            
             if att_response.status_code == 200:
                 attendance = att_response.json()
                 if isinstance(attendance, dict):
                     attendance = attendance.get("attendance", attendance.get("data", []))
-                
                 if attendance:
                     for att in attendance:
                         att.pop("_id", None)
-                    
-                    # If month/year specified, only delete that month's data
                     if month and year:
                         date_prefix = f"{year}-{str(month).zfill(2)}"
                         await db.attendance.delete_many({"date": {"$regex": f"^{date_prefix}"}})
                     else:
                         await db.attendance.delete_many({})
-                    
                     await db.attendance.insert_many(attendance)
                     results["attendance_imported"] = len(attendance)
         except Exception as e:
@@ -768,7 +795,6 @@ async def sync_attendance_only(request: Request, data: dict = None):
                 holidays = hol_response.json()
                 if isinstance(holidays, dict):
                     holidays = holidays.get("holidays", holidays.get("data", []))
-                
                 if holidays:
                     for hol in holidays:
                         hol.pop("_id", None)
