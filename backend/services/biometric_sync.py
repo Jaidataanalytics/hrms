@@ -138,6 +138,110 @@ def parse_log_datetime(log_date: str) -> tuple:
             return None, None
 
 
+async def update_attendance_batch(
+    employee_id: str,
+    emp_code: str,
+    date: str,
+    punch_records: list
+) -> bool:
+    """
+    Update attendance with a complete set of punches for one employee-date.
+    Merges new punches with any existing ones (e.g. manual mobile punches),
+    then recalculates first_in, last_out, total_hours, etc.
+    """
+    if db is None:
+        return False
+    
+    try:
+        existing = await db.attendance.find_one(
+            {"$or": [
+                {"employee_id": employee_id, "date": date},
+                {"emp_code": emp_code, "date": date}
+            ]}
+        )
+        
+        if existing:
+            # Merge: keep non-biometric punches, replace biometric ones
+            kept_punches = [p for p in existing.get("punches", []) if p.get("source") != "biometric_api"]
+            
+            # De-duplicate new biometric punches by time
+            seen_times = set()
+            for p in punch_records:
+                if p["time"] not in seen_times:
+                    kept_punches.append(p)
+                    seen_times.add(p["time"])
+            
+            all_punches = kept_punches
+        else:
+            all_punches = punch_records
+        
+        # Sort all punches by time
+        all_punches.sort(key=lambda p: p["time"])
+        
+        # Recalculate first_in and last_out from all punches
+        in_times = [p["time"] for p in all_punches if p.get("type") == "IN"]
+        out_times = [p["time"] for p in all_punches if p.get("type") == "OUT"]
+        
+        first_in = min(in_times) if in_times else (existing.get("first_in") if existing else None)
+        last_out = max(out_times) if out_times else (existing.get("last_out") if existing else None)
+        
+        # Calculate total hours and late status
+        total_hours = None
+        is_late = False
+        late_minutes = 0
+        
+        if first_in:
+            try:
+                time_format = "%H:%M:%S" if first_in.count(":") == 2 else "%H:%M"
+                in_time = datetime.strptime(first_in, time_format)
+                late_threshold = datetime.strptime("10:00:00", "%H:%M:%S")
+                if in_time > late_threshold:
+                    is_late = True
+                    late_minutes = int((in_time - late_threshold).seconds / 60)
+            except Exception:
+                pass
+        
+        if first_in and last_out:
+            try:
+                t1 = datetime.strptime(first_in, "%H:%M:%S" if first_in.count(":") == 2 else "%H:%M")
+                t2 = datetime.strptime(last_out, "%H:%M:%S" if last_out.count(":") == 2 else "%H:%M")
+                total_hours = round((t2 - t1).seconds / 3600, 2)
+            except Exception:
+                pass
+        
+        update_data = {
+            "employee_id": employee_id,
+            "emp_code": emp_code,
+            "punches": all_punches,
+            "first_in": first_in,
+            "last_out": last_out,
+            "total_hours": total_hours,
+            "status": "present",
+            "is_late": is_late,
+            "late_minutes": late_minutes,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        if existing:
+            await db.attendance.update_one(
+                {"attendance_id": existing.get("attendance_id", ""), "date": date},
+                {"$set": update_data}
+            )
+        else:
+            import uuid
+            update_data["attendance_id"] = f"att_{uuid.uuid4().hex[:12]}"
+            update_data["date"] = date
+            update_data["overtime_hours"] = 0
+            update_data["remarks"] = "Synced from biometric API"
+            update_data["created_at"] = datetime.now(timezone.utc).isoformat()
+            await db.attendance.insert_one(update_data)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error batch-updating attendance for {emp_code} on {date}: {e}")
+        return False
+
+
 async def update_attendance_record(
     employee_id: str,
     emp_code: str,
