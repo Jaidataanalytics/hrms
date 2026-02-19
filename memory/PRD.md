@@ -95,6 +95,15 @@ On-the-fly normalization during payroll processing:
 - Backend: Added DELETE /api/training/enrollments/{enrollment_id} endpoint
 - Full CRUD for training programs with role-based access (HR/Admin only)
 
+### Complete Sync from Production Fix (Feb 19, 2026)
+- Root cause: `SYNC_COLLECTIONS` was hardcoded to ~15 collections while the DB has 68+ collections
+- Fix: Replaced static dict with dynamic `get_all_collection_names()` that queries `db.list_collection_names()` at runtime
+- `export-all` now exports ALL collections dynamically
+- Added `import-all` endpoint for bulk data import
+- `sync/from-deployed` now uses export-all approach for comprehensive sync instead of per-endpoint fetching
+- Frontend Dev Tools tab updated: shows "Pull Data from Production" with live collection count, clearer labels
+- Test: 17/17 backend + 100% frontend (iteration_45)
+
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
 - Token-based auth across all pages
