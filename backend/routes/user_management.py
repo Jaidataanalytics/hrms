@@ -305,14 +305,18 @@ async def change_own_password(data: dict, request: Request):
     # Get user with password
     user = await db.users.find_one({"user_id": current_user["user_id"]})
     
-    # Verify current password
-    if not pwd_context.verify(current_password, user.get("password_hash", "")):
+    # Verify current password - check both fields
+    stored_pw = user.get("password") or user.get("password_hash", "")
+    if not pwd_context.verify(current_password, stored_pw):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     
+    hashed = pwd_context.hash(new_password)
     await db.users.update_one(
         {"user_id": current_user["user_id"]},
         {"$set": {
-            "password_hash": pwd_context.hash(new_password),
+            "password": hashed,
+            "password_hash": hashed,
+            "must_change_password": False,
             "password_changed_at": datetime.now(timezone.utc).isoformat()
         }}
     )
