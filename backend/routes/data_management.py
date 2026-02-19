@@ -32,24 +32,13 @@ async def verify_admin_access(request: Request):
     return user
 
 
-# Collections to sync from deployed environment
-SYNC_COLLECTIONS = {
-    "users": "users",
-    "employees": "employees",
-    "attendance": "attendance",
-    "leave_requests": "leave_requests",
-    "leave_balances": "leave_balances",
-    "leave_types": "leave_types",
-    "departments": "departments",
-    "payslips": "payslips",
-    "payroll_runs": "payroll_runs",
-    "payroll_config": "payroll_config",
-    "payroll_rules": "payroll_rules",
-    "employee_salaries": "employee_salaries",
-    "salary_structures": "salary_structures",
-    "holidays": "holidays",
-    "sewa_advances": "sewa_advances",
-}
+# Collections that should NEVER be synced (internal/system collections)
+SKIP_COLLECTIONS = {"system.sessions", "system.profile"}
+
+async def get_all_collection_names():
+    """Dynamically get all collection names from the database"""
+    names = await db.list_collection_names()
+    return [n for n in sorted(names) if n not in SKIP_COLLECTIONS]
 
 
 # Data type to collection mapping
