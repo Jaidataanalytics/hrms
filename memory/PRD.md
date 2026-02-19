@@ -126,6 +126,7 @@ On-the-fly normalization during payroll processing:
 - [x] Leave balance priority/field fixes (DONE)
 - [x] SOP visibility fix (DONE)
 - [x] Biometric employee code in manual employee creation & edit (DONE - Feb 13, 2026)
+- [x] Sync from production pulls ALL collections dynamically (DONE - Feb 19, 2026)
 
 ### P1 (High)
 - [x] Dynamic dashboard celebration theming (DONE - Feb 13, 2026)
