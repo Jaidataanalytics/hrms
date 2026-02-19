@@ -66,8 +66,6 @@ const SettingsPage = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin';
-
   const handleSyncFromDeployed = async () => {
     setSyncing(true);
     setSyncResults(null);
