@@ -94,29 +94,25 @@ async def get_employee_map() -> Dict[str, Dict[str, Any]]:
 def parse_punch_direction(direction: str, punch_time: str = None) -> str:
     """
     Convert API punch direction to standard format.
-    If API direction is ambiguous, use time-based logic:
+    Uses time-based logic as primary method:
     - Before 12:00 = IN
     - After 12:00 = OUT
     """
-    if direction and direction.lower() == "in":
-        return "IN"
-    elif direction and direction.lower() == "out":
-        # For devices that always return "out", use time-based logic
-        if punch_time:
-            try:
-                time_format = "%H:%M:%S" if punch_time.count(":") == 2 else "%H:%M"
-                punch_dt = datetime.strptime(punch_time, time_format)
-                midday = datetime.strptime("12:00:00", "%H:%M:%S")
-                
-                # Before noon = IN, After noon = OUT
-                if punch_dt < midday:
-                    return "IN"
-                else:
-                    return "OUT"
-            except:
-                pass
+    if punch_time:
+        try:
+            time_format = "%H:%M:%S" if punch_time.count(":") == 2 else "%H:%M"
+            punch_dt = datetime.strptime(punch_time, time_format)
+            midday = datetime.strptime("12:00:00", "%H:%M:%S")
+            if punch_dt < midday:
+                return "IN"
+            else:
+                return "OUT"
+        except Exception:
+            pass
+    # Fallback to direction
+    if direction and direction.lower() == "out":
         return "OUT"
-    return "IN"  # Default
+    return "IN"
 
 
 def parse_log_datetime(log_date: str) -> tuple:
