@@ -32,10 +32,33 @@ const SettingsPage = () => {
   const { user, getAuthHeaders } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [syncResults, setSyncResults] = useState(null);
+  const [syncStatus, setSyncStatus] = useState(null);
   const [syncCredentials, setSyncCredentials] = useState({
     email: 'admin@shardamotor.com',
     password: 'admin123'
   });
+
+  // Load sync status on mount (for admin)
+  useEffect(() => {
+    if (isAdmin) {
+      loadSyncStatus();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadSyncStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/data-management/sync/status`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSyncStatus(data);
+      }
+    } catch (err) {
+      // ignore
+    }
+  };
 
   const getInitials = (name) => {
     if (!name) return 'U';
