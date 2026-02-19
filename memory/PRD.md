@@ -70,6 +70,13 @@ On-the-fly normalization during payroll processing:
 - Fixed wrong time recording: was using UTC, now uses IST (UTC+5:30) for punch times and dates
 - Affected: /api/attendance/mark endpoint - `today` date and `now_time` punch time now use IST
 
+### Biometric Sync Missing Punch-Out Fix (Feb 19, 2026)
+- Root cause: The old sync processed records one-by-one and used flawed direction logic that converted all morning "out" punches to "IN" (before-noon = IN override)
+- Fix: Rewrote sync to batch all API records by employee+date, sort by time, then assign first punch = IN, last punch = OUT
+- New `update_attendance_batch` function replaces old per-record approach, merges with manual punches, de-duplicates
+- Result: Feb 14 went from 0% punch-out coverage to 93% (remaining are genuine single-punch employees)
+- Re-synced Feb 1-19: 930 records corrected with 0 errors
+
 ### User Management Bug Fixes (Feb 13, 2026)
 - Fixed "Failed to update user status" — missing auth headers in handleToggleStatus
 - Fixed "Failed to delete user" — missing auth headers in handleDeleteUser
