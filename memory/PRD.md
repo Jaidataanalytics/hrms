@@ -77,7 +77,11 @@ On-the-fly normalization during payroll processing:
 - Result: Feb 14 went from 0% punch-out coverage to 93% (remaining are genuine single-punch employees)
 - Re-synced Feb 1-19: 930 records corrected with 0 errors
 
-### User Management Bug Fixes (Feb 13, 2026)
+### User Role Change Bug Fix (Feb 19, 2026)
+- Root cause: Roles list endpoint returned both hardcoded roles (`hr_admin`) and DB roles (`role_9ac26a10a22a` with `code: "hr_admin"`). When admin selected the DB-based role, the user's `role` field was set to the UUID-based ID, which the frontend didn't recognize as `hr_admin`
+- Fix: Roles list now always returns canonical role IDs (hr_admin, employee, etc.)
+- Also fixed password field consistency in create/reset/change password endpoints (write to both `password` and `password_hash`)
+- Added "Link to Employee" dropdown in Add User form for easy user account creation from existing employees
 - Fixed "Failed to update user status" — missing auth headers in handleToggleStatus
 - Fixed "Failed to delete user" — missing auth headers in handleDeleteUser
 - Fixed "Deleted users still showing" — changed delete to permanent (delete_one) instead of soft delete (email mangling)
