@@ -324,6 +324,39 @@ const UserManagementPage = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
+                <Label>Link to Employee <span className="text-xs text-slate-400">(optional)</span></Label>
+                <Select
+                  value={form.employee_id || 'none'}
+                  onValueChange={(v) => {
+                    if (v === 'none') {
+                      setForm({ ...form, employee_id: '', name: '', email: '' });
+                    } else {
+                      const emp = employees.find(e => e.employee_id === v);
+                      if (emp) {
+                        setForm({
+                          ...form,
+                          employee_id: v,
+                          name: `${emp.first_name} ${emp.last_name}`,
+                          email: emp.email || form.email
+                        });
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="link-employee-select"><SelectValue placeholder="Select employee" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- No linked employee --</SelectItem>
+                    {employees
+                      .filter(e => !users.some(u => u.employee_id === e.employee_id))
+                      .map(emp => (
+                        <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                          {emp.first_name} {emp.last_name} ({emp.emp_code || emp.employee_id})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Full Name *</Label>
                 <Input
                   value={form.name}
