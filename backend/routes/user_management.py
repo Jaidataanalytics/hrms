@@ -331,16 +331,15 @@ async def list_roles(request: Request):
     """List available roles"""
     await get_current_user(request)
     
-    roles = await db.roles.find({"is_active": True}, {"_id": 0}).to_list(20)
-    if not roles:
-        # Return default roles if not seeded
-        roles = [
-            {"role_id": "super_admin", "name": "Super Admin"},
-            {"role_id": "hr_admin", "name": "HR Admin"},
-            {"role_id": "hr_executive", "name": "HR Executive"},
-            {"role_id": "manager", "name": "Manager"},
-            {"role_id": "finance", "name": "Finance"},
-            {"role_id": "it_admin", "name": "IT Admin"},
-            {"role_id": "employee", "name": "Employee"}
-        ]
-    return roles
+    # Always return canonical role list with standard role_id values
+    # DB roles may have UUID-based role_ids which break frontend role checks
+    canonical_roles = [
+        {"role_id": "super_admin", "name": "Super Admin"},
+        {"role_id": "hr_admin", "name": "HR Admin"},
+        {"role_id": "hr_executive", "name": "HR Executive"},
+        {"role_id": "manager", "name": "Manager"},
+        {"role_id": "finance", "name": "Finance"},
+        {"role_id": "it_admin", "name": "IT Admin"},
+        {"role_id": "employee", "name": "Employee"}
+    ]
+    return canonical_roles
