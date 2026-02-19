@@ -271,10 +271,13 @@ async def reset_password(user_id: str, data: dict, request: Request):
     if existing.get("role") == "super_admin" and current_user.get("role") != "super_admin":
         raise HTTPException(status_code=403, detail="Only super admin can reset super admin passwords")
     
+    hashed = pwd_context.hash(new_password)
     await db.users.update_one(
         {"user_id": user_id},
         {"$set": {
-            "password_hash": pwd_context.hash(new_password),
+            "password": hashed,
+            "password_hash": hashed,
+            "must_change_password": True,
             "password_reset_at": datetime.now(timezone.utc).isoformat(),
             "password_reset_by": current_user["user_id"]
         }}
