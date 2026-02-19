@@ -662,7 +662,7 @@ async def lock_payroll(payroll_id: str, request: Request):
 
 @router.delete("/runs/{payroll_id}")
 async def delete_payroll_run(payroll_id: str, request: Request):
-    """Delete a payroll run and all associated payslips (processed or locked)"""
+    """Delete a payroll run and all associated payslips, reversing SEWA advance tracking"""
     user = await get_current_user(request)
     if user.get("role") not in ["super_admin", "hr_admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -671,6 +671,43 @@ async def delete_payroll_run(payroll_id: str, request: Request):
     payroll = await db.payroll_runs.find_one({"payroll_id": payroll_id})
     if not payroll:
         raise HTTPException(status_code=404, detail="Payroll run not found")
+    
+    # Reverse SEWA advance tracking before deleting payslips
+    payslips = await db.payslips.find(
+        {"payroll_id": payroll_id}, {"_id": 0, "employee_id": 1, "deductions": 1}
+    ).to_list(5000)
+    
+    for ps in payslips:
+        sewa_adv_amount = 0
+        deductions = ps.get("deductions", {})
+        if isinstance(deductions, dict):
+            sewa_adv_amount = float(deductions.get("sewa_advance", 0))
+        
+        if sewa_adv_amount > 0:
+            emp_id = ps.get("employee_id")
+            # Find the advance and reverse the payment
+            advance = await db.sewa_advances.find_one(
+                {"employee_id": emp_id, "advance_id": {"$exists": True}},
+                sort=[("created_at", -1)]
+            )
+            if advance:
+                new_paid = max(0, float(advance.get("total_paid", 0)) - sewa_adv_amount)
+                new_remaining = float(advance.get("total_amount", 0)) - new_paid
+                update_data = {
+                    "total_paid": new_paid,
+                    "remaining_amount": max(0, new_remaining),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                # Re-activate if it was marked completed
+                if advance.get("status") == "completed" and new_remaining > 0:
+                    update_data["is_active"] = True
+                    update_data["status"] = "active"
+                    update_data.pop("completed_at", None)
+                
+                await db.sewa_advances.update_one(
+                    {"advance_id": advance["advance_id"]},
+                    {"$set": update_data}
+                )
     
     # Delete all associated payslips
     delete_result = await db.payslips.delete_many({"payroll_id": payroll_id})
