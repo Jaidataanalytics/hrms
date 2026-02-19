@@ -114,6 +114,7 @@ const UserManagementPage = () => {
         setUsers(data.users || []);
       }
       if (rolesRes.ok) setRoles(await rolesRes.json());
+      if (empRes?.ok) setEmployees(await empRes.json());
     } catch (error) {
       console.error('Error:', error);
     } finally {
