@@ -354,12 +354,16 @@ const SettingsPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                    <Cloud className="w-5 h-5 text-primary" />
-                    Sync from Deployed Environment
+                    <Download className="w-5 h-5 text-primary" />
+                    Pull Data from Production
                   </CardTitle>
                   <CardDescription>
-                    Pull data from the production/deployed environment to this preview instance.
-                    Useful for testing payroll calculations with real data.
+                    Pull ALL data from the deployed/production environment into this preview instance.
+                    {syncStatus && (
+                      <span className="ml-1 font-medium text-slate-700">
+                        ({syncStatus.total_collections} collections will be synced)
+                      </span>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -369,8 +373,8 @@ const SettingsPage = () => {
                       <div>
                         <p className="font-medium text-amber-800">Warning</p>
                         <p className="text-sm text-amber-700">
-                          This will replace local preview data with data from the deployed environment.
-                          The deployed database will NOT be affected.
+                          This will replace ALL local preview data with production data.
+                          The production database will NOT be affected.
                         </p>
                       </div>
                     </div>
@@ -378,23 +382,25 @@ const SettingsPage = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="sync-email">Deployed Admin Email</Label>
+                      <Label htmlFor="sync-email">Production Admin Email</Label>
                       <Input
                         id="sync-email"
                         type="email"
                         value={syncCredentials.email}
                         onChange={(e) => setSyncCredentials(prev => ({ ...prev, email: e.target.value }))}
                         placeholder="admin@company.com"
+                        data-testid="sync-email-input"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="sync-password">Deployed Admin Password</Label>
+                      <Label htmlFor="sync-password">Production Admin Password</Label>
                       <Input
                         id="sync-password"
                         type="password"
                         value={syncCredentials.password}
                         onChange={(e) => setSyncCredentials(prev => ({ ...prev, password: e.target.value }))}
                         placeholder="••••••••"
+                        data-testid="sync-password-input"
                       />
                     </div>
                   </div>
@@ -411,7 +417,7 @@ const SettingsPage = () => {
                       ) : (
                         <RefreshCw className="w-4 h-4" />
                       )}
-                      Sync All Data
+                      {syncing ? 'Syncing All Data...' : 'Pull All Data from Production'}
                     </Button>
                     
                     <Button 
@@ -426,7 +432,7 @@ const SettingsPage = () => {
                       ) : (
                         <Database className="w-4 h-4" />
                       )}
-                      Sync Attendance Only (Jan 2026)
+                      Pull Attendance Only (Jan 2026)
                     </Button>
                   </div>
 
@@ -446,14 +452,23 @@ const SettingsPage = () => {
                             {syncResults.success ? 'Sync Completed' : 'Sync Completed with Issues'}
                           </p>
                           
+                          {syncResults.total_records !== undefined && (
+                            <p className="text-sm text-slate-600 mt-1">
+                              Total records synced: <span className="font-bold">{syncResults.total_records.toLocaleString()}</span>
+                            </p>
+                          )}
+                          
                           {/* Show imported counts */}
                           {syncResults.synced_collections && Object.keys(syncResults.synced_collections).length > 0 && (
                             <div className="mt-2 space-y-1">
-                              <p className="text-sm text-slate-700 font-medium">Imported:</p>
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                {Object.entries(syncResults.synced_collections).map(([key, value]) => (
+                              <p className="text-sm text-slate-700 font-medium">Collections synced:</p>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm max-h-60 overflow-y-auto">
+                                {Object.entries(syncResults.synced_collections)
+                                  .filter(([, value]) => (value.imported || 0) > 0)
+                                  .sort((a, b) => (b[1].imported || 0) - (a[1].imported || 0))
+                                  .map(([key, value]) => (
                                   <div key={key} className="flex justify-between bg-white/50 px-2 py-1 rounded">
-                                    <span className="text-slate-600 capitalize">{key.replace(/_/g, ' ')}</span>
+                                    <span className="text-slate-600 truncate mr-1">{key.replace(/_/g, ' ')}</span>
                                     <span className="font-medium">{value.imported || 0}</span>
                                   </div>
                                 ))}
@@ -522,12 +537,16 @@ const SettingsPage = () => {
                       <p className="font-medium text-slate-900">Preview</p>
                     </div>
                     <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-slate-500">Collections</p>
+                      <p className="font-medium text-slate-900">{syncStatus?.total_collections || '...'} total</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg">
                       <p className="text-slate-500">API URL</p>
                       <p className="font-medium text-slate-900 text-xs break-all">{API_URL}</p>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-lg col-span-2">
-                      <p className="text-slate-500">Deployed URL (Source)</p>
-                      <p className="font-medium text-slate-900 text-xs">https://hr-calc-resolver.emergentagent.com</p>
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-slate-500">Production URL (Source)</p>
+                      <p className="font-medium text-slate-900 text-xs break-all">{syncStatus?.deployed_url || 'Loading...'}</p>
                     </div>
                   </div>
                 </CardContent>
