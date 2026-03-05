@@ -95,6 +95,16 @@ On-the-fly normalization during payroll processing:
 - Backend: Added DELETE /api/training/enrollments/{enrollment_id} endpoint
 - Full CRUD for training programs with role-based access (HR/Admin only)
 
+### Two-Step Leave Approval Flow Fix (Mar 5, 2026)
+- Root cause: (1) No reporting_manager_id set on any employee, (2) departments had no head_employee_id, (3) Code mismatch between apply_leave (using dept head) and pending-approvals (using reporting_manager_id)
+- Fix: apply_leave now checks reporting_manager_id first, then falls back to department head
+- pending-approvals now shows leaves to both reporting managers AND department heads
+- approve_leave and reject_leave recognize managers via reporting_manager_id (not just stored dept_head_id)
+- Added Reporting Manager dropdown to Employee Profile edit and Employee Directory add forms
+- Frontend Approvals tab now appears dynamically for any user with pending approvals (not role-gated)
+- HR is notified after manager approves (two-step notification chain)
+- Test: 9/9 backend + 100% frontend (iteration_46)
+
 ### SEWA Advance Calculation Bug Fix (Feb 19, 2026)
 - Root cause 1: Payroll engine didn't check `start_month`/`start_year` before applying SEWA advance deduction — advances were deducted before their start date
 - Root cause 2: When payroll was deleted and re-run, SEWA advance `total_paid` accumulated without reversal (4 re-runs × ₹5,000 = ₹20,000 for Rudra)
@@ -142,6 +152,7 @@ On-the-fly normalization during payroll processing:
 - [x] Leave balance priority/field fixes (DONE)
 - [x] SOP visibility fix (DONE)
 - [x] Biometric employee code in manual employee creation & edit (DONE - Feb 13, 2026)
+- [x] Two-step leave approval: Employee → Manager → HR (DONE - Mar 5, 2026)
 - [x] Sync from production pulls ALL collections dynamically (DONE - Feb 19, 2026)
 
 ### P1 (High)
