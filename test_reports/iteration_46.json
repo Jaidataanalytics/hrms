@@ -1,0 +1,105 @@
+{
+  "summary": "Two-Step Leave Approval Flow tested successfully. Backend: 9/9 tests passed (100%). Frontend: All features verified - Reporting Manager dropdown, Approvals tab visibility, and approval status indicators working correctly. Fixed a SelectItem empty value bug in EmployeeProfile.js and EmployeeDirectory.js.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend: Employee has reporting_manager_id set correctly (Rudra → Rajiv)",
+    "Backend: POST /api/leave/apply sets dept_head_id from employee's reporting_manager_id",
+    "Backend: GET /api/leave/pending-approvals returns leaves for managers with reportees",
+    "Backend: PUT /api/leave/{leave_id}/approve - Manager approval sets dept_head_status=approved, keeps status=pending",
+    "Backend: PUT /api/leave/{leave_id}/approve - HR approval after manager sets final status=approved",
+    "Backend: PUT /api/leave/{leave_id}/reject - Manager can reject leave request",
+    "Backend: HR can approve directly (bypass manager if needed)",
+    "Backend: GET /api/leave/my-requests includes dept_head_status and hr_status fields",
+    "Backend: Manager pending-approvals endpoint accessible to users with reportees",
+    "Frontend: Employee Profile edit form shows Reporting Manager dropdown",
+    "Frontend: Reporting Manager dropdown is clickable and lists all employees",
+    "Frontend: Selected Reporting Manager (Rajiv Ranjan) displays correctly",
+    "Frontend: Leave page shows 'Pending Approvals' tab for managers",
+    "Frontend: Pending Approvals tab shows badge with count of pending requests",
+    "Frontend: Leave requests show 'Manager: pending/approved' and 'HR: pending/approved' status indicators"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_leave_approval_flow.py",
+    "/app/test_reports/pytest/leave_approval_flow_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Two-step approval flow implemented correctly: apply_leave → manager approves (dept_head_status=approved) → HR approves (final status=approved)",
+    "pending-approvals endpoint correctly filters by reporting_manager_id to show leaves from reportees",
+    "Status indicators (Manager/HR) correctly shown in LeavePage.js for leaves with two-step approval",
+    "Approvals tab dynamically appears based on hasApprovals state (not just manager role)"
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/EmployeeProfile.js",
+    "/app/frontend/src/pages/EmployeeDirectory.js",
+    "/app/backend/tests/test_leave_approval_flow.py"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "100% (all features verified)"
+  },
+  "test_credentials": {
+    "admin_email": "admin@shardahr.com",
+    "admin_password": "password",
+    "employee_rudra_email": "accounts2@shardadiesels.co.in",
+    "employee_rudra_password": "password",
+    "employee_rudra_id": "EMP31088E46",
+    "manager_rajiv_email": "purchase1@shardadiesels.co.in",
+    "manager_rajiv_password": "password",
+    "manager_rajiv_id": "EMPD12C8C64"
+  },
+  "seed_data_creation": "Created multiple test leaves with reason prefix TEST_ for testing the two-step approval flow",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Two-step leave approval flow is fully functional. Flow: Employee applies → Manager sees in pending-approvals → Manager approves (dept_head_status=approved, status stays pending) → HR sees → HR approves (final status=approved). The Reporting Manager dropdown is fixed in both EmployeeProfile.js and EmployeeDirectory.js (was using empty string value which Radix UI Select doesn't allow). Leave status indicators show 'Manager: pending/approved' and 'HR: pending/approved' badges on leave requests.",
+  "verified_features": {
+    "apply_leave_sets_dept_head_id": {
+      "status": "WORKING",
+      "description": "POST /api/leave/apply sets dept_head_id from employee's reporting_manager_id, with fallback to department head_employee_id"
+    },
+    "pending_approvals_for_managers": {
+      "status": "WORKING",
+      "description": "GET /api/leave/pending-approvals returns leaves where user is the reporting manager of applicant"
+    },
+    "two_step_approval": {
+      "status": "WORKING",
+      "description": "Manager approval sets dept_head_status=approved but keeps overall status=pending. HR approval sets final status=approved."
+    },
+    "manager_rejection": {
+      "status": "WORKING",
+      "description": "Managers can reject leave requests for their reportees"
+    },
+    "reporting_manager_dropdown": {
+      "status": "WORKING",
+      "description": "Employee Profile edit form shows Reporting Manager dropdown with list of all active employees"
+    },
+    "approvals_tab_visibility": {
+      "status": "WORKING",
+      "description": "Approvals tab appears for any user with pending approvals (based on hasApprovals state), not just manager role"
+    },
+    "approval_status_indicators": {
+      "status": "WORKING",
+      "description": "Leave requests display 'Manager: pending/approved' and 'HR: pending/approved' status badges"
+    }
+  },
+  "bug_fixes_applied": [
+    {
+      "file": "/app/frontend/src/pages/EmployeeProfile.js",
+      "issue": "SelectItem with empty string value causing runtime error",
+      "fix": "Changed value='' to value='none' and updated onValueChange handler to convert 'none' back to empty string"
+    },
+    {
+      "file": "/app/frontend/src/pages/EmployeeDirectory.js",
+      "issue": "Same SelectItem empty value issue in Add Employee form",
+      "fix": "Same fix - use 'none' value instead of empty string"
+    }
+  ]
+}

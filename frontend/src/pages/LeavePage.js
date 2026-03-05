@@ -87,7 +87,9 @@ const LeavePage = () => {
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
   const isAdmin = user?.role === 'super_admin' || user?.role === 'hr_admin';
-  const isManager = user?.role === 'manager' || user?.role === 'team_lead' || isHR;
+  const isManagerRole = user?.role === 'manager' || user?.role === 'team_lead' || isHR;
+  const [hasApprovals, setHasApprovals] = useState(false);
+  const isManager = isManagerRole || hasApprovals;
 
   useEffect(() => {
     fetchData();
@@ -108,10 +110,16 @@ const LeavePage = () => {
       if (requestsRes.ok) setMyRequests(await requestsRes.json());
       if (rulesRes.ok) setAccrualRules(await rulesRes.json());
 
-      // Fetch pending approvals for managers/HR
-      if (isManager) {
+      // Fetch pending approvals for all users (managers see their reportees' requests)
+      try {
         const approvalsRes = await fetch(`${API_URL}/leave/pending-approvals`, { credentials: 'include', headers: authHeaders });
-        if (approvalsRes.ok) setPendingApprovals(await approvalsRes.json());
+        if (approvalsRes.ok) {
+          const approvals = await approvalsRes.json();
+          setPendingApprovals(approvals);
+          if (approvals.length > 0) setHasApprovals(true);
+        }
+      } catch (e) {
+        // Not authorized to see approvals - that's OK
       }
       
       // Fetch HR management data (all balances)
@@ -620,7 +628,7 @@ const LeavePage = () => {
                             {request.dept_head_status && request.dept_head_status !== 'not_required' && (
                               <div className="flex gap-2 mt-1.5">
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${request.dept_head_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                  Dept Head: {request.dept_head_status}
+                                  Manager: {request.dept_head_status}
                                 </span>
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${request.hr_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                   HR: {request.hr_status || 'pending'}
@@ -736,6 +744,16 @@ const LeavePage = () => {
                               {request.from_date} to {request.to_date} ({request.days} days)
                             </p>
                             <p className="text-xs text-slate-400 mt-1">{request.reason}</p>
+                            {request.dept_head_status && request.dept_head_status !== 'not_required' && (
+                              <div className="flex gap-2 mt-1.5">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${request.dept_head_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  Manager: {request.dept_head_status}
+                                </span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${request.hr_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  HR: {request.hr_status || 'pending'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-2 sm:flex-shrink-0">

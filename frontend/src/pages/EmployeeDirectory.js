@@ -90,6 +90,7 @@ const EmployeeDirectory = () => {
     phone: '',
     emp_code: '',
     department_id: '',
+    reporting_manager_id: '',
     employment_type: 'management'
   });
 
@@ -201,6 +202,7 @@ const EmployeeDirectory = () => {
           phone: '',
           emp_code: '',
           department_id: '',
+          reporting_manager_id: '',
           employment_type: 'management'
         });
         fetchData();
@@ -393,6 +395,26 @@ const EmployeeDirectory = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reporting_manager">Reporting Manager</Label>
+                    <Select
+                      value={newEmployee.reporting_manager_id || 'none'}
+                      onValueChange={(value) => setNewEmployee({ ...newEmployee, reporting_manager_id: value === 'none' ? '' : value })}
+                    >
+                      <SelectTrigger data-testid="select-reporting-manager">
+                        <SelectValue placeholder="Select reporting manager" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {employees.filter(e => e.is_active !== false).map(emp => (
+                          <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                            {emp.first_name} {emp.last_name} {emp.emp_code ? `(${emp.emp_code})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Leave requests go to this manager first for approval</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="type">Employment Type</Label>

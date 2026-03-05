@@ -67,6 +67,7 @@ const EmployeeProfile = () => {
   const [employee, setEmployee] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
@@ -101,10 +102,11 @@ const EmployeeProfile = () => {
   const fetchEmployeeData = async () => {
     try {
       const authHeaders = getAuthHeaders();
-      const [empRes, deptRes, desigRes] = await Promise.all([
+      const [empRes, deptRes, desigRes, allEmpRes] = await Promise.all([
         fetch(`${API_URL}/employees/${id}`, { credentials: 'include', headers: authHeaders }),
         fetch(`${API_URL}/departments`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/designations`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/designations`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders })
       ]);
 
       if (empRes.ok) {
@@ -120,6 +122,10 @@ const EmployeeProfile = () => {
 
       if (deptRes.ok) setDepartments(await deptRes.json());
       if (desigRes.ok) setDesignations(await desigRes.json());
+      if (allEmpRes.ok) {
+        const empList = await allEmpRes.json();
+        setAllEmployees(Array.isArray(empList) ? empList : empList.employees || []);
+      }
       
       // Fetch document types
       const docTypesRes = await fetch(`${API_URL}/document-types`, { credentials: 'include', headers: authHeaders });
@@ -325,6 +331,7 @@ const EmployeeProfile = () => {
       pincode: employee.pincode || '',
       department_id: employee.department_id || '',
       designation_id: employee.designation_id || '',
+      reporting_manager_id: employee.reporting_manager_id || '',
       emergency_contact_name: employee.emergency_contact_name || '',
       emergency_contact_phone: employee.emergency_contact_phone || ''
     });
@@ -554,6 +561,17 @@ const EmployeeProfile = () => {
                   <div>
                     <p className="text-sm text-slate-500">Designation</p>
                     <p className="font-medium">{getDesignationName(employee.designation_id)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Reporting Manager</p>
+                    <p className="font-medium">
+                      {employee.reporting_manager_id
+                        ? (() => {
+                            const mgr = allEmployees.find(e => e.employee_id === employee.reporting_manager_id);
+                            return mgr ? `${mgr.first_name} ${mgr.last_name}` : 'Not set';
+                          })()
+                        : 'Not set'}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -1098,6 +1116,23 @@ const EmployeeProfile = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Reporting Manager</Label>
+                  <Select value={editForm.reporting_manager_id || 'none'} onValueChange={(v) => setEditForm({ ...editForm, reporting_manager_id: v === 'none' ? '' : v })}>
+                    <SelectTrigger data-testid="edit-reporting-manager">
+                      <SelectValue placeholder="Select reporting manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {allEmployees.filter(e => e.employee_id !== id && e.is_active !== false).map(emp => (
+                        <SelectItem key={emp.employee_id} value={emp.employee_id}>
+                          {emp.first_name} {emp.last_name} {emp.emp_code ? `(${emp.emp_code})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Leave requests will go to this manager first for approval</p>
                 </div>
               </div>
             </div>

@@ -2727,13 +2727,23 @@ async def apply_leave(leave_data: LeaveApplyRequest, request: Request):
     if leave_data.is_half_day:
         days = 0.5
     
-    # Determine department head for two-step approval
+    # Determine manager for two-step approval
+    # Priority: reporting_manager_id > department head_employee_id
     employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
-    dept_head_id = None
-    if employee and employee.get("department_id"):
-        dept = await db.departments.find_one({"department_id": employee["department_id"]}, {"_id": 0})
-        if dept and dept.get("head_employee_id"):
-            dept_head_id = dept["head_employee_id"]
+    manager_id = None
+    if employee:
+        # Check direct reporting manager first
+        if employee.get("reporting_manager_id"):
+            manager_id = employee["reporting_manager_id"]
+        # Fallback to department head
+        elif employee.get("department_id"):
+            dept = await db.departments.find_one({"department_id": employee["department_id"]}, {"_id": 0})
+            if dept and dept.get("head_employee_id"):
+                manager_id = dept["head_employee_id"]
+    
+    # Don't route to yourself
+    if manager_id == employee_id:
+        manager_id = None
     
     leave_request = LeaveRequest(
         employee_id=employee_id,
@@ -2750,18 +2760,18 @@ async def apply_leave(leave_data: LeaveApplyRequest, request: Request):
     doc['applied_on'] = doc['applied_on'].isoformat()
     doc['created_at'] = doc['created_at'].isoformat()
     # Two-step approval fields
-    doc['dept_head_id'] = dept_head_id
-    doc['dept_head_status'] = 'pending' if dept_head_id else 'not_required'
+    doc['dept_head_id'] = manager_id
+    doc['dept_head_status'] = 'pending' if manager_id else 'not_required'
     doc['hr_status'] = 'pending'
     
     await db.leave_requests.insert_one(doc)
     
-    # Notify department head first (if exists), else notify HR
-    if dept_head_id:
-        dept_head_user = await db.users.find_one({"employee_id": dept_head_id}, {"_id": 0, "user_id": 1})
-        if dept_head_user:
+    # Notify manager first (if exists), else notify HR
+    if manager_id:
+        mgr_user = await db.users.find_one({"employee_id": manager_id}, {"_id": 0, "user_id": 1})
+        if mgr_user:
             await create_notification(
-                dept_head_user["user_id"],
+                mgr_user["user_id"],
                 "Leave Approval Required",
                 f"{user.get('name', 'Employee')} has applied for leave from {leave_data.from_date} to {leave_data.to_date}",
                 "info", "leave", "/dashboard/leave"
@@ -2898,19 +2908,46 @@ async def edit_leave_request(leave_id: str, data: dict, request: Request):
 async def get_pending_leave_approvals(request: Request):
     user = await get_current_user(request)
     
-    # Check if user is a manager
     employee_id = user.get("employee_id")
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
     
     # Get employees reporting to this manager
     reportees = await db.employees.find({"reporting_manager_id": employee_id}, {"employee_id": 1, "_id": 0}).to_list(100)
     reportee_ids = [r["employee_id"] for r in reportees]
     
-    if not reportee_ids and user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+    # Also check if user is a department head
+    headed_depts = await db.departments.find({"head_employee_id": employee_id}, {"department_id": 1, "_id": 0}).to_list(20)
+    headed_dept_ids = [d["department_id"] for d in headed_depts]
+    
+    # Get employees in departments this user heads
+    dept_emp_ids = []
+    if headed_dept_ids:
+        dept_emps = await db.employees.find(
+            {"department_id": {"$in": headed_dept_ids}},
+            {"employee_id": 1, "_id": 0}
+        ).to_list(500)
+        dept_emp_ids = [e["employee_id"] for e in dept_emps]
+    
+    # Combine all manageable employee IDs
+    all_manageable_ids = list(set(reportee_ids + dept_emp_ids))
+    
+    if not all_manageable_ids and not is_hr:
         return []
     
-    query = {"status": "pending"}
-    if reportee_ids and user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
-        query["employee_id"] = {"$in": reportee_ids}
+    if is_hr:
+        # HR sees all pending leaves, but prioritize those where manager already approved
+        query = {"status": "pending"}
+    elif all_manageable_ids:
+        # Manager sees leaves from their reportees/dept where manager approval is pending
+        query = {
+            "status": "pending",
+            "$or": [
+                {"employee_id": {"$in": all_manageable_ids}, "dept_head_status": "pending"},
+                {"dept_head_id": employee_id, "dept_head_status": "pending"}
+            ]
+        }
+    else:
+        return []
     
     requests = await db.leave_requests.find(query, {"_id": 0}).sort("applied_on", -1).to_list(100)
     
@@ -2945,20 +2982,29 @@ async def approve_leave(leave_id: str, request: Request):
     is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
     is_dept_head = leave_req.get("dept_head_id") == user.get("employee_id")
     
+    # Also check if user is the reporting manager of the applicant
+    if not is_dept_head and not is_hr and user.get("employee_id"):
+        applicant = await db.employees.find_one(
+            {"employee_id": leave_req.get("employee_id")},
+            {"_id": 0, "reporting_manager_id": 1}
+        )
+        if applicant and applicant.get("reporting_manager_id") == user.get("employee_id"):
+            is_dept_head = True
+    
     # Two-step approval logic
     update_fields = {"approved_on": datetime.now(timezone.utc).isoformat()}
     
     if is_dept_head and leave_req.get("dept_head_status") == "pending":
-        # Step 1: Department head approves
+        # Step 1: Manager/dept head approves
         update_fields["dept_head_status"] = "approved"
         update_fields["dept_head_approved_by"] = user.get("employee_id")
         update_fields["dept_head_approved_on"] = datetime.now(timezone.utc).isoformat()
         # If HR approval still pending, keep status as pending
         if leave_req.get("hr_status") == "pending":
             update_fields["status"] = "pending"
-        message = "Leave approved by department head. Pending HR approval."
+        message = "Leave approved by manager. Pending HR approval."
     elif is_hr:
-        # Step 2: HR approves (or single-step if no dept head)
+        # Step 2: HR approves (or single-step if no manager)
         update_fields["hr_status"] = "approved"
         update_fields["hr_approved_by"] = user.get("employee_id") or user["user_id"]
         update_fields["status"] = "approved"
@@ -2982,10 +3028,24 @@ async def approve_leave(leave_id: str, request: Request):
     if emp_user:
         await create_notification(
             emp_user["user_id"],
-            "Leave Approved" if update_fields.get("status") == "approved" else "Leave: Dept Head Approved",
-            f"Your leave from {leave_req['from_date']} to {leave_req['to_date']} has been {'approved' if update_fields.get('status') == 'approved' else 'approved by department head (pending HR)'}",
+            "Leave Approved" if update_fields.get("status") == "approved" else "Leave: Manager Approved",
+            f"Your leave from {leave_req['from_date']} to {leave_req['to_date']} has been {'approved' if update_fields.get('status') == 'approved' else 'approved by manager (pending HR)'}",
             "success", "leave"
         )
+    
+    # If manager approved and HR still pending, notify HR
+    if is_dept_head and update_fields.get("status") == "pending":
+        hr_users = await db.users.find(
+            {"role": {"$in": ["super_admin", "hr_admin"]}, "is_active": True},
+            {"_id": 0, "user_id": 1}
+        ).to_list(10)
+        for hr_u in hr_users:
+            await create_notification(
+                hr_u["user_id"],
+                "Leave Pending HR Approval",
+                f"Manager has approved leave for employee {leave_req.get('employee_id')}. Your approval is required.",
+                "info", "leave", "/dashboard/leave"
+            )
     
     await log_audit("APPROVE", "leave", "leave_request", leave_id,
                    user["user_id"], user.get("name", ""), request=request)
@@ -3000,13 +3060,29 @@ async def reject_leave(leave_id: str, rejection_reason: str, request: Request):
     if not leave_req:
         raise HTTPException(status_code=404, detail="Leave request not found")
     
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    is_dept_head = leave_req.get("dept_head_id") == user.get("employee_id")
+    
+    # Also check if user is the reporting manager of the applicant
+    if not is_dept_head and not is_hr and user.get("employee_id"):
+        applicant = await db.employees.find_one(
+            {"employee_id": leave_req.get("employee_id")},
+            {"_id": 0, "reporting_manager_id": 1}
+        )
+        if applicant and applicant.get("reporting_manager_id") == user.get("employee_id"):
+            is_dept_head = True
+    
+    if not is_hr and not is_dept_head:
+        raise HTTPException(status_code=403, detail="Not authorized to reject this leave")
+    
     await db.leave_requests.update_one(
         {"leave_id": leave_id},
         {"$set": {
             "status": "rejected",
             "approved_by": user.get("employee_id") or user["user_id"],
             "approved_on": datetime.now(timezone.utc).isoformat(),
-            "rejection_reason": rejection_reason
+            "rejection_reason": rejection_reason,
+            "rejected_by_role": "manager" if is_dept_head and not is_hr else "hr"
         }}
     )
     
