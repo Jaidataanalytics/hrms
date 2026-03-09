@@ -274,6 +274,195 @@ async def get_mis_compliance(request: Request, date: Optional[str] = None):
 
 
 
+
+
+# ==================== PERFORMANCE INSIGHTS DASHBOARD ====================
+
+@router.get("/insights")
+async def get_performance_insights(request: Request, period: str = "monthly"):
+    """Comprehensive performance insights for employer dashboard"""
+    user = await get_current_user(request)
+    if not is_admin_or_hr(user.get("role")):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    today = datetime.now(timezone.utc)
+    if period == "weekly":
+        start = today - timedelta(days=7)
+    elif period == "monthly":
+        start = today.replace(day=1)
+    elif period == "quarterly":
+        q_month = ((today.month - 1) // 3) * 3 + 1
+        start = today.replace(month=q_month, day=1)
+    elif period == "half_yearly":
+        start = today.replace(month=1 if today.month <= 6 else 7, day=1)
+    else:
+        start = today.replace(month=1, day=1)
+
+    start_str = str(start.date())
+    today_str = str(today.date())
+
+    # Fetch all core data
+    templates = await db.mis_templates.find({"is_active": True}, {"_id": 0}).to_list(200)
+    kpi_defs = await db.kpi_definitions.find({"is_active": True}, {"_id": 0}).to_list(500)
+    entries = await db.mis_entries.find({"date": {"$gte": start_str, "$lte": today_str}}, {"_id": 0}).to_list(5000)
+    employees = await db.employees.find({"is_active": True}, {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1, "department_id": 1}).to_list(200)
+    departments = await db.departments.find({"is_active": True}, {"_id": 0, "department_id": 1, "name": 1}).to_list(50)
+    dept_map = {d["department_id"]: d["name"] for d in departments}
+
+    # Build employee lookup
+    emp_map = {}
+    for e in employees:
+        emp_map[e["employee_id"]] = f"{e.get('first_name', '')} {e.get('last_name', '')}".strip()
+
+    # 1. DEPARTMENT HEALTH SCORES
+    dept_health = {}
+    kpi_scores_cache = {}
+    for tpl in templates:
+        eid = tpl.get("employee_id")
+        did = tpl.get("department_id")
+        if not eid or not did:
+            continue
+        emp_kpis = [k for k in kpi_defs if k.get("employee_id") == eid]
+        emp_entries = [e for e in entries if e.get("employee_id") == eid]
+        if not emp_kpis:
+            continue
+
+        # Simple score: count how many entries exist (compliance proxy)
+        entry_count = len(emp_entries)
+        if did not in dept_health:
+            dept_health[did] = {"name": dept_map.get(did, did), "employees": [], "total_kpis": 0, "total_entries": 0}
+        dept_health[did]["employees"].append({
+            "employee_id": eid,
+            "name": tpl.get("employee_name", emp_map.get(eid, "?")),
+            "kpi_count": len(emp_kpis),
+            "entry_count": entry_count,
+            "frequency": tpl.get("frequency", "daily"),
+        })
+        dept_health[did]["total_kpis"] += len(emp_kpis)
+        dept_health[did]["total_entries"] += entry_count
+
+    # 2. MIS COMPLIANCE HEATMAP (last 14 days)
+    compliance_heatmap = []
+    template_emp_ids = {t["employee_id"] for t in templates if t.get("employee_id")}
+    daily_templates = {t["employee_id"]: t for t in templates if t.get("frequency") == "daily" and t.get("employee_id")}
+    for day_offset in range(14):
+        check_date = str((today - timedelta(days=day_offset)).date())
+        day_entries = [e for e in entries if e.get("date") == check_date]
+        submitted_ids = {e["employee_id"] for e in day_entries}
+        day_data = {"date": check_date, "employees": []}
+        for eid, tpl in daily_templates.items():
+            day_data["employees"].append({
+                "employee_id": eid,
+                "name": tpl.get("employee_name", emp_map.get(eid, "?")),
+                "submitted": eid in submitted_ids,
+                "status": next((e["status"] for e in day_entries if e.get("employee_id") == eid), "not_submitted"),
+            })
+        compliance_heatmap.append(day_data)
+
+    # 3. RED FLAG ALERTS
+    red_flags = []
+    # Check who hasn't submitted MIS in last 3 days (for daily MIS employees)
+    for eid, tpl in daily_templates.items():
+        recent_entries = [e for e in entries if e.get("employee_id") == eid and e.get("date") >= str((today - timedelta(days=3)).date())]
+        if len(recent_entries) == 0:
+            red_flags.append({
+                "type": "mis_missing",
+                "severity": "high",
+                "employee_id": eid,
+                "employee_name": tpl.get("employee_name", emp_map.get(eid, "?")),
+                "message": f"No MIS submitted in last 3 days",
+            })
+
+    # Check MIS entries with zero or abnormal values
+    for entry in entries:
+        fields = entry.get("fields", {})
+        eid = entry.get("employee_id")
+        for key, val in fields.items():
+            if isinstance(val, (int, float)):
+                # Flag unusually high defect rates
+                if "defect" in key.lower() and val > 5:
+                    red_flags.append({
+                        "type": "kpi_threshold",
+                        "severity": "medium",
+                        "employee_id": eid,
+                        "employee_name": emp_map.get(eid, "?"),
+                        "message": f"High defect rate ({val}%) on {entry.get('date')}",
+                    })
+                # Flag high shortage counts
+                if "shortage" in key.lower() and val > 10:
+                    red_flags.append({
+                        "type": "kpi_threshold",
+                        "severity": "medium",
+                        "employee_id": eid,
+                        "employee_name": emp_map.get(eid, "?"),
+                        "message": f"High material shortages ({val}) on {entry.get('date')}",
+                    })
+
+    # Deduplicate red flags
+    seen = set()
+    unique_flags = []
+    for rf in red_flags:
+        key = f"{rf['type']}_{rf['employee_id']}_{rf.get('message','')[:30]}"
+        if key not in seen:
+            seen.add(key)
+            unique_flags.append(rf)
+
+    # 4. KPI AUTOMATION SUMMARY
+    auto_count = sum(1 for k in kpi_defs if k.get("calculation_type", "manual") != "manual")
+    manual_count = sum(1 for k in kpi_defs if k.get("calculation_type", "manual") == "manual")
+
+    # 5. EXECUTIVE KRA TRACKER
+    exec_kras = await db.kra_definitions.find({"is_active": True}, {"_id": 0}).to_list(100)
+    exec_tracker = {}
+    for kra in exec_kras:
+        eid = kra.get("employee_id")
+        if eid not in exec_tracker:
+            exec_tracker[eid] = {"name": kra.get("employee_name", emp_map.get(eid, "?")), "kras": []}
+        exec_tracker[eid]["kras"].append({
+            "name": kra.get("name"),
+            "description": kra.get("description", ""),
+            "weight": kra.get("weight", 1.0),
+        })
+
+    # 6. EMPLOYEE RANKING (by entry count as proxy for engagement)
+    emp_rankings = []
+    for tpl in templates:
+        eid = tpl.get("employee_id")
+        if not eid:
+            continue
+        emp_entries_count = len([e for e in entries if e.get("employee_id") == eid])
+        emp_kpi_count = len([k for k in kpi_defs if k.get("employee_id") == eid])
+        emp_rankings.append({
+            "employee_id": eid,
+            "name": tpl.get("employee_name", emp_map.get(eid, "?")),
+            "department": dept_map.get(tpl.get("department_id"), "?"),
+            "frequency": tpl.get("frequency", "?"),
+            "mis_entries": emp_entries_count,
+            "kpi_count": emp_kpi_count,
+            "role": tpl.get("role", ""),
+        })
+    emp_rankings.sort(key=lambda x: x["mis_entries"], reverse=True)
+
+    return {
+        "period": period,
+        "date_range": {"start": start_str, "end": today_str},
+        "summary": {
+            "total_employees": len(templates),
+            "total_kpis": len(kpi_defs),
+            "auto_kpis": auto_count,
+            "manual_kpis": manual_count,
+            "auto_pct": round(auto_count * 100 / max(auto_count + manual_count, 1)),
+            "total_entries": len(entries),
+            "total_departments": len(dept_health),
+        },
+        "department_health": list(dept_health.values()),
+        "compliance_heatmap": compliance_heatmap,
+        "red_flags": unique_flags[:20],
+        "executive_kra_tracker": list(exec_tracker.values()),
+        "employee_rankings": emp_rankings,
+    }
+
+
 # ==================== MANAGER TEAM VIEW ====================
 
 @router.get("/my-team")
@@ -854,12 +1043,16 @@ async def seed_employee_data(request: Request):
     now = datetime.now(timezone.utc).isoformat()
 
     # =====================================================
-    # REAL EMPLOYEE MIS & KPI DATA (from uploaded documents)
+    # EMPLOYEE MIS & KPI DATA (from uploaded documents)
     # =====================================================
     EMPLOYEE_MIS = {
-        # --- RUDRA PRATAP SINGH - Accounts (Daily MIS) ---
+        # ============================================================
+        # ACCOUNTS DEPARTMENT
+        # ============================================================
+        # --- RUDRA PRATAP SINGH - Payment Processing, Vendor Mgmt, Bank Mgmt ---
         "EMP31088E46": {
             "name": "Rudra Pratap Singh",
+            "role": "Payment Processing, Vendor Management, Bank Management",
             "frequency": "daily",
             "fields": [
                 {"key": "payments_processed", "label": "Payments Processed Today", "type": "number"},
@@ -867,6 +1060,7 @@ async def seed_employee_data(request: Request):
                 {"key": "receipts_recorded", "label": "Receipts Recorded Today", "type": "number"},
                 {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
                 {"key": "vendor_mismatches", "label": "Vendor Ledger Mismatches Identified", "type": "number"},
+                {"key": "vendor_queries_resolved", "label": "Vendor Queries Resolved Today", "type": "number"},
                 {"key": "tally_updated", "label": "Tally Updated Till Date", "type": "boolean"},
                 {"key": "bank_statements_updated", "label": "Bank Statements Updated", "type": "boolean"},
                 {"key": "bank_entries_posted", "label": "Bank Entries Posted", "type": "number"},
@@ -889,11 +1083,16 @@ async def seed_employee_data(request: Request):
                 {"name": "Voucher Verification %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "voucher_check_done", "category": "compliance", "weight": 1.0},
                 {"name": "Stock Statement Timeliness %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "stock_statement_submitted", "category": "compliance", "weight": 0.8},
                 {"name": "Bank Receipt Posting TAT", "unit": "avg", "target_value": 10, "calculation_type": "average", "mis_field_key": "bank_entries_posted", "category": "efficiency", "weight": 1.0},
+                {"name": "Payment Processing Volume Trend", "unit": "avg", "target_value": 15, "calculation_type": "average", "mis_field_key": "payments_processed", "category": "operational", "weight": 0.8,
+                 "scoring_rubric": "Tracks workload growth. Avg payments/day. >=15=100, 10-14=80, 5-9=50, <5=30"},
+                {"name": "Vendor Query Resolution TAT", "unit": "avg", "target_value": 5, "calculation_type": "average", "mis_field_key": "vendor_queries_resolved", "category": "quality", "weight": 1.0,
+                 "scoring_rubric": "Avg queries resolved/day. >=5=100, 3-4=80, 1-2=50, 0=0. Vendor satisfaction indicator."},
             ],
         },
-        # --- ROUNAK SINGH - Accounts (Daily MIS) ---
+        # --- ROUNAK SINGH - Reconciliation, GST/Tax Compliance, Expense Entries ---
         "EMP35946842": {
             "name": "Rounak Singh",
+            "role": "Reconciliation, GST/Tax Compliance, Expense Entries",
             "frequency": "daily",
             "fields": [
                 {"key": "followups_done", "label": "Follow-ups Done", "type": "number"},
@@ -902,17 +1101,24 @@ async def seed_employee_data(request: Request):
                 {"key": "sewa_updation", "label": "SEWA Updation", "type": "dropdown", "options": ["Completed", "Partial", "Not Done"]},
                 {"key": "gst_reconciliation_done", "label": "GST Reconciliation Done", "type": "boolean"},
                 {"key": "expense_entries_done", "label": "All Expense Entries Done", "type": "boolean"},
+                {"key": "reconciliation_corrections", "label": "Reconciliation Corrections Needed", "type": "number"},
+                {"key": "days_before_gst_deadline", "label": "Days Before GST Filing Deadline", "type": "number"},
                 {"key": "critical_pending", "label": "Critical Pending Items", "type": "text"},
             ],
             "kpis": [
                 {"name": "GST Reconciliation %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "gst_reconciliation_done", "category": "compliance", "weight": 2.0},
                 {"name": "Expense Entry %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "expense_entries_done", "category": "compliance", "weight": 1.5},
                 {"name": "Daily Follow-ups", "unit": "avg", "target_value": 5, "calculation_type": "average", "mis_field_key": "followups_done", "category": "activity", "weight": 1.0},
+                {"name": "GST Filing Timeliness (Buffer Days)", "unit": "avg", "target_value": 3, "calculation_type": "average", "mis_field_key": "days_before_gst_deadline", "category": "compliance", "weight": 1.5,
+                 "scoring_rubric": "Avg days before deadline. >=5=100, 3-4=80, 1-2=50, 0=30, missed=0. Higher buffer = lower risk."},
+                {"name": "Reconciliation Accuracy %", "unit": "avg", "target_value": 0, "calculation_type": "inverse_sum", "mis_field_key": "reconciliation_corrections", "category": "quality", "weight": 1.2,
+                 "scoring_rubric": "Fewer corrections = higher accuracy. 0/month=100, 1-2=80, 3-5=50, >5=20"},
             ],
         },
-        # --- PRAVEEN KUMAR VERMA - Accounts (Daily MIS) ---
+        # --- PRAVEEN KUMAR VERMA - Invoicing and Dispatch Register ---
         "EMP6BE094D9": {
             "name": "Praveen Kumar Verma",
+            "role": "Invoicing and Dispatch Register",
             "frequency": "daily",
             "fields": [
                 {"key": "tax_invoices", "label": "Tax Invoices (with e-Invoicing & e-Way Bill)", "type": "number"},
@@ -922,6 +1128,9 @@ async def seed_employee_data(request: Request):
                 {"key": "dispatch_register", "label": "Daily Dispatch Register Maintained", "type": "boolean"},
                 {"key": "tds_on_purchase", "label": "TDS on Purchase", "type": "dropdown", "options": ["Completed", "Partial", "Not Done", "N/A"]},
                 {"key": "debit_credit_resolved", "label": "Debit/Credit Notes Issues Resolved", "type": "number"},
+                {"key": "invoice_errors", "label": "Invoice Errors Found/Corrected Today", "type": "number"},
+                {"key": "eway_bills_generated", "label": "E-Way Bills Generated", "type": "number"},
+                {"key": "eway_bills_required", "label": "E-Way Bills Required", "type": "number"},
                 {"key": "critical_pending", "label": "Critical Pending Items", "type": "text"},
             ],
             "kpis": [
@@ -929,21 +1138,29 @@ async def seed_employee_data(request: Request):
                 {"name": "All Accounts Entry Completion", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "compliance", "weight": 2.0},
                 {"name": "Debit/Credit Notes Resolution", "unit": "avg", "target_value": 3, "calculation_type": "average", "mis_field_key": "debit_credit_resolved", "category": "efficiency", "weight": 1.0},
                 {"name": "Dispatch Register Maintenance %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "dispatch_register", "category": "compliance", "weight": 1.2},
+                {"name": "Invoice Error Rate", "unit": "avg", "target_value": 0, "calculation_type": "inverse_sum", "mis_field_key": "invoice_errors", "category": "quality", "weight": 1.5,
+                 "scoring_rubric": "Wrong invoices -> GST notices -> penalties. 0/month=100, 1-2=70, 3-5=40, >5=0"},
+                {"name": "E-Way Bill Compliance %", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "eway_bills_generated", "mis_field_key_2": "eway_bills_required", "category": "compliance", "weight": 1.5,
+                 "scoring_rubric": "Generated/Required * 100. Missing e-way bills = legal risk. 100%=100, 95-99%=70, <95%=30"},
             ],
         },
-        # --- AWDHESH KUMAR - Store (Quarterly MIS) ---
+        # ============================================================
+        # STORE DEPARTMENT
+        # ============================================================
+        # --- AWDHESH KUMAR - Store Manager (WEEKLY MIS) ---
         "EMP4282E9BF": {
             "name": "Awdhesh Kumar",
-            "frequency": "quarterly",
+            "role": "Store Manager",
+            "frequency": "weekly",
             "fields": [
-                {"key": "back_order_items_count", "label": "Back Order/Out of Stock Items Count", "type": "number"},
-                {"key": "back_order_resolved", "label": "Back Orders Resolved", "type": "number"},
+                {"key": "back_order_items_count", "label": "Back Orders Received This Week", "type": "number"},
+                {"key": "back_order_resolved", "label": "Back Orders Resolved This Week", "type": "number"},
                 {"key": "shortage_production_loss", "label": "Shortage Caused Production Loss", "type": "boolean"},
-                {"key": "stock_out_items_count", "label": "Stock Out Items Count (Engine/Alt/Canopy)", "type": "number"},
-                {"key": "stock_out_resolved", "label": "Stock Outs Resolved", "type": "number"},
+                {"key": "stock_out_items_count", "label": "Stock Outs This Week (Engine/Alt/Canopy)", "type": "number"},
+                {"key": "stock_out_resolved", "label": "Stock Outs Resolved This Week", "type": "number"},
                 {"key": "stock_out_production_loss", "label": "Stock Out Caused Production Loss", "type": "boolean"},
-                {"key": "total_lots_received", "label": "Total Lots Received (Incoming Inspection)", "type": "number"},
-                {"key": "total_rejections", "label": "Total Rejections Found", "type": "number"},
+                {"key": "total_lots_received", "label": "Incoming Lots Inspected This Week", "type": "number"},
+                {"key": "total_rejections", "label": "Rejections Found This Week", "type": "number"},
                 {"key": "physical_inspection_done", "label": "Physical Incoming Inspection Done", "type": "boolean"},
                 {"key": "fifo_followed", "label": "FIFO Followed for A-Grade Items", "type": "boolean"},
                 {"key": "bin_card_updated", "label": "Bin Card Updated with FIFO Sticker", "type": "boolean"},
@@ -951,30 +1168,39 @@ async def seed_employee_data(request: Request):
                 {"key": "utilisation_sheet_attached", "label": "Utilisation Data Sheet Attached", "type": "boolean"},
                 {"key": "housekeeping_3s_4s", "label": "Housekeeping 3S/4S Done", "type": "boolean"},
                 {"key": "housekeeping_5s_progress", "label": "Working Towards 5S", "type": "boolean"},
-                {"key": "kaizen_count", "label": "Kaizen Activities This Period", "type": "number"},
+                {"key": "kaizen_count", "label": "Kaizen Activities This Week", "type": "number"},
+                {"key": "physical_stock_count_done", "label": "Physical Stock Count Done (Cycle Count)", "type": "boolean"},
+                {"key": "dead_stock_value", "label": "Dead/Slow-Moving Stock Identified (INR)", "type": "number"},
+                {"key": "production_material_complaints", "label": "Material Issue Complaints from Production", "type": "number"},
                 {"key": "kaizen_description", "label": "Kaizen Details", "type": "text"},
                 {"key": "remarks", "label": "Remarks", "type": "text"},
             ],
             "kpis": [
-                {"name": "Back Order Resolution", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "operational", "weight": 2.0,
-                 "scoring_rubric": "Score out of 10 based on shortage items and resolution time", "max_marks": 10},
-                {"name": "Stock Out Management", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "operational", "weight": 2.0,
-                 "scoring_rubric": "Score out of 10 based on stock-outs and production loss impact", "max_marks": 10},
+                {"name": "Back Order Resolution Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "back_order_resolved", "mis_field_key_2": "back_order_items_count", "category": "operational", "weight": 2.0,
+                 "scoring_rubric": "Resolved/Received * 100. 100%=10, 80-99%=8, 60-79%=6, <60%=3", "max_marks": 10},
+                {"name": "Stock Out Resolution Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "stock_out_resolved", "mis_field_key_2": "stock_out_items_count", "category": "operational", "weight": 2.0,
+                 "scoring_rubric": "Resolved/Occurred * 100. 100%=10, 80-99%=8, 60-79%=6, <60%=3", "max_marks": 10},
                 {"name": "Incoming Inspection Quality", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "total_rejections", "mis_field_key_2": "total_lots_received", "category": "quality", "weight": 2.0,
-                 "scoring_rubric": "Score out of 10: lower rejection = higher score", "max_marks": 10},
-                {"name": "FIFO/Stacking/Bin Card", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "compliance", "weight": 1.0,
-                 "scoring_rubric": "Score out of 5: FIFO followed, bin cards updated, stacking proper", "max_marks": 5},
+                 "scoring_rubric": "Lower rejection ratio = higher score", "max_marks": 10},
+                {"name": "FIFO/Stacking/Bin Card Compliance", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "fifo_followed", "category": "compliance", "weight": 1.0,
+                 "scoring_rubric": "Auto from 3 booleans: fifo + bin_card + stacking. All 3 yes=5, 2=3, 1=2, 0=0", "max_marks": 5},
                 {"name": "Utilisation Data Compliance", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "utilisation_sheet_attached", "category": "compliance", "weight": 1.0,
-                 "scoring_rubric": "Score out of 5: data sheet attached and accurate", "max_marks": 5},
-                {"name": "Housekeeping (3S/4S/5S)", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "compliance", "weight": 1.0,
-                 "scoring_rubric": "Score out of 5: 3S=3, 4S=4, 5S=5 marks", "max_marks": 5},
+                 "scoring_rubric": "Data sheet attached and accurate", "max_marks": 5},
+                {"name": "Housekeeping Score", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "housekeeping_3s_4s", "category": "compliance", "weight": 1.0,
+                 "scoring_rubric": "Auto: 3S/4S done + 5S progress. Both yes=5, 3S only=3, none=0", "max_marks": 5},
                 {"name": "Kaizen per Month", "unit": "count", "target_value": 3, "calculation_type": "sum", "mis_field_key": "kaizen_count", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Score out of 5: 3+ kaizen=5, 2=3, 1=2, 0=0", "max_marks": 5},
+                 "scoring_rubric": "3+/month=5, 2=3, 1=2, 0=0", "max_marks": 5},
+                {"name": "Stock Accuracy (Physical Count)", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "physical_stock_count_done", "category": "compliance", "weight": 1.5,
+                 "scoring_rubric": "Weekly cycle count done? Discrepancy tracking. Always done=10, 3/4 weeks=7, 2/4=5, <2=2", "max_marks": 10},
             ],
         },
-        # --- CHANDAN SHARMA - Sales Coordinator (Monthly MIS) ---
+        # ============================================================
+        # SALES DEPARTMENT
+        # ============================================================
+        # --- CHANDAN SHARMA - Sales Coordinator ---
         "EMPBD5000B3": {
             "name": "Chandan Sharma",
+            "role": "Sales Coordinator",
             "frequency": "monthly",
             "fields": [
                 {"key": "forecasted_sales_volume", "label": "Forecasted Sales Volume of the Month", "type": "number"},
@@ -991,8 +1217,8 @@ async def seed_employee_data(request: Request):
                 {"key": "remarks", "label": "Remarks", "type": "text"},
             ],
             "kpis": [
-                {"name": "Sales Forecast Accuracy", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Formula: 100 - (|Actual - Forecast| / Forecast * 100). Score out of 100.", "max_marks": 100},
+                {"name": "Sales Forecast Accuracy", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "actual_sales_volume", "mis_field_key_2": "forecasted_sales_volume", "category": "operational", "weight": 1.0,
+                 "scoring_rubric": "Auto: 100 - |Actual-Forecast|/Forecast * 100", "max_marks": 100},
                 {"name": "Order Processing Accuracy", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "accurate_orders_processed", "mis_field_key_2": "total_orders_processed", "category": "quality", "weight": 1.0,
                  "scoring_rubric": "Accurate Orders / Total Orders * 100", "max_marks": 100},
                 {"name": "Sales Backorder Rate (On-Time Fulfillment)", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "on_time_orders_fulfilled", "mis_field_key_2": "total_orders_received", "category": "operational", "weight": 1.0,
@@ -1001,232 +1227,14 @@ async def seed_employee_data(request: Request):
                  "scoring_rubric": "Positive Feedback / Total Feedback * 100", "max_marks": 100},
                 {"name": "Reporting Adherence", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "report_signoff_by_2nd", "category": "compliance", "weight": 1.0,
                  "scoring_rubric": "By 2nd: 100%, By 3rd: 50%, After: 0%", "max_marks": 100},
-                {"name": "Overdue Collection", "unit": "%", "target_value": 5, "calculation_type": "manual", "category": "financial", "weight": 1.0,
-                 "scoring_rubric": "Overdue% = Overdue/Billing*100. <5%: 100, 5-7%: 50, >7-10%: 20, >10%: 0", "max_marks": 100},
+                {"name": "Overdue Collection %", "unit": "%", "target_value": 5, "calculation_type": "percentage", "mis_field_key": "total_overdue_amount", "mis_field_key_2": "total_billing_value", "category": "financial", "weight": 1.0,
+                 "scoring_rubric": "Auto: Overdue/Billing*100. <5%: 100, 5-7%: 50, >7-10%: 20, >10%: 0", "max_marks": 100},
             ],
         },
-        # --- PRASHANT KUMAR GUPTA - Marketing (Monthly MIS) ---
-        "EMP7E8C1D39": {
-            "name": "Prashant Kumar Gupta",
-            "frequency": "monthly",
-            "fields": [
-                {"key": "total_customers_surveyed", "label": "Total Customers Surveyed", "type": "number"},
-                {"key": "satisfied_customers", "label": "Satisfied Customers", "type": "number"},
-                {"key": "total_marketing_spend", "label": "Total Marketing Spend (INR)", "type": "number"},
-                {"key": "leads_generated", "label": "Total Leads Generated", "type": "number"},
-                {"key": "gem_tenders_floated", "label": "GEM Tenders Floated", "type": "number"},
-                {"key": "gem_tenders_participated", "label": "GEM Tenders Participated", "type": "number"},
-                {"key": "gem_results", "label": "GEM Results (Won/Disqualified/Pending)", "type": "text"},
-                {"key": "total_leads", "label": "Total Leads in Month", "type": "number"},
-                {"key": "actual_enquiries", "label": "Actual Enquiries from Leads", "type": "number"},
-                {"key": "dms_overdue_calls", "label": "DMS Overdue & Unassigned Calls", "type": "number"},
-                {"key": "dms_total_entries", "label": "Total DMS Entries", "type": "number"},
-                {"key": "dms_lost_enquiry", "label": "Lost Enquiry Count", "type": "number"},
-                {"key": "website_total_clicks", "label": "Website/FB Ad Total Clicks", "type": "number"},
-                {"key": "website_total_impressions", "label": "Website/FB Ad Total Impressions", "type": "number"},
-                {"key": "new_enquiry_followups", "label": "New Enquiry Follow-ups Done", "type": "number"},
-                {"key": "positive_responses", "label": "Positive Responses Received", "type": "number"},
-                {"key": "remarks", "label": "Remarks", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Customer Satisfaction Ratio (CSR)", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "satisfied_customers", "mis_field_key_2": "total_customers_surveyed", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Satisfied / Total Surveyed * 100", "max_marks": 100},
-                {"name": "Cost Per Lead (CPL)", "unit": "INR", "target_value": 30, "calculation_type": "manual", "category": "financial", "weight": 1.0,
-                 "scoring_rubric": "CPL = Spend/Leads. <30=100%, <50=80%, <80=50%, >80=30%. No advertising=50%", "max_marks": 100},
-                {"name": "GEM Participation Ratio", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "gem_tenders_participated", "mis_field_key_2": "gem_tenders_floated", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Participated / Floated * 100", "max_marks": 100},
-                {"name": "Enquiry Generation Rate", "unit": "%", "target_value": 70, "calculation_type": "percentage", "mis_field_key": "actual_enquiries", "mis_field_key_2": "total_leads", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Enq/Lead%. <10%=0%, <30%=50%, <50%=70%, <70%=90%, >70%=100%", "max_marks": 100},
-                {"name": "DMS Compliance", "unit": "count", "target_value": 50, "calculation_type": "manual", "category": "compliance", "weight": 1.0,
-                 "scoring_rubric": "Overdue count. >200=0%, >150=25%, >100=50%, >50=75%, <50=100%", "max_marks": 100},
-                {"name": "Website & FB Ad CTR", "unit": "%", "target_value": 5, "calculation_type": "percentage", "mis_field_key": "website_total_clicks", "mis_field_key_2": "website_total_impressions", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "CTR = Clicks/Impressions * 100", "max_marks": 100},
-            ],
-        },
-        # --- RAJIV RANJAN (RAAJIV) - Purchase (Daily MIS) ---
-        "EMPD12C8C64": {
-            "name": "Rajiv Ranjan",
-            "frequency": "daily",
-            "fields": [
-                {"key": "number_of_shortages", "label": "Number of Material Shortages", "type": "number"},
-                {"key": "total_materials_ordered", "label": "Total Materials Ordered in PO", "type": "number"},
-                {"key": "excess_stock", "label": "Excess Stock Quantity", "type": "number"},
-                {"key": "total_stock", "label": "Total Stock Available", "type": "number"},
-                {"key": "po_count", "label": "Number of POs Raised Today", "type": "number"},
-                {"key": "correct_po_count", "label": "Correct POs (No Errors)", "type": "number"},
-                {"key": "on_time_deliveries", "label": "On-Time Deliveries Received", "type": "number"},
-                {"key": "total_deliveries", "label": "Total Deliveries as per PO", "type": "number"},
-                {"key": "defective_items_received", "label": "Defective Items Received", "type": "number"},
-                {"key": "total_items_received", "label": "Total Items Received", "type": "number"},
-                {"key": "order_cycle_time_days", "label": "Avg Order Cycle Time (Days)", "type": "number"},
-                {"key": "cost_saving_amount", "label": "Cost Saving Amount (INR)", "type": "number"},
-                {"key": "shortage_item_details", "label": "Shortage Item Details", "type": "text"},
-                {"key": "defect_item_details", "label": "Defect Item Details", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Inventory Turnover (Days)", "unit": "days", "target_value": 37, "calculation_type": "manual", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "30-37 days=10, 37-45=5, 45-60=3, >60=0", "max_marks": 10},
-                {"name": "Material Shortages %", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "number_of_shortages", "mis_field_key_2": "total_materials_ordered", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "0%=10, 1-2%=8, 2-4%=6, 4-6%=4, 6-10%=2, >10%=0", "max_marks": 10},
-                {"name": "Excess Inventory %", "unit": "%", "target_value": 2, "calculation_type": "percentage", "mis_field_key": "excess_stock", "mis_field_key_2": "total_stock", "category": "financial", "weight": 1.0,
-                 "scoring_rubric": "<2%=10, 2-10%=8, 10-25%=6, 26-30%=0", "max_marks": 10},
-                {"name": "Order Cycle Time", "unit": "days", "target_value": 26, "calculation_type": "average", "mis_field_key": "order_cycle_time_days", "category": "efficiency", "weight": 1.0,
-                 "scoring_rubric": "Within lead time=10, 1-2 days delay=5, 3-4 days=2, >4 days=0", "max_marks": 10},
-                {"name": "PO Accuracy Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "correct_po_count", "mis_field_key_2": "po_count", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "100%=10, 90-99%=8, 80-89%=6, 70-79%=4, 60-69%=2, <60%=0", "max_marks": 10},
-                {"name": "On-Time Delivery Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "on_time_deliveries", "mis_field_key_2": "total_deliveries", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "100%=10, >=85%=8, 75-85%=6, 60-75%=4, 50-60%=2, <50%=0", "max_marks": 10},
-                {"name": "Supplier Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "defective_items_received", "mis_field_key_2": "total_items_received", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "0%=10, 1-2%=8, 3-5%=6, 6-8%=4, >8%=0", "max_marks": 10},
-                {"name": "Cost Saving", "unit": "%", "target_value": 0.25, "calculation_type": "manual", "category": "financial", "weight": 1.0,
-                 "scoring_rubric": "0.25% of total purchase in one year. Proportional scoring out of 10", "max_marks": 10},
-            ],
-        },
-        # --- RAHUL BALBHADRA - Purchase (Daily MIS, same structure as Raajiv) ---
-        "EMP2CD56E12": {
-            "name": "Rahul Balbhadra",
-            "frequency": "daily",
-            "fields": [
-                {"key": "number_of_shortages", "label": "Number of Material Shortages", "type": "number"},
-                {"key": "total_materials_ordered", "label": "Total Materials Ordered in PO", "type": "number"},
-                {"key": "excess_stock", "label": "Excess Stock Quantity", "type": "number"},
-                {"key": "total_stock", "label": "Total Stock Available", "type": "number"},
-                {"key": "min_stock_level", "label": "Minimum Stock Level", "type": "number"},
-                {"key": "po_count", "label": "Number of POs Raised Today", "type": "number"},
-                {"key": "correct_po_count", "label": "Correct POs (No Errors)", "type": "number"},
-                {"key": "on_time_deliveries", "label": "On-Time Deliveries Received", "type": "number"},
-                {"key": "total_deliveries", "label": "Total Deliveries as per PO", "type": "number"},
-                {"key": "defective_items_received", "label": "Defective Items Received", "type": "number"},
-                {"key": "total_items_received", "label": "Total Items Received", "type": "number"},
-                {"key": "order_cycle_time_days", "label": "Avg Order Cycle Time (Days)", "type": "number"},
-                {"key": "cost_saving_amount", "label": "Cost Saving Amount (INR)", "type": "number"},
-                {"key": "previous_purchase_rate", "label": "Previous Purchase Rate", "type": "number"},
-                {"key": "current_purchase_rate", "label": "Current Purchase Rate", "type": "number"},
-                {"key": "shortage_item_details", "label": "Shortage Item Details", "type": "text"},
-                {"key": "defect_item_details", "label": "Defect Item Details", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Inventory Turnover (Days)", "unit": "days", "target_value": 37, "calculation_type": "manual", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "30-37 days=10, 37-45=5, 45-60=3, >60=0", "max_marks": 10},
-                {"name": "Material Shortages %", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "number_of_shortages", "mis_field_key_2": "total_materials_ordered", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "0%=10, 1-2%=8, 2-4%=6, 4-6%=4, 6-10%=2, >10%=0", "max_marks": 10},
-                {"name": "Excess Inventory %", "unit": "%", "target_value": 2, "calculation_type": "percentage", "mis_field_key": "excess_stock", "mis_field_key_2": "total_stock", "category": "financial", "weight": 1.0,
-                 "scoring_rubric": "<2%=10, 2-10%=8, 10-25%=6, 26-30%=0", "max_marks": 10},
-                {"name": "Order Cycle Time", "unit": "days", "target_value": 25, "calculation_type": "average", "mis_field_key": "order_cycle_time_days", "category": "efficiency", "weight": 1.0,
-                 "scoring_rubric": "Within lead time=10, 1-2 days delay=5, 3-4 days=2, >4 days=0", "max_marks": 10},
-                {"name": "PO Accuracy Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "correct_po_count", "mis_field_key_2": "po_count", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "100%=10, 90-99%=8, 80-89%=6, 70-79%=4, 60-69%=2, <60%=0", "max_marks": 10},
-                {"name": "On-Time Delivery Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "on_time_deliveries", "mis_field_key_2": "total_deliveries", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "100%=10, >=85%=8, 75-85%=6, 60-75%=4, 50-60%=2, <50%=0", "max_marks": 10},
-                {"name": "Supplier Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "defective_items_received", "mis_field_key_2": "total_items_received", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "0%=10, 1-2%=8, 3-5%=6, 6-8%=4, >8%=0", "max_marks": 10},
-                {"name": "Cost Saving", "unit": "%", "target_value": 0.25, "calculation_type": "manual", "category": "financial", "weight": 1.0,
-                 "scoring_rubric": "0.25% of total purchase in one year. Proportional scoring out of 10", "max_marks": 10},
-            ],
-        },
-        # --- NITESH BHASHKER - Production (Daily MIS) ---
-        "EMPD72BBD26": {
-            "name": "Nitesh Bhashker",
-            "frequency": "daily",
-            "fields": [
-                {"key": "production_points", "label": "Production Points (Target 300/month = ~12/day)", "type": "number"},
-                {"key": "production_efficiency_pct", "label": "Production Efficiency %", "type": "number"},
-                {"key": "oee_pct", "label": "Overall Equipment Effectiveness (OEE) %", "type": "number"},
-                {"key": "labor_productivity", "label": "Labor Productivity (Units/Manpower)", "type": "number"},
-                {"key": "order_fulfillment_rate_pct", "label": "Order Fulfillment Rate %", "type": "number"},
-                {"key": "cycle_time_points_hr", "label": "Cycle Time (Points/Hr)", "type": "number"},
-                {"key": "overtime_hrs", "label": "Overtime Hours", "type": "number"},
-                {"key": "downtime_pct", "label": "Unplanned Downtime % of Available Time", "type": "number"},
-                {"key": "defect_rate_pct", "label": "Defect Rate %", "type": "number"},
-                {"key": "scrap_rate_pct", "label": "Scrap Rate %", "type": "number"},
-                {"key": "first_pass_yield_pct", "label": "First Pass Yield (FPY) %", "type": "number"},
-                {"key": "copq_cost", "label": "Cost of Poor Quality (INR)", "type": "number"},
-                {"key": "kaizen_count", "label": "Kaizen / Training Activities", "type": "number"},
-                {"key": "safety_5s_score", "label": "Safety/5S Compliance Score (0-1)", "type": "number"},
-                {"key": "nva_time_mins", "label": "Non-Value-Added (NVA) Time (mins)", "type": "number"},
-            ],
-            "kpis": [
-                {"name": "Production Points vs Target", "unit": "%", "target_value": 300, "calculation_type": "sum", "mis_field_key": "production_points", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Target 300/month. 300+=10, 270-299=8, 240-269=6, 200-239=4, <200=2", "max_marks": 10},
-                {"name": "Production Efficiency", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "production_efficiency_pct", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Actual Output/Planned Output * 100. >=95%=10, 85-94%=8, 75-84%=6, <75%=4", "max_marks": 10},
-                {"name": "OEE %", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "oee_pct", "category": "efficiency", "weight": 1.0,
-                 "scoring_rubric": "Availability*Performance*Quality. >=90%=10, 80-89%=7, 70-79%=5, <70%=3", "max_marks": 10},
-                {"name": "Labor Productivity", "unit": "ratio", "target_value": 0.3, "calculation_type": "average", "mis_field_key": "labor_productivity", "category": "efficiency", "weight": 1.0,
-                 "scoring_rubric": "Units/Manpower. >=0.3=10, 0.25-0.29=7, 0.20-0.24=5, <0.20=3", "max_marks": 10},
-                {"name": "Schedule Adherence", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "order_fulfillment_rate_pct", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Orders Delivered on Time/Total * 100. >=95%=10, 85-94%=7, 75-84%=5, <75%=3", "max_marks": 10},
-                {"name": "Cycle Time", "unit": "pts/hr", "target_value": 1.5, "calculation_type": "average", "mis_field_key": "cycle_time_points_hr", "category": "efficiency", "weight": 1.0,
-                 "scoring_rubric": "Points/Hr. >=1.5=10, 1.2-1.49=7, 1.0-1.19=5, <1.0=3", "max_marks": 10},
-                {"name": "Downtime Ratio", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "downtime_pct", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Lower is better. 0-5%=10, 5-10%=7, 10-15%=5, 15-20%=3, >20%=0", "max_marks": 10},
-                {"name": "Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "defect_rate_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "0%=10, <0.5%=8, 0.5-1%=5, 1-2%=3, >2%=0", "max_marks": 10},
-                {"name": "Scrap Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "scrap_rate_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "0%=10, <0.5%=7, 0.5-1%=5, >1%=2", "max_marks": 10},
-                {"name": "First Pass Yield (FPY)", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "first_pass_yield_pct", "category": "quality", "weight": 0.5,
-                 "scoring_rubric": ">=99.5%=5, 99-99.4%=4, 98-98.9%=3, <98%=1", "max_marks": 5},
-                {"name": "Cost of Poor Quality (COPQ)", "unit": "INR", "target_value": 0, "calculation_type": "sum", "mis_field_key": "copq_cost", "category": "financial", "weight": 0.5,
-                 "scoring_rubric": "0=5, <500=4, 500-1000=3, 1000-2000=2, >2000=0", "max_marks": 5},
-                {"name": "Kaizen & Training", "unit": "count", "target_value": 3, "calculation_type": "sum", "mis_field_key": "kaizen_count", "category": "operational", "weight": 0.5,
-                 "scoring_rubric": "3+/quarter=5, 2=3, 1=2, 0=0. Required evidence in kaizen format", "max_marks": 5},
-                {"name": "NVA Time %", "unit": "mins", "target_value": 156, "calculation_type": "sum", "mis_field_key": "nva_time_mins", "category": "efficiency", "weight": 0.5,
-                 "scoring_rubric": "Total NVA time / Available time. <5%=5, 5-10%=4, 10-15%=3, >15%=1", "max_marks": 5},
-            ],
-        },
-        # --- SAURAV KUMAR - Quality (Daily MIS) ---
-        "EMP09B94222": {
-            "name": "Saurav Kumar",
-            "frequency": "daily",
-            "fields": [
-                {"key": "production_points", "label": "Production Points (Target 300/month)", "type": "number"},
-                {"key": "production_efficiency_pct", "label": "Production Efficiency %", "type": "number"},
-                {"key": "manpower_capacity_pct", "label": "Manpower Capacity vs Actual %", "type": "number"},
-                {"key": "schedule_adherence_pct", "label": "Production Schedule Adherence %", "type": "number"},
-                {"key": "cycle_time_pct", "label": "Cycle Time %", "type": "number"},
-                {"key": "overtime_hrs", "label": "Overtime Hours", "type": "number"},
-                {"key": "production_loss", "label": "Production Loss (0=No, 1=Yes)", "type": "number"},
-                {"key": "defect_rate_pct", "label": "Defect Rate %", "type": "number"},
-                {"key": "first_pass_yield_pct", "label": "First Pass Yield (FPY) %", "type": "number"},
-                {"key": "copq_cost", "label": "Cost of Poor Quality (INR)", "type": "number"},
-                {"key": "customer_complaint_rate", "label": "Customer Complaint Rate %", "type": "number"},
-                {"key": "incoming_acceptance_pct", "label": "Incoming Material Acceptance Rate %", "type": "number"},
-                {"key": "mpes_score", "label": "MPES Score (e.g. B-67)", "type": "text"},
-                {"key": "kaizen_count", "label": "Kaizen / Training Activities", "type": "number"},
-                {"key": "safety_5s_score", "label": "Safety/5S Score (0-1)", "type": "number"},
-            ],
-            "kpis": [
-                {"name": "Production Points vs Target", "unit": "%", "target_value": 300, "calculation_type": "sum", "mis_field_key": "production_points", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Target 300/month. >=300=10, 270-299=8, 240-269=6, 200-239=4, <200=2", "max_marks": 10},
-                {"name": "Production Efficiency", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "production_efficiency_pct", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Actual Output/Planned * 100", "max_marks": 10},
-                {"name": "Manpower Utilization", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "manpower_capacity_pct", "category": "efficiency", "weight": 1.0,
-                 "scoring_rubric": "Capacity vs Actual. >=80%=10, 60-79%=7, 40-59%=5, <40%=3", "max_marks": 10},
-                {"name": "Schedule Adherence", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "schedule_adherence_pct", "category": "operational", "weight": 1.0,
-                 "scoring_rubric": "Orders delivered on time / Total * 100", "max_marks": 10},
-                {"name": "Cycle Time Performance", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "cycle_time_pct", "category": "efficiency", "weight": 1.0,
-                 "scoring_rubric": "Units/Total Time * 100", "max_marks": 10},
-                {"name": "Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "defect_rate_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Defective/Total * 100. 0%=10, <1%=8, 1-2%=6, 2-3%=4, >3%=0", "max_marks": 10},
-                {"name": "First Pass Yield (FPY)", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "first_pass_yield_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": ">=99.5%=10, 99-99.4%=8, 98-98.9%=7, <98%=5", "max_marks": 10},
-                {"name": "COPQ (Cost of Poor Quality)", "unit": "INR", "target_value": 0, "calculation_type": "sum", "mis_field_key": "copq_cost", "category": "financial", "weight": 1.0,
-                 "scoring_rubric": "0=10, <200=7, 200-500=5, >500=2", "max_marks": 10},
-                {"name": "Kaizen & Training", "unit": "count", "target_value": 3, "calculation_type": "sum", "mis_field_key": "kaizen_count", "category": "operational", "weight": 0.5,
-                 "scoring_rubric": "3+/quarter=5, 2=3, 1=2. Evidence in before/after format", "max_marks": 5},
-                {"name": "Safety & 5S", "unit": "count", "target_value": 3, "calculation_type": "sum", "mis_field_key": "safety_5s_score", "category": "compliance", "weight": 0.5,
-                 "scoring_rubric": "Evidence in format. 3/qtr=5, 2=3, 1=2", "max_marks": 5},
-                {"name": "Customer Complaint Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "customer_complaint_rate", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Complaints/Units delivered * 100. 0%=10, <0.5%=7, 0.5-1%=5, >1%=0", "max_marks": 10},
-                {"name": "Incoming Material Acceptance", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "incoming_acceptance_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Accepted/Total Inspected * 100. 100%=10, 95-99%=8, 90-94%=6, <90%=3", "max_marks": 10},
-                {"name": "MPES Score", "unit": "score", "target_value": 70, "calculation_type": "manual", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "B-70+=10, B-67=6.7, B-65=5, <B-60=3", "max_marks": 10},
-            ],
-        },
-        # --- ASHOK KUMAR - Sales/ASM-BDM (Monthly MIS) ---
+        # --- ASM/BDM SALES TEAM (6 employees - same structure) ---
         "EMPACD56C4D": {
             "name": "Ashok Kumar",
+            "role": "Area Sales Manager / BDM",
             "frequency": "monthly",
             "fields": [
                 {"key": "sales_target", "label": "Monthly Sales Target (Units)", "type": "number"},
@@ -1234,7 +1242,6 @@ async def seed_employee_data(request: Request):
                 {"key": "new_leads_generated", "label": "New Leads Generated", "type": "number"},
                 {"key": "customer_visits", "label": "Customer Visits / Meetings", "type": "number"},
                 {"key": "orders_closed", "label": "Orders Closed", "type": "number"},
-                {"key": "payment_collected", "label": "Payment Collected (INR)", "type": "number"},
                 {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
                 {"key": "kpi_score_pct", "label": "Back Office KPI Score %", "type": "number"},
                 {"key": "remarks", "label": "Remarks", "type": "text"},
@@ -1244,125 +1251,385 @@ async def seed_employee_data(request: Request):
                  "scoring_rubric": "Achievement/Target * 100. >=100%=100, 80-99%=80, 60-79%=60, <60%=40", "max_marks": 100},
                 {"name": "Back Office KPI Score", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "kpi_score_pct", "category": "quality", "weight": 1.0,
                  "scoring_rubric": "Monthly KPI % score from back office activities", "max_marks": 100},
-            ],
-        },
-        # --- HARENDRA PRASAD - Sales/ASM-BDM (Monthly MIS) ---
-        "EMPF08BB218": {
-            "name": "Harendra Prasad",
-            "frequency": "monthly",
-            "fields": [
-                {"key": "sales_target", "label": "Monthly Sales Target (Units)", "type": "number"},
-                {"key": "sales_achieved", "label": "Monthly Sales Achieved (Units)", "type": "number"},
-                {"key": "new_leads_generated", "label": "New Leads Generated", "type": "number"},
-                {"key": "customer_visits", "label": "Customer Visits / Meetings", "type": "number"},
-                {"key": "orders_closed", "label": "Orders Closed", "type": "number"},
-                {"key": "payment_collected", "label": "Payment Collected (INR)", "type": "number"},
-                {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
-                {"key": "kpi_score_pct", "label": "Back Office KPI Score %", "type": "number"},
-                {"key": "remarks", "label": "Remarks", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Target Achievement %", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "sales_achieved", "mis_field_key_2": "sales_target", "category": "operational", "weight": 2.0,
-                 "scoring_rubric": "Achievement/Target * 100. >=100%=100, 80-99%=80, 60-79%=60, <60%=40", "max_marks": 100},
-                {"name": "Back Office KPI Score", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "kpi_score_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Monthly KPI % score from back office activities", "max_marks": 100},
-            ],
-        },
-        # --- GAVESH KUMAR - Sales/ASM-BDM (Monthly MIS) ---
-        "EMP2A1C5C71": {
-            "name": "Gavesh Kumar",
-            "frequency": "monthly",
-            "fields": [
-                {"key": "sales_target", "label": "Monthly Sales Target (Units)", "type": "number"},
-                {"key": "sales_achieved", "label": "Monthly Sales Achieved (Units)", "type": "number"},
-                {"key": "new_leads_generated", "label": "New Leads Generated", "type": "number"},
-                {"key": "customer_visits", "label": "Customer Visits / Meetings", "type": "number"},
-                {"key": "orders_closed", "label": "Orders Closed", "type": "number"},
-                {"key": "payment_collected", "label": "Payment Collected (INR)", "type": "number"},
-                {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
-                {"key": "kpi_score_pct", "label": "Back Office KPI Score %", "type": "number"},
-                {"key": "remarks", "label": "Remarks", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Target Achievement %", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "sales_achieved", "mis_field_key_2": "sales_target", "category": "operational", "weight": 2.0,
-                 "scoring_rubric": "Achievement/Target * 100. >=100%=100, 80-99%=80, 60-79%=60, <60%=40", "max_marks": 100},
-                {"name": "Back Office KPI Score", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "kpi_score_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Monthly KPI % score from back office activities", "max_marks": 100},
-            ],
-        },
-        # --- RAHUL KUMAR - Sales/ASM-BDM (Monthly MIS) ---
-        "EMP8461D267": {
-            "name": "Rahul Kumar",
-            "frequency": "monthly",
-            "fields": [
-                {"key": "sales_target", "label": "Monthly Sales Target (Units)", "type": "number"},
-                {"key": "sales_achieved", "label": "Monthly Sales Achieved (Units)", "type": "number"},
-                {"key": "new_leads_generated", "label": "New Leads Generated", "type": "number"},
-                {"key": "customer_visits", "label": "Customer Visits / Meetings", "type": "number"},
-                {"key": "orders_closed", "label": "Orders Closed", "type": "number"},
-                {"key": "payment_collected", "label": "Payment Collected (INR)", "type": "number"},
-                {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
-                {"key": "kpi_score_pct", "label": "Back Office KPI Score %", "type": "number"},
-                {"key": "remarks", "label": "Remarks", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Target Achievement %", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "sales_achieved", "mis_field_key_2": "sales_target", "category": "operational", "weight": 2.0,
-                 "scoring_rubric": "Achievement/Target * 100. >=100%=100, 80-99%=80, 60-79%=60, <60%=40", "max_marks": 100},
-                {"name": "Back Office KPI Score", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "kpi_score_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Monthly KPI % score from back office activities", "max_marks": 100},
-            ],
-        },
-        # --- VISHAL KR GUPTA - Sales/ASM-BDM (Monthly MIS) ---
-        "EMP817A5537": {
-            "name": "Vishal Kr Gupta",
-            "frequency": "monthly",
-            "fields": [
-                {"key": "sales_target", "label": "Monthly Sales Target (Units)", "type": "number"},
-                {"key": "sales_achieved", "label": "Monthly Sales Achieved (Units)", "type": "number"},
-                {"key": "new_leads_generated", "label": "New Leads Generated", "type": "number"},
-                {"key": "customer_visits", "label": "Customer Visits / Meetings", "type": "number"},
-                {"key": "orders_closed", "label": "Orders Closed", "type": "number"},
-                {"key": "payment_collected", "label": "Payment Collected (INR)", "type": "number"},
-                {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
-                {"key": "kpi_score_pct", "label": "Back Office KPI Score %", "type": "number"},
-                {"key": "remarks", "label": "Remarks", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Target Achievement %", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "sales_achieved", "mis_field_key_2": "sales_target", "category": "operational", "weight": 2.0,
-                 "scoring_rubric": "Achievement/Target * 100. >=100%=100, 80-99%=80, 60-79%=60, <60%=40", "max_marks": 100},
-                {"name": "Back Office KPI Score", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "kpi_score_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Monthly KPI % score from back office activities", "max_marks": 100},
-            ],
-        },
-        # --- AMIT KUMAR - Sales/ASM-BDM (Monthly MIS) ---
-        "EMP8C8264A1": {
-            "name": "Amit Kumar",
-            "frequency": "monthly",
-            "fields": [
-                {"key": "sales_target", "label": "Monthly Sales Target (Units)", "type": "number"},
-                {"key": "sales_achieved", "label": "Monthly Sales Achieved (Units)", "type": "number"},
-                {"key": "new_leads_generated", "label": "New Leads Generated", "type": "number"},
-                {"key": "customer_visits", "label": "Customer Visits / Meetings", "type": "number"},
-                {"key": "orders_closed", "label": "Orders Closed", "type": "number"},
-                {"key": "payment_collected", "label": "Payment Collected (INR)", "type": "number"},
-                {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
-                {"key": "kpi_score_pct", "label": "Back Office KPI Score %", "type": "number"},
-                {"key": "remarks", "label": "Remarks", "type": "text"},
-            ],
-            "kpis": [
-                {"name": "Target Achievement %", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "sales_achieved", "mis_field_key_2": "sales_target", "category": "operational", "weight": 2.0,
-                 "scoring_rubric": "Achievement/Target * 100. >=100%=100, 80-99%=80, 60-79%=60, <60%=40", "max_marks": 100},
-                {"name": "Back Office KPI Score", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "kpi_score_pct", "category": "quality", "weight": 1.0,
-                 "scoring_rubric": "Monthly KPI % score from back office activities", "max_marks": 100},
+                {"name": "Lead Conversion Rate", "unit": "%", "target_value": 30, "calculation_type": "percentage", "mis_field_key": "orders_closed", "mis_field_key_2": "new_leads_generated", "category": "operational", "weight": 1.5,
+                 "scoring_rubric": "Orders Closed / Leads * 100. Measures sales effectiveness. >=30%=100, 20-29%=80, 10-19%=50, <10%=20", "max_marks": 100},
+                {"name": "Customer Visit Productivity", "unit": "%", "target_value": 20, "calculation_type": "percentage", "mis_field_key": "orders_closed", "mis_field_key_2": "customer_visits", "category": "efficiency", "weight": 1.0,
+                 "scoring_rubric": "Orders/Visits * 100. Are visits translating to business? >=20%=100, 10-19%=70, 5-9%=40, <5%=10", "max_marks": 100},
             ],
         },
     }
+    
+    # Clone ASM/BDM structure for other 5 sales team members
+    _ASM_TEMPLATE = EMPLOYEE_MIS["EMPACD56C4D"]
+    for eid, ename in [
+        ("EMPF08BB218", "Harendra Prasad"),
+        ("EMP2A1C5C71", "Gavesh Kumar"),
+        ("EMP8461D267", "Rahul Kumar"),
+        ("EMP817A5537", "Vishal Kr Gupta"),
+        ("EMP8C8264A1", "Amit Kumar"),
+    ]:
+        EMPLOYEE_MIS[eid] = {
+            **_ASM_TEMPLATE,
+            "name": ename,
+            "fields": [dict(f) for f in _ASM_TEMPLATE["fields"]],
+            "kpis": [dict(k) for k in _ASM_TEMPLATE["kpis"]],
+        }
+    
+    # ============================================================
+    # MARKETING DEPARTMENT
+    # ============================================================
+    EMPLOYEE_MIS["EMP7E8C1D39"] = {
+        "name": "Prashant Kumar Gupta",
+        "role": "Marketing Manager",
+        "frequency": "monthly",
+        "fields": [
+            {"key": "total_customers_surveyed", "label": "Total Customers Surveyed", "type": "number"},
+            {"key": "satisfied_customers", "label": "Satisfied Customers", "type": "number"},
+            {"key": "total_marketing_spend", "label": "Total Marketing Spend (INR)", "type": "number"},
+            {"key": "leads_generated", "label": "Total Leads Generated", "type": "number"},
+            {"key": "gem_tenders_floated", "label": "GEM Tenders Floated", "type": "number"},
+            {"key": "gem_tenders_participated", "label": "GEM Tenders Participated", "type": "number"},
+            {"key": "gem_results", "label": "GEM Results (Won/Disqualified/Pending)", "type": "text"},
+            {"key": "total_leads", "label": "Total Leads in Month", "type": "number"},
+            {"key": "actual_enquiries", "label": "Actual Enquiries from Leads", "type": "number"},
+            {"key": "dms_overdue_calls", "label": "DMS Overdue & Unassigned Calls", "type": "number"},
+            {"key": "dms_total_entries", "label": "Total DMS Entries", "type": "number"},
+            {"key": "dms_lost_enquiry", "label": "Lost Enquiry Count", "type": "number"},
+            {"key": "website_total_clicks", "label": "Website/FB Ad Total Clicks", "type": "number"},
+            {"key": "website_total_impressions", "label": "Website/FB Ad Total Impressions", "type": "number"},
+            {"key": "new_enquiry_followups", "label": "New Enquiry Follow-ups Done", "type": "number"},
+            {"key": "positive_responses", "label": "Positive Responses Received", "type": "number"},
+            {"key": "remarks", "label": "Remarks", "type": "text"},
+        ],
+        "kpis": [
+            {"name": "Customer Satisfaction Ratio (CSR)", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "satisfied_customers", "mis_field_key_2": "total_customers_surveyed", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "Satisfied / Total Surveyed * 100", "max_marks": 100},
+            {"name": "Cost Per Lead (CPL)", "unit": "INR", "target_value": 30, "calculation_type": "percentage", "mis_field_key": "total_marketing_spend", "mis_field_key_2": "leads_generated", "category": "financial", "weight": 1.0,
+             "scoring_rubric": "Auto: Spend/Leads. <30=100%, <50=80%, <80=50%, >80=30%. No advertising=50%", "max_marks": 100},
+            {"name": "GEM Participation Ratio", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "gem_tenders_participated", "mis_field_key_2": "gem_tenders_floated", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "Participated / Floated * 100", "max_marks": 100},
+            {"name": "Enquiry Generation Rate", "unit": "%", "target_value": 70, "calculation_type": "percentage", "mis_field_key": "actual_enquiries", "mis_field_key_2": "total_leads", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "Enq/Lead%. <10%=0%, <30%=50%, <50%=70%, <70%=90%, >70%=100%", "max_marks": 100},
+            {"name": "DMS Compliance", "unit": "count", "target_value": 50, "calculation_type": "inverse_sum", "mis_field_key": "dms_overdue_calls", "category": "compliance", "weight": 1.0,
+             "scoring_rubric": "Auto: Lower overdue=better. >200=0%, >150=25%, >100=50%, >50=75%, <50=100%", "max_marks": 100},
+            {"name": "Website & FB Ad CTR", "unit": "%", "target_value": 5, "calculation_type": "percentage", "mis_field_key": "website_total_clicks", "mis_field_key_2": "website_total_impressions", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "CTR = Clicks/Impressions * 100", "max_marks": 100},
+        ],
+    }
+    
+    # ============================================================
+    # PURCHASE DEPARTMENT
+    # ============================================================
+    EMPLOYEE_MIS["EMPD12C8C64"] = {
+        "name": "Rajiv Ranjan",
+        "role": "Purchase Manager",
+        "frequency": "daily",
+        "fields": [
+            {"key": "number_of_shortages", "label": "Number of Material Shortages", "type": "number"},
+            {"key": "total_materials_ordered", "label": "Total Materials Ordered in PO", "type": "number"},
+            {"key": "excess_stock", "label": "Excess Stock Quantity", "type": "number"},
+            {"key": "total_stock", "label": "Total Stock Available", "type": "number"},
+            {"key": "po_count", "label": "Number of POs Raised Today", "type": "number"},
+            {"key": "correct_po_count", "label": "Correct POs (No Errors)", "type": "number"},
+            {"key": "on_time_deliveries", "label": "On-Time Deliveries Received", "type": "number"},
+            {"key": "total_deliveries", "label": "Total Deliveries as per PO", "type": "number"},
+            {"key": "defective_items_received", "label": "Defective Items Received", "type": "number"},
+            {"key": "total_items_received", "label": "Total Items Received", "type": "number"},
+            {"key": "order_cycle_time_days", "label": "Avg Order Cycle Time (Days)", "type": "number"},
+            {"key": "cost_saving_amount", "label": "Cost Saving Amount (INR)", "type": "number"},
+            {"key": "shortage_item_details", "label": "Shortage Item Details", "type": "text"},
+            {"key": "defect_item_details", "label": "Defect Item Details", "type": "text"},
+        ],
+        "kpis": [
+            {"name": "Inventory Turnover (Days)", "unit": "days", "target_value": 37, "calculation_type": "manual", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "30-37 days=10, 37-45=5, 45-60=3, >60=0", "max_marks": 10},
+            {"name": "Material Shortages %", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "number_of_shortages", "mis_field_key_2": "total_materials_ordered", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "0%=10, 1-2%=8, 2-4%=6, 4-6%=4, 6-10%=2, >10%=0", "max_marks": 10},
+            {"name": "Excess Inventory %", "unit": "%", "target_value": 2, "calculation_type": "percentage", "mis_field_key": "excess_stock", "mis_field_key_2": "total_stock", "category": "financial", "weight": 1.0,
+             "scoring_rubric": "<2%=10, 2-10%=8, 10-25%=6, 26-30%=0", "max_marks": 10},
+            {"name": "Order Cycle Time", "unit": "days", "target_value": 26, "calculation_type": "average", "mis_field_key": "order_cycle_time_days", "category": "efficiency", "weight": 1.0,
+             "scoring_rubric": "Within lead time=10, 1-2 days delay=5, 3-4 days=2, >4 days=0", "max_marks": 10},
+            {"name": "PO Accuracy Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "correct_po_count", "mis_field_key_2": "po_count", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "100%=10, 90-99%=8, 80-89%=6, 70-79%=4, 60-69%=2, <60%=0", "max_marks": 10},
+            {"name": "On-Time Delivery Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "on_time_deliveries", "mis_field_key_2": "total_deliveries", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "100%=10, >=85%=8, 75-85%=6, 60-75%=4, 50-60%=2, <50%=0", "max_marks": 10},
+            {"name": "Supplier Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "defective_items_received", "mis_field_key_2": "total_items_received", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "0%=10, 1-2%=8, 3-5%=6, 6-8%=4, >8%=0", "max_marks": 10},
+            {"name": "Cost Saving", "unit": "INR", "target_value": 50000, "calculation_type": "sum", "mis_field_key": "cost_saving_amount", "category": "financial", "weight": 1.0,
+             "scoring_rubric": "Auto: sum of daily savings. Proportional to 0.25% of total purchase/year", "max_marks": 10},
+        ],
+    }
+    
+    EMPLOYEE_MIS["EMP2CD56E12"] = {
+        "name": "Rahul Balbhadra",
+        "role": "Purchase Executive",
+        "frequency": "daily",
+        "fields": [
+            {"key": "number_of_shortages", "label": "Number of Material Shortages", "type": "number"},
+            {"key": "total_materials_ordered", "label": "Total Materials Ordered in PO", "type": "number"},
+            {"key": "excess_stock", "label": "Excess Stock Quantity", "type": "number"},
+            {"key": "total_stock", "label": "Total Stock Available", "type": "number"},
+            {"key": "min_stock_level", "label": "Minimum Stock Level", "type": "number"},
+            {"key": "po_count", "label": "Number of POs Raised Today", "type": "number"},
+            {"key": "correct_po_count", "label": "Correct POs (No Errors)", "type": "number"},
+            {"key": "on_time_deliveries", "label": "On-Time Deliveries Received", "type": "number"},
+            {"key": "total_deliveries", "label": "Total Deliveries as per PO", "type": "number"},
+            {"key": "defective_items_received", "label": "Defective Items Received", "type": "number"},
+            {"key": "total_items_received", "label": "Total Items Received", "type": "number"},
+            {"key": "order_cycle_time_days", "label": "Avg Order Cycle Time (Days)", "type": "number"},
+            {"key": "cost_saving_amount", "label": "Cost Saving Amount (INR)", "type": "number"},
+            {"key": "previous_purchase_rate", "label": "Previous Purchase Rate", "type": "number"},
+            {"key": "current_purchase_rate", "label": "Current Purchase Rate", "type": "number"},
+            {"key": "shortage_item_details", "label": "Shortage Item Details", "type": "text"},
+            {"key": "defect_item_details", "label": "Defect Item Details", "type": "text"},
+        ],
+        "kpis": [
+            {"name": "Inventory Turnover (Days)", "unit": "days", "target_value": 37, "calculation_type": "manual", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "30-37 days=10, 37-45=5, 45-60=3, >60=0", "max_marks": 10},
+            {"name": "Material Shortages %", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "number_of_shortages", "mis_field_key_2": "total_materials_ordered", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "0%=10, 1-2%=8, 2-4%=6, 4-6%=4, 6-10%=2, >10%=0", "max_marks": 10},
+            {"name": "Excess Inventory %", "unit": "%", "target_value": 2, "calculation_type": "percentage", "mis_field_key": "excess_stock", "mis_field_key_2": "total_stock", "category": "financial", "weight": 1.0,
+             "scoring_rubric": "<2%=10, 2-10%=8, 10-25%=6, 26-30%=0", "max_marks": 10},
+            {"name": "Order Cycle Time", "unit": "days", "target_value": 25, "calculation_type": "average", "mis_field_key": "order_cycle_time_days", "category": "efficiency", "weight": 1.0,
+             "scoring_rubric": "Within lead time=10, 1-2 days delay=5, 3-4 days=2, >4 days=0", "max_marks": 10},
+            {"name": "PO Accuracy Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "correct_po_count", "mis_field_key_2": "po_count", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "100%=10, 90-99%=8, 80-89%=6, 70-79%=4, 60-69%=2, <60%=0", "max_marks": 10},
+            {"name": "On-Time Delivery Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "on_time_deliveries", "mis_field_key_2": "total_deliveries", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "100%=10, >=85%=8, 75-85%=6, 60-75%=4, 50-60%=2, <50%=0", "max_marks": 10},
+            {"name": "Supplier Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "percentage", "mis_field_key": "defective_items_received", "mis_field_key_2": "total_items_received", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "0%=10, 1-2%=8, 3-5%=6, 6-8%=4, >8%=0", "max_marks": 10},
+            {"name": "Cost Saving", "unit": "INR", "target_value": 50000, "calculation_type": "sum", "mis_field_key": "cost_saving_amount", "category": "financial", "weight": 1.0,
+             "scoring_rubric": "Auto: sum of daily savings. Proportional to 0.25% of total purchase/year", "max_marks": 10},
+        ],
+    }
+    
+    # ============================================================
+    # PRODUCTION DEPARTMENT
+    # ============================================================
+    EMPLOYEE_MIS["EMPD72BBD26"] = {
+        "name": "Nitesh Bhashker",
+        "role": "Production Manager",
+        "frequency": "daily",
+        "fields": [
+            {"key": "production_points", "label": "Production Points (Target 300/month = ~12/day)", "type": "number"},
+            {"key": "production_efficiency_pct", "label": "Production Efficiency %", "type": "number"},
+            {"key": "oee_pct", "label": "Overall Equipment Effectiveness (OEE) %", "type": "number"},
+            {"key": "labor_productivity", "label": "Labor Productivity (Units/Manpower)", "type": "number"},
+            {"key": "order_fulfillment_rate_pct", "label": "Order Fulfillment Rate %", "type": "number"},
+            {"key": "cycle_time_points_hr", "label": "Cycle Time (Points/Hr)", "type": "number"},
+            {"key": "overtime_hrs", "label": "Overtime Hours", "type": "number"},
+            {"key": "downtime_pct", "label": "Unplanned Downtime % of Available Time", "type": "number"},
+            {"key": "defect_rate_pct", "label": "Defect Rate %", "type": "number"},
+            {"key": "scrap_rate_pct", "label": "Scrap Rate %", "type": "number"},
+            {"key": "first_pass_yield_pct", "label": "First Pass Yield (FPY) %", "type": "number"},
+            {"key": "copq_cost", "label": "Cost of Poor Quality (INR)", "type": "number"},
+            {"key": "kaizen_count", "label": "Kaizen / Training Activities", "type": "number"},
+            {"key": "safety_5s_score", "label": "Safety/5S Compliance Score (0-1)", "type": "number"},
+            {"key": "nva_time_mins", "label": "Non-Value-Added (NVA) Time (mins)", "type": "number"},
+            {"key": "machine_breakdowns", "label": "Machine Breakdowns Today", "type": "number"},
+        ],
+        "kpis": [
+            {"name": "Production Points vs Target", "unit": "%", "target_value": 300, "calculation_type": "sum", "mis_field_key": "production_points", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "Target 300/month. 300+=10, 270-299=8, 240-269=6, 200-239=4, <200=2", "max_marks": 10},
+            {"name": "Production Efficiency", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "production_efficiency_pct", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "Actual/Planned * 100. >=95%=10, 85-94%=8, 75-84%=6, <75%=4", "max_marks": 10},
+            {"name": "OEE %", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "oee_pct", "category": "efficiency", "weight": 1.0,
+             "scoring_rubric": ">=90%=10, 80-89%=7, 70-79%=5, <70%=3", "max_marks": 10},
+            {"name": "Labor Productivity", "unit": "ratio", "target_value": 0.3, "calculation_type": "average", "mis_field_key": "labor_productivity", "category": "efficiency", "weight": 1.0,
+             "scoring_rubric": "Units/Manpower. >=0.3=10, 0.25-0.29=7, 0.20-0.24=5, <0.20=3", "max_marks": 10},
+            {"name": "Schedule Adherence", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "order_fulfillment_rate_pct", "category": "operational", "weight": 1.0,
+             "scoring_rubric": ">=95%=10, 85-94%=7, 75-84%=5, <75%=3", "max_marks": 10},
+            {"name": "Cycle Time", "unit": "pts/hr", "target_value": 1.5, "calculation_type": "average", "mis_field_key": "cycle_time_points_hr", "category": "efficiency", "weight": 1.0,
+             "scoring_rubric": ">=1.5=10, 1.2-1.49=7, 1.0-1.19=5, <1.0=3", "max_marks": 10},
+            {"name": "Downtime Ratio", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "downtime_pct", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "0-5%=10, 5-10%=7, 10-15%=5, 15-20%=3, >20%=0", "max_marks": 10},
+            {"name": "Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "defect_rate_pct", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "0%=10, <0.5%=8, 0.5-1%=5, 1-2%=3, >2%=0", "max_marks": 10},
+            {"name": "Scrap Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "scrap_rate_pct", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "0%=10, <0.5%=7, 0.5-1%=5, >1%=2", "max_marks": 10},
+            {"name": "First Pass Yield (FPY)", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "first_pass_yield_pct", "category": "quality", "weight": 0.5,
+             "scoring_rubric": ">=99.5%=5, 99-99.4%=4, 98-98.9%=3, <98%=1", "max_marks": 5},
+            {"name": "COPQ", "unit": "INR", "target_value": 0, "calculation_type": "sum", "mis_field_key": "copq_cost", "category": "financial", "weight": 0.5,
+             "scoring_rubric": "0=5, <500=4, 500-1000=3, 1000-2000=2, >2000=0", "max_marks": 5},
+            {"name": "Kaizen & Training", "unit": "count", "target_value": 3, "calculation_type": "sum", "mis_field_key": "kaizen_count", "category": "operational", "weight": 0.5,
+             "scoring_rubric": "3+/quarter=5, 2=3, 1=2, 0=0", "max_marks": 5},
+            {"name": "NVA Time %", "unit": "mins", "target_value": 156, "calculation_type": "sum", "mis_field_key": "nva_time_mins", "category": "efficiency", "weight": 0.5,
+             "scoring_rubric": "<5%=5, 5-10%=4, 10-15%=3, >15%=1", "max_marks": 5},
+            {"name": "Machine Breakdown Frequency", "unit": "count", "target_value": 0, "calculation_type": "sum", "mis_field_key": "machine_breakdowns", "category": "operational", "weight": 1.0,
+             "scoring_rubric": "Predictive maintenance indicator. 0/month=10, 1-2=7, 3-5=4, >5=0", "max_marks": 10},
+        ],
+    }
+    
+    # ============================================================
+    # QUALITY DEPARTMENT
+    # ============================================================
+    EMPLOYEE_MIS["EMP09B94222"] = {
+        "name": "Saurav Kumar",
+        "role": "Quality Manager/Engineer",
+        "frequency": "daily",
+        "fields": [
+            {"key": "production_points", "label": "Production Points (Target 300/month)", "type": "number"},
+            {"key": "production_efficiency_pct", "label": "Production Efficiency %", "type": "number"},
+            {"key": "manpower_capacity_pct", "label": "Manpower Capacity vs Actual %", "type": "number"},
+            {"key": "schedule_adherence_pct", "label": "Production Schedule Adherence %", "type": "number"},
+            {"key": "cycle_time_pct", "label": "Cycle Time %", "type": "number"},
+            {"key": "overtime_hrs", "label": "Overtime Hours", "type": "number"},
+            {"key": "production_loss", "label": "Production Loss (0=No, 1=Yes)", "type": "number"},
+            {"key": "defect_rate_pct", "label": "Defect Rate %", "type": "number"},
+            {"key": "first_pass_yield_pct", "label": "First Pass Yield (FPY) %", "type": "number"},
+            {"key": "copq_cost", "label": "Cost of Poor Quality (INR)", "type": "number"},
+            {"key": "customer_complaint_rate", "label": "Customer Complaint Rate %", "type": "number"},
+            {"key": "incoming_acceptance_pct", "label": "Incoming Material Acceptance Rate %", "type": "number"},
+            {"key": "mpes_score", "label": "MPES Score (e.g. B-67)", "type": "text"},
+            {"key": "kaizen_count", "label": "Kaizen / Training Activities", "type": "number"},
+            {"key": "safety_5s_score", "label": "Safety/5S Score (0-1)", "type": "number"},
+            {"key": "corrective_actions_found", "label": "Corrective Actions Raised", "type": "number"},
+            {"key": "corrective_actions_closed", "label": "Corrective Actions Closed", "type": "number"},
+        ],
+        "kpis": [
+            {"name": "Production Points vs Target", "unit": "%", "target_value": 300, "calculation_type": "sum", "mis_field_key": "production_points", "category": "operational", "weight": 1.0,
+             "scoring_rubric": ">=300=10, 270-299=8, 240-269=6, 200-239=4, <200=2", "max_marks": 10},
+            {"name": "Production Efficiency", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "production_efficiency_pct", "category": "operational", "weight": 1.0, "max_marks": 10},
+            {"name": "Manpower Utilization", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "manpower_capacity_pct", "category": "efficiency", "weight": 1.0,
+             "scoring_rubric": ">=80%=10, 60-79%=7, 40-59%=5, <40%=3", "max_marks": 10},
+            {"name": "Schedule Adherence", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "schedule_adherence_pct", "category": "operational", "weight": 1.0, "max_marks": 10},
+            {"name": "Cycle Time Performance", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "cycle_time_pct", "category": "efficiency", "weight": 1.0, "max_marks": 10},
+            {"name": "Defect Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "defect_rate_pct", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "0%=10, <1%=8, 1-2%=6, 2-3%=4, >3%=0", "max_marks": 10},
+            {"name": "First Pass Yield (FPY)", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "first_pass_yield_pct", "category": "quality", "weight": 1.0,
+             "scoring_rubric": ">=99.5%=10, 99-99.4%=8, 98-98.9%=7, <98%=5", "max_marks": 10},
+            {"name": "COPQ", "unit": "INR", "target_value": 0, "calculation_type": "sum", "mis_field_key": "copq_cost", "category": "financial", "weight": 1.0,
+             "scoring_rubric": "0=10, <200=7, 200-500=5, >500=2", "max_marks": 10},
+            {"name": "Kaizen & Training", "unit": "count", "target_value": 3, "calculation_type": "sum", "mis_field_key": "kaizen_count", "category": "operational", "weight": 0.5, "max_marks": 5},
+            {"name": "Safety & 5S", "unit": "count", "target_value": 3, "calculation_type": "sum", "mis_field_key": "safety_5s_score", "category": "compliance", "weight": 0.5, "max_marks": 5},
+            {"name": "Customer Complaint Rate", "unit": "%", "target_value": 0, "calculation_type": "average", "mis_field_key": "customer_complaint_rate", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "0%=10, <0.5%=7, 0.5-1%=5, >1%=0", "max_marks": 10},
+            {"name": "Incoming Material Acceptance", "unit": "%", "target_value": 100, "calculation_type": "average", "mis_field_key": "incoming_acceptance_pct", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "100%=10, 95-99%=8, 90-94%=6, <90%=3", "max_marks": 10},
+            {"name": "MPES Score", "unit": "score", "target_value": 70, "calculation_type": "manual", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "B-70+=10, B-67=6.7, B-65=5, <B-60=3", "max_marks": 10},
+            {"name": "Corrective Action Closure Rate", "unit": "%", "target_value": 100, "calculation_type": "percentage", "mis_field_key": "corrective_actions_closed", "mis_field_key_2": "corrective_actions_found", "category": "quality", "weight": 1.0,
+             "scoring_rubric": "Auto: Closed/Raised * 100. Quality issues found but not fixed = systemic risk. 100%=10, 80-99%=7, <80%=4", "max_marks": 10},
+        ],
+    }
+    
+    # ============================================================
+    # EXECUTIVE MONTHLY MIS TEMPLATES
+    # ============================================================
+    EMPLOYEE_MIS["EMPC6B9A606"] = {
+        "name": "Nandini Kumari",
+        "role": "HR Head",
+        "frequency": "monthly",
+        "fields": [
+            {"key": "total_headcount", "label": "Total Headcount (Company Role)", "type": "number"},
+            {"key": "vendor_headcount", "label": "Total Headcount (Vendor)", "type": "number"},
+            {"key": "hr_cost_company", "label": "HR Cost - Company Role (INR Lakhs)", "type": "number"},
+            {"key": "hr_cost_vendor", "label": "HR Cost - Vendor (INR Lakhs)", "type": "number"},
+            {"key": "new_hires", "label": "New Hires This Month", "type": "number"},
+            {"key": "exits_attrition", "label": "Exits/Attrition This Month", "type": "number"},
+            {"key": "open_positions", "label": "Open Positions Unfilled", "type": "number"},
+            {"key": "avg_days_to_fill", "label": "Avg Days to Fill Closed Positions", "type": "number"},
+            {"key": "engagement_survey_done", "label": "Engagement Survey Conducted", "type": "boolean"},
+            {"key": "engagement_score", "label": "Engagement Score (if conducted)", "type": "number"},
+            {"key": "training_sessions", "label": "Training Sessions Conducted", "type": "number"},
+            {"key": "employees_trained", "label": "Employees Trained This Month", "type": "number"},
+            {"key": "disciplinary_actions", "label": "Disciplinary Actions Taken", "type": "number"},
+            {"key": "grievances_received", "label": "Grievances Received", "type": "number"},
+            {"key": "grievances_resolved", "label": "Grievances Resolved", "type": "number"},
+            {"key": "kpi_evaluations_done_pct", "label": "KPI Evaluations Completed (% of total)", "type": "number"},
+            {"key": "key_decisions", "label": "Key HR Decisions This Month", "type": "text"},
+        ],
+        "kpis": [],
+    }
+    
+    EMPLOYEE_MIS["EMP8B9486DD"] = {
+        "name": "Anup Kr Mishra",
+        "role": "Accounts Head",
+        "frequency": "monthly",
+        "fields": [
+            {"key": "actual_expense", "label": "Actual Expense This Month (INR)", "type": "number"},
+            {"key": "budgeted_expense", "label": "Budgeted Expense This Month (INR)", "type": "number"},
+            {"key": "budget_variance_pct", "label": "Budget Variance %", "type": "number"},
+            {"key": "all_returns_filed_on_time", "label": "All Returns Filed On Time", "type": "boolean"},
+            {"key": "all_taxes_paid_by_due", "label": "All Taxes Paid by Due Date", "type": "boolean"},
+            {"key": "penalties_incurred", "label": "Penalties/Interest Incurred (INR)", "type": "number"},
+            {"key": "gst_reconciliation_done", "label": "GST Reconciliation Completed", "type": "boolean"},
+            {"key": "tds_tcs_reconciliation_done", "label": "TDS/TCS Reconciliation Completed", "type": "boolean"},
+            {"key": "regulatory_notices_count", "label": "Regulatory Notices Received", "type": "number"},
+            {"key": "avg_notice_response_days", "label": "Avg Response Time to Notices (Days)", "type": "number"},
+            {"key": "cash_flow_position", "label": "Cash Flow Position (INR)", "type": "number"},
+            {"key": "outstanding_receivables", "label": "Outstanding Receivables (INR)", "type": "number"},
+            {"key": "outstanding_payables", "label": "Outstanding Payables (INR)", "type": "number"},
+            {"key": "key_observations", "label": "Key Observations / Escalations", "type": "text"},
+        ],
+        "kpis": [],
+    }
+    
+    EMPLOYEE_MIS["EMP8B117F26"] = {
+        "name": "Manoj Kumar",
+        "role": "Sales Head / GM Sales",
+        "frequency": "monthly",
+        "fields": [
+            {"key": "monthly_revenue", "label": "Monthly Revenue Achieved (INR Cr)", "type": "number"},
+            {"key": "revenue_target", "label": "Revenue Target for Month (INR Cr)", "type": "number"},
+            {"key": "cost_of_sales", "label": "Cost of Sales (INR)", "type": "number"},
+            {"key": "new_dealers_added", "label": "New Dealers/Customers Added", "type": "number"},
+            {"key": "total_active_dealers", "label": "Total Active Dealer Network", "type": "number"},
+            {"key": "market_share_pct", "label": "Market Share % (if available)", "type": "number"},
+            {"key": "collection_vs_billing_pct", "label": "Collection vs Billing Ratio %", "type": "number"},
+            {"key": "overdue_amount", "label": "Total Overdue Amount (INR)", "type": "number"},
+            {"key": "top_lost_deals", "label": "Top 3 Lost Deals & Reasons", "type": "text"},
+            {"key": "key_decisions", "label": "Key Sales Decisions This Month", "type": "text"},
+        ],
+        "kpis": [],
+    }
+    
+    EMPLOYEE_MIS["EMP484529A4"] = {
+        "name": "Umesh Chandra Prasad",
+        "role": "Audit Head",
+        "frequency": "monthly",
+        "fields": [
+            {"key": "cost_reduction_amount", "label": "Cost Reduction Achieved (INR)", "type": "number"},
+            {"key": "cost_reduction_pct", "label": "Cost Reduction % vs Target", "type": "number"},
+            {"key": "inventory_turnover_days", "label": "Current Inventory Turnover (Days)", "type": "number"},
+            {"key": "departments_audited", "label": "Departments Audited This Month", "type": "number"},
+            {"key": "ncs_found", "label": "Non-Conformances Found", "type": "number"},
+            {"key": "ncs_closed", "label": "Non-Conformances Closed", "type": "number"},
+            {"key": "nc_closure_rate_pct", "label": "NC Closure Rate %", "type": "number"},
+            {"key": "internal_assessment_score", "label": "Internal Assessment Score % (if quarter-end)", "type": "number"},
+            {"key": "action_plans_overdue", "label": "Action Plans Overdue (Count)", "type": "number"},
+            {"key": "critical_findings", "label": "Critical Findings Requiring Escalation", "type": "text"},
+            {"key": "key_decisions", "label": "Key Audit Decisions This Month", "type": "text"},
+        ],
+        "kpis": [],
+    }
+    
+    EMPLOYEE_MIS["EMP5618F5FF"] = {
+        "name": "KN Sinha",
+        "role": "Production Head / GM Production",
+        "frequency": "monthly",
+        "fields": [
+            {"key": "total_production_points", "label": "Total Production Points Achieved", "type": "number"},
+            {"key": "production_target", "label": "Production Target (Points)", "type": "number"},
+            {"key": "avg_production_cost", "label": "Avg Production Cost per Unit (INR)", "type": "number"},
+            {"key": "total_production_cost", "label": "Total Production Cost (INR)", "type": "number"},
+            {"key": "internal_audit_score", "label": "Internal Audit Score % (if available)", "type": "number"},
+            {"key": "sops_completed", "label": "SOPs Completed", "type": "number"},
+            {"key": "sops_in_progress", "label": "SOPs In-Progress", "type": "number"},
+            {"key": "mom_meetings_held", "label": "MoMs Conducted with Nitesh/Saurav/Awdhesh", "type": "number"},
+            {"key": "safety_incidents", "label": "Safety Incidents This Month", "type": "number"},
+            {"key": "key_decisions", "label": "Key Production Decisions", "type": "text"},
+            {"key": "production_bottlenecks", "label": "Production Bottlenecks / Escalations", "type": "text"},
+        ],
+        "kpis": [],
+    }
+    
 
     SENIOR_EXEC_KRAS = {
-        "EMPC6B9A606": {  # Nandini Kumari - HR Head
+        "EMPC6B9A606": {
             "name": "Nandini Kumari",
             "kras": [
-                {"name": "HR Cost vs Revenue", "description": "Track HR cost (company role + vendor) vs company revenue monthly. Company role: ~₹16-17L/month, Vendor: ~₹8-9L/month", "weight": 2.0},
+                {"name": "HR Cost vs Revenue", "description": "Track HR cost (company role + vendor) vs company revenue monthly. Company role: ~16-17L/month, Vendor: ~8-9L/month", "weight": 2.0},
                 {"name": "Employee Retention Rate (%)", "description": "Formula: No. of employees retained / No. at start of year * 100. Target: >95%. Monthly tracking.", "weight": 1.5},
                 {"name": "Average Time to Fill (Recruitment)", "description": "Formula: Total days to hire / No. of hires. Lower is better. Track monthly.", "weight": 1.2},
                 {"name": "Employee Engagement Score", "description": "Formula: Average Engagement Survey Score / Total Responses * 100. Conduct periodic surveys.", "weight": 1.0},
@@ -1370,50 +1637,51 @@ async def seed_employee_data(request: Request):
                 {"name": "Performance Evaluation Coverage", "description": "Formula: Employees hitting KPI targets / Total employees * 100. Ensure all employees have KPIs and are evaluated.", "weight": 1.5},
             ]
         },
-        "EMP8B9486DD": {  # Anup Kr Mishra - Accounts Head
+        "EMP8B9486DD": {
             "name": "Anup Kr Mishra",
             "kras": [
                 {"name": "Budget Variance %", "description": "Formula: (Actual - Budgeted) / Budgeted * 100. Target: Control under budget. Excludes salary, repair & maintenance.", "weight": 2.0},
-                {"name": "Compliance Score — On-time Filing of Returns", "description": "Sub-weight: 0.30. Measure: % of returns filed on time. Target: 100%.", "weight": 1.5},
-                {"name": "Compliance Score — Timely Tax Payments", "description": "Sub-weight: 0.25. Measure: % of taxes paid on or before due date (by 7th of next month). Target: 100%.", "weight": 1.2},
-                {"name": "Compliance Score — No Penalties/Interest", "description": "Sub-weight: 0.20. Measure: Deduct points for each penalty incurred. Target: Zero penalties.", "weight": 1.0},
-                {"name": "Compliance Score — GST/TDS/TCS Reconciliation Accuracy", "description": "Sub-weight: 0.15. Measure: Based on reconciliation reports. Target: Completed by 30th monthly.", "weight": 0.8},
-                {"name": "Compliance Score — Regulatory Communication Responsiveness", "description": "Sub-weight: 0.10. Measure: Average response time to regulatory notices. Target: Quick response.", "weight": 0.5},
+                {"name": "Compliance Score - On-time Filing of Returns", "description": "Sub-weight: 0.30. Measure: % of returns filed on time. Target: 100%.", "weight": 1.5},
+                {"name": "Compliance Score - Timely Tax Payments", "description": "Sub-weight: 0.25. Measure: % of taxes paid on or before due date (by 7th of next month). Target: 100%.", "weight": 1.2},
+                {"name": "Compliance Score - No Penalties/Interest", "description": "Sub-weight: 0.20. Measure: Deduct points for each penalty incurred. Target: Zero penalties.", "weight": 1.0},
+                {"name": "Compliance Score - GST/TDS/TCS Reconciliation Accuracy", "description": "Sub-weight: 0.15. Measure: Based on reconciliation reports. Target: Completed by 30th monthly.", "weight": 0.8},
+                {"name": "Compliance Score - Regulatory Communication Responsiveness", "description": "Sub-weight: 0.10. Measure: Average response time to regulatory notices. Target: Quick response.", "weight": 0.5},
                 {"name": "Cost Control", "description": "Monitor expense amounts and percentages monthly. Target: Keep expenses under control despite turnover fluctuations.", "weight": 1.5},
             ]
         },
-        "EMP8B117F26": {  # Manoj Kumar - Sales Head
+        "EMP8B117F26": {
             "name": "Manoj Kumar",
             "kras": [
-                {"name": "Revenue Target", "description": "Annual target: ₹111 Cr. Track monthly revenue. Apr: ₹6.41Cr, May: ₹7.00Cr, Jun: ₹5.53Cr, Jul: ₹6.95Cr, Aug: ₹5.59Cr, Sep: ₹5.44Cr, Oct: ₹5.90Cr, Nov: ₹5.48Cr, Dec: ₹6.49Cr.", "weight": 2.5},
-                {"name": "Cost of Sales", "description": "Track quarterly. Target: TBD. Q1: ₹7,185, Q2: ₹6,114, Q3: ₹5,923. Aim for reducing cost of sales over time.", "weight": 1.5},
-                {"name": "Market Share", "description": "Target: 25%. Track quarterly. Apr: 18%, Jul: 16%. Increase market share through dealer network and new territory expansion.", "weight": 2.0},
-                {"name": "Cross-Department Oversight — Production", "description": "Monitor Production dept KPIs: Production Efficiency, Cost of Production, Internal Audit Score. Ensure alignment with sales demand.", "weight": 1.0},
-                {"name": "Cross-Department Oversight — Finance & HR", "description": "Monitor Accounts KPIs (Budget Variance, Compliance Score, Cost Control) and HR KPIs (Retention, Recruitment, Training). Ensure organizational health.", "weight": 1.0},
+                {"name": "Revenue Target", "description": "Annual target: 111 Cr. Track monthly revenue.", "weight": 2.5},
+                {"name": "Cost of Sales", "description": "Track quarterly. Aim for reducing cost of sales over time.", "weight": 1.5},
+                {"name": "Market Share", "description": "Target: 25%. Track quarterly. Increase through dealer network and territory expansion.", "weight": 2.0},
+                {"name": "Cross-Department Oversight - Production", "description": "Monitor Production dept KPIs: Production Efficiency, Cost of Production, Internal Audit Score.", "weight": 1.0},
+                {"name": "Cross-Department Oversight - Finance & HR", "description": "Monitor Accounts KPIs (Budget Variance, Compliance, Cost Control) and HR KPIs (Retention, Recruitment, Training).", "weight": 1.0},
             ]
         },
-        "EMP484529A4": {  # Umesh Chandra Prasad - Audit Head
+        "EMP484529A4": {
             "name": "Umesh Chandra Prasad",
             "kras": [
-                {"name": "Cost Reduction", "description": "Target: 0.25% annual reduction on total purchases. Track monthly savings in ₹. Jul: 0.04% (₹18,397), Aug: 0.04% (₹19,408), Sep: 0.086% (₹35,554), Oct: 0.06% (₹76,400).", "weight": 2.0},
-                {"name": "Inventory Turnover (Days)", "description": "Target: 37 days. Track monthly. Apr: 63, May: 53, Jun: 78, Jul: 70, Aug: 75, Sep: 56, Oct: 66, Nov: 69, Dec: 53. Lower is better.", "weight": 2.0},
-                {"name": "Internal Assessment Score", "description": "Target: 80%. Conduct quarterly assessments across all departments. Q2: 74.61%, Q3: 63.06%.", "weight": 2.5},
-                {"name": "Internal Assessment — Department Sub-Scores", "description": "Track per-department audit scores. Q3: Purchase-1 (Raajiv) 56.25%, Purchase-2 (Rahul) 57.14%, Sales 58.33%, HR 60%, Accounts 70%, Product Audit 83.87%, Process Audit 55.88%.", "weight": 1.5},
-                {"name": "Audit Action Plan Closure", "description": "Track closure of non-conformances from internal assessments. Includes: fabrication defects, powder coating issues, PM breakdown reporting, CPCB-2 parts segregation. Each finding has responsibility & target date.", "weight": 1.5},
-                {"name": "Cross-Department Monitoring", "description": "Monitor ALL department KPIs: Sales (Revenue, Cost, Market Share), Production (Efficiency, Cost, Audit Score), Finance (Budget Variance, Compliance, Cost Control), HR (Retention, Recruitment, Engagement, Training, Performance Evaluation).", "weight": 1.0},
+                {"name": "Cost Reduction", "description": "Target: 0.25% annual reduction on total purchases. Track monthly savings.", "weight": 2.0},
+                {"name": "Inventory Turnover (Days)", "description": "Target: 37 days. Track monthly. Lower is better.", "weight": 2.0},
+                {"name": "Internal Assessment Score", "description": "Target: 80%. Conduct quarterly assessments across all departments.", "weight": 2.5},
+                {"name": "Internal Assessment - Department Sub-Scores", "description": "Track per-department audit scores quarterly.", "weight": 1.5},
+                {"name": "Audit Action Plan Closure", "description": "Track closure of non-conformances from internal assessments.", "weight": 1.5},
+                {"name": "Cross-Department Monitoring", "description": "Monitor ALL department KPIs: Sales, Production, Finance, HR.", "weight": 1.0},
             ]
         },
-        "EMP5618F5FF": {  # KN Sinha - Production Head
+        "EMP5618F5FF": {
             "name": "KN Sinha",
             "kras": [
-                {"name": "Production Efficiency (Points)", "description": "Formula: Standard Output / Actual Time Taken * 100. Target: 300 points/month. Apr: 239, May: 290, Jun: 232, Jul: 282, Aug: 220.7, Sep: 215, Oct: 189.25, Nov: 227.5.", "weight": 2.5},
-                {"name": "Cost of Production", "description": "Track monthly production cost. Sep: ₹31,731, Oct: ₹31,020. Aim for continuous reduction.", "weight": 2.0},
-                {"name": "Internal Audit Score", "description": "Target: 85%. Based on audit conducted by Umesh sir's team. Aug: 77%, Q3: 70%. Improve compliance across production floor.", "weight": 1.5},
-                {"name": "SOP Implementation", "description": "Track SOP milestones. Completed: Fire fighting system. In progress: Nut Tacking Machine Operation & Maintenance.", "weight": 1.0},
-                {"name": "Team Oversight — Nitesh, Saurav, Awdhesh", "description": "Conduct regular Minutes of Meeting with direct reports: Nitesh Bhashker (Production), Saurav Kumar (Quality), Awdhesh Kumar (Store). Track: Target vs Achievement, New Initiatives, Challenges, Announcements.", "weight": 1.5},
+                {"name": "Production Efficiency (Points)", "description": "Target: 300 points/month.", "weight": 2.5},
+                {"name": "Cost of Production", "description": "Track monthly production cost. Aim for continuous reduction.", "weight": 2.0},
+                {"name": "Internal Audit Score", "description": "Target: 85%. Based on audit conducted by Umesh sir's team.", "weight": 1.5},
+                {"name": "SOP Implementation", "description": "Track SOP milestones.", "weight": 1.0},
+                {"name": "Team Oversight - Nitesh, Saurav, Awdhesh", "description": "Conduct regular MoMs with direct reports: Nitesh (Production), Saurav (Quality), Awdhesh (Store).", "weight": 1.5},
             ]
         },
     }
+
 
     departments = await db.departments.find({"is_active": True}, {"_id": 0}).to_list(30)
     dept_map = {d["department_id"]: d["name"] for d in departments}

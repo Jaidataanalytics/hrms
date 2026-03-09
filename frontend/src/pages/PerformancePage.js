@@ -12,6 +12,7 @@ import EvaluationsTab from './performance/EvaluationsTab';
 import AdminTab from './performance/AdminTab';
 import ManagerTab from './performance/ManagerTab';
 import CompanyDashboard from './performance/CompanyDashboard';
+import InsightsTab from './performance/InsightsTab';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -111,6 +112,7 @@ const PerformancePage = () => {
           {showManager && <TabsTrigger value="manager" data-testid="tab-manager">Team Review</TabsTrigger>}
           {showAdmin && <TabsTrigger value="admin" data-testid="tab-admin">Admin</TabsTrigger>}
           {showCompany && <TabsTrigger value="company" data-testid="tab-company">Company</TabsTrigger>}
+          {showAdmin && <TabsTrigger value="insights" data-testid="tab-insights">Insights</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview">
@@ -144,6 +146,12 @@ const PerformancePage = () => {
         {showCompany && (
           <TabsContent value="company">
             <CompanyDashboard period={period} authHeaders={authHeaders} />
+          </TabsContent>
+        )}
+
+        {showAdmin && (
+          <TabsContent value="insights">
+            <InsightsTab period={period} authHeaders={authHeaders} />
           </TabsContent>
         )}
       </Tabs>
