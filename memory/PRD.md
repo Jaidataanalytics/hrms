@@ -146,6 +146,15 @@ On-the-fly normalization during payroll processing:
 - **DB Collections**: mis_templates, mis_entries, kpi_definitions, kpi_scores, kra_definitions, evaluations
 - **Test**: 100% backend (25/25) + 100% frontend (iteration_47)
 
+**Real Employee MIS/KPI Data Seeded (Mar 9, 2026):**
+- **Awdhesh Kumar** (Store) — Quarterly MIS, 18 fields, 7 KPIs (Back Order, Stock Out, Inspection, FIFO, Utilisation, Housekeeping, Kaizen)
+- **Chandan Sharma** (Sales) — Monthly MIS, 12 fields, 6 KPIs (Sales Forecast Accuracy, Order Processing, Backorder Rate, Dealer Satisfaction, Reporting Adherence, Overdue Collection)
+- **Prashant Kumar Gupta** (Marketing) — Monthly MIS, 17 fields, 6 KPIs (CSR, CPL, GEM Participation, Enquiry Generation, DMS Compliance, Website CTR)
+- **Rajiv Ranjan** (Purchase) — Daily MIS, 14 fields, 8 KPIs (Inventory Turnover, Material Shortages, Excess Inventory, Order Cycle Time, PO Accuracy, OTD, Supplier Defect, Cost Saving)
+- **Rahul Balbhadra** (Purchase) — Daily MIS, 17 fields, 8 KPIs (same structure as Rajiv)
+- 5 Senior Exec KRAs: Nandini (HR), Anup (Accounts), Manoj (Sales), Umesh (Audit), KN Sinha (Production)
+- KPIs now include `scoring_rubric` and `max_marks` from the original Excel documents
+
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
 - Token-based auth across all pages

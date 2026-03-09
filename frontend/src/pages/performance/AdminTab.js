@@ -221,7 +221,10 @@ const AdminTab = ({ employees, authHeaders, period }) => {
             {allTemplates.filter(t => t.employee_id).map(t => (
               <div key={t.template_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border" data-testid={`template-${t.template_id}`}>
                 <div>
-                  <p className="font-medium text-sm">{t.employee_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">{t.employee_name}</p>
+                    {t.frequency && <Badge variant="outline" className="text-[10px] capitalize">{t.frequency}</Badge>}
+                  </div>
                   <p className="text-xs text-slate-500">{t.department_name} | {t.fields?.length} fields</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {t.fields?.slice(0, 4).map(f => <Badge key={f.key} variant="outline" className="text-[10px]">{f.label}</Badge>)}
@@ -288,11 +291,13 @@ const AdminTab = ({ employees, authHeaders, period }) => {
                   <div className="space-y-1.5 ml-5">
                     {group.items.map(k => (
                       <div key={k.kpi_id} className="flex items-center justify-between p-2 bg-slate-50 rounded border text-sm" data-testid={`kpi-item-${k.kpi_id}`}>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <span className="font-medium">{k.name}</span>
                           <span className="text-xs text-slate-500 ml-2">Target: {k.target_value}{k.unit} | {k.calculation_type} | W:{k.weight}x</span>
+                          {k.max_marks && <span className="text-xs text-blue-500 ml-2">Max: {k.max_marks}</span>}
+                          {k.scoring_rubric && <p className="text-xs text-slate-400 mt-0.5 truncate">{k.scoring_rubric}</p>}
                         </div>
-                        <Button size="sm" variant="ghost" className="text-red-500 h-7 w-7 p-0" onClick={() => deleteKpi(k.kpi_id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        <Button size="sm" variant="ghost" className="text-red-500 h-7 w-7 p-0 shrink-0" onClick={() => deleteKpi(k.kpi_id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                       </div>
                     ))}
                   </div>
