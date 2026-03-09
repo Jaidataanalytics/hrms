@@ -209,6 +209,19 @@ On-the-fly normalization during payroll processing:
 - [ ] Bulk import improvements
 - [ ] Employee deduplication
 
+### Performance Insights Dashboard (Mar 9, 2026)
+- Added "Insights" tab to Performance page (visible to HR/super_admin only)
+- Backend API: `/api/performance/insights?period=monthly` with complex MongoDB aggregation
+- Summary cards: total employees, KPIs, auto %, MIS entries, departments, red flags, manual KPIs
+- Red Flag Alerts: identifies employees with no MIS submissions in last 3 days
+- Department Health Overview: KPI coverage and MIS activity by department with progress bars
+- MIS Compliance Heatmap: 14-day grid showing daily submission status per employee
+- Executive KRA Tracker: 5 senior executives with KRA details and weights
+- Employee Performance Rankings: sorted by MIS engagement and KPI coverage
+- KPI Automation Summary: 104 auto-calculated, 5 manual, 95% automation rate
+- Period selector (Monthly/Weekly/Quarterly) filters all insights data
+- Tested: 100% backend (16/16) and frontend pass rate
+
 ## Key Files
 - `/app/backend/routes/payroll.py` - Payroll API routes + Sunday-as-leave orchestration
 - `/app/backend/routes/payroll_v2.py` - Payroll calculation engine
@@ -217,7 +230,7 @@ On-the-fly normalization during payroll processing:
 - `/app/backend/routes/performance.py` - Performance Management APIs (MIS, KPI, KRA, Evaluations)
 - `/app/backend/server.py` - Auth, attendance endpoints
 - `/app/frontend/src/pages/PerformancePage.js` - Performance page orchestrator
-- `/app/frontend/src/pages/performance/` - Sub-components (OverviewTab, MisEntryTab, KpiTab, EvaluationsTab, AdminTab, ManagerTab, CompanyDashboard)
+- `/app/frontend/src/pages/performance/` - Sub-components (OverviewTab, MisEntryTab, KpiTab, EvaluationsTab, AdminTab, ManagerTab, CompanyDashboard, InsightsTab)
 - `/app/frontend/src/pages/SOPPage.js` - SOP UI with role-based views
 
 ## Credentials
