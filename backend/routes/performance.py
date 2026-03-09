@@ -1362,51 +1362,55 @@ async def seed_employee_data(request: Request):
         "EMPC6B9A606": {  # Nandini Kumari - HR Head
             "name": "Nandini Kumari",
             "kras": [
-                {"name": "Employee Retention Rate", "description": "Maintain attrition below target", "weight": 2.0},
-                {"name": "Training Completion %", "description": "Ensure all mandatory trainings completed", "weight": 1.5},
-                {"name": "Attendance Compliance", "description": "Overall attendance compliance across firm", "weight": 1.0},
-                {"name": "Grievance Resolution TAT", "description": "Resolve grievances within SLA", "weight": 1.2},
-                {"name": "Payroll Accuracy", "description": "Zero payroll errors", "weight": 1.5},
+                {"name": "HR Cost vs Revenue", "description": "Track HR cost (company role + vendor) vs company revenue monthly. Company role: ~₹16-17L/month, Vendor: ~₹8-9L/month", "weight": 2.0},
+                {"name": "Employee Retention Rate (%)", "description": "Formula: No. of employees retained / No. at start of year * 100. Target: >95%. Monthly tracking.", "weight": 1.5},
+                {"name": "Average Time to Fill (Recruitment)", "description": "Formula: Total days to hire / No. of hires. Lower is better. Track monthly.", "weight": 1.2},
+                {"name": "Employee Engagement Score", "description": "Formula: Average Engagement Survey Score / Total Responses * 100. Conduct periodic surveys.", "weight": 1.0},
+                {"name": "Training & Development Participation Rate", "description": "Formula: Employees participating in training / Total Employees * 100. Track monthly.", "weight": 1.0},
+                {"name": "Performance Evaluation Coverage", "description": "Formula: Employees hitting KPI targets / Total employees * 100. Ensure all employees have KPIs and are evaluated.", "weight": 1.5},
             ]
         },
         "EMP8B9486DD": {  # Anup Kr Mishra - Accounts Head
             "name": "Anup Kr Mishra",
             "kras": [
-                {"name": "Financial Closing Timeliness", "description": "Monthly closing within 5 working days", "weight": 2.0},
-                {"name": "Audit Compliance", "description": "All audit observations resolved", "weight": 1.5},
-                {"name": "Vendor Payment Accuracy", "description": "Zero payment errors across dept", "weight": 1.5},
-                {"name": "GST Filing Timeliness", "description": "All GST returns filed on time", "weight": 1.2},
-                {"name": "Cash Flow Management", "description": "Maintain healthy cash flow ratio", "weight": 1.0},
+                {"name": "Budget Variance %", "description": "Formula: (Actual - Budgeted) / Budgeted * 100. Target: Control under budget. Excludes salary, repair & maintenance.", "weight": 2.0},
+                {"name": "Compliance Score — On-time Filing of Returns", "description": "Sub-weight: 0.30. Measure: % of returns filed on time. Target: 100%.", "weight": 1.5},
+                {"name": "Compliance Score — Timely Tax Payments", "description": "Sub-weight: 0.25. Measure: % of taxes paid on or before due date (by 7th of next month). Target: 100%.", "weight": 1.2},
+                {"name": "Compliance Score — No Penalties/Interest", "description": "Sub-weight: 0.20. Measure: Deduct points for each penalty incurred. Target: Zero penalties.", "weight": 1.0},
+                {"name": "Compliance Score — GST/TDS/TCS Reconciliation Accuracy", "description": "Sub-weight: 0.15. Measure: Based on reconciliation reports. Target: Completed by 30th monthly.", "weight": 0.8},
+                {"name": "Compliance Score — Regulatory Communication Responsiveness", "description": "Sub-weight: 0.10. Measure: Average response time to regulatory notices. Target: Quick response.", "weight": 0.5},
+                {"name": "Cost Control", "description": "Monitor expense amounts and percentages monthly. Target: Keep expenses under control despite turnover fluctuations.", "weight": 1.5},
             ]
         },
         "EMP8B117F26": {  # Manoj Kumar - Sales Head
             "name": "Manoj Kumar",
             "kras": [
-                {"name": "Revenue vs Target", "description": "Achieve monthly/quarterly revenue targets", "weight": 2.5},
-                {"name": "New Client Acquisition", "description": "Add target number of new clients", "weight": 1.5},
-                {"name": "Order Pipeline", "description": "Maintain healthy order pipeline value", "weight": 1.0},
-                {"name": "Payment Collection Ratio", "description": "Collect payments within credit terms", "weight": 1.5},
-                {"name": "Customer Retention", "description": "Retain existing customer base", "weight": 1.2},
+                {"name": "Revenue Target", "description": "Annual target: ₹111 Cr. Track monthly revenue. Apr: ₹6.41Cr, May: ₹7.00Cr, Jun: ₹5.53Cr, Jul: ₹6.95Cr, Aug: ₹5.59Cr, Sep: ₹5.44Cr, Oct: ₹5.90Cr, Nov: ₹5.48Cr, Dec: ₹6.49Cr.", "weight": 2.5},
+                {"name": "Cost of Sales", "description": "Track quarterly. Target: TBD. Q1: ₹7,185, Q2: ₹6,114, Q3: ₹5,923. Aim for reducing cost of sales over time.", "weight": 1.5},
+                {"name": "Market Share", "description": "Target: 25%. Track quarterly. Apr: 18%, Jul: 16%. Increase market share through dealer network and new territory expansion.", "weight": 2.0},
+                {"name": "Cross-Department Oversight — Production", "description": "Monitor Production dept KPIs: Production Efficiency, Cost of Production, Internal Audit Score. Ensure alignment with sales demand.", "weight": 1.0},
+                {"name": "Cross-Department Oversight — Finance & HR", "description": "Monitor Accounts KPIs (Budget Variance, Compliance Score, Cost Control) and HR KPIs (Retention, Recruitment, Training). Ensure organizational health.", "weight": 1.0},
             ]
         },
         "EMP484529A4": {  # Umesh Chandra Prasad - Audit Head
             "name": "Umesh Chandra Prasad",
             "kras": [
-                {"name": "Audit Completion Rate", "description": "Complete all planned audits on schedule", "weight": 2.0},
-                {"name": "Non-Conformance Closure", "description": "Close all non-conformances within SLA", "weight": 1.5},
-                {"name": "Compliance Score", "description": "Maintain overall compliance score above target", "weight": 1.5},
-                {"name": "Process Improvement", "description": "Identify and implement process improvements", "weight": 1.0},
-                {"name": "Risk Mitigation", "description": "Identify and mitigate operational risks", "weight": 1.2},
+                {"name": "Cost Reduction", "description": "Target: 0.25% annual reduction on total purchases. Track monthly savings in ₹. Jul: 0.04% (₹18,397), Aug: 0.04% (₹19,408), Sep: 0.086% (₹35,554), Oct: 0.06% (₹76,400).", "weight": 2.0},
+                {"name": "Inventory Turnover (Days)", "description": "Target: 37 days. Track monthly. Apr: 63, May: 53, Jun: 78, Jul: 70, Aug: 75, Sep: 56, Oct: 66, Nov: 69, Dec: 53. Lower is better.", "weight": 2.0},
+                {"name": "Internal Assessment Score", "description": "Target: 80%. Conduct quarterly assessments across all departments. Q2: 74.61%, Q3: 63.06%.", "weight": 2.5},
+                {"name": "Internal Assessment — Department Sub-Scores", "description": "Track per-department audit scores. Q3: Purchase-1 (Raajiv) 56.25%, Purchase-2 (Rahul) 57.14%, Sales 58.33%, HR 60%, Accounts 70%, Product Audit 83.87%, Process Audit 55.88%.", "weight": 1.5},
+                {"name": "Audit Action Plan Closure", "description": "Track closure of non-conformances from internal assessments. Includes: fabrication defects, powder coating issues, PM breakdown reporting, CPCB-2 parts segregation. Each finding has responsibility & target date.", "weight": 1.5},
+                {"name": "Cross-Department Monitoring", "description": "Monitor ALL department KPIs: Sales (Revenue, Cost, Market Share), Production (Efficiency, Cost, Audit Score), Finance (Budget Variance, Compliance, Cost Control), HR (Retention, Recruitment, Engagement, Training, Performance Evaluation).", "weight": 1.0},
             ]
         },
         "EMP5618F5FF": {  # KN Sinha - Production Head
             "name": "KN Sinha",
             "kras": [
-                {"name": "OEE %", "description": "Overall Equipment Effectiveness above target", "weight": 2.0},
-                {"name": "Rejection Rate", "description": "Keep rejection rate below target across all lines", "weight": 1.5},
-                {"name": "On-Time Delivery", "description": "Deliver production orders on schedule", "weight": 1.5},
-                {"name": "Safety Incidents", "description": "Zero safety incidents", "weight": 1.5},
-                {"name": "Capacity Utilization", "description": "Maximize production capacity utilization", "weight": 1.2},
+                {"name": "Production Efficiency (Points)", "description": "Formula: Standard Output / Actual Time Taken * 100. Target: 300 points/month. Apr: 239, May: 290, Jun: 232, Jul: 282, Aug: 220.7, Sep: 215, Oct: 189.25, Nov: 227.5.", "weight": 2.5},
+                {"name": "Cost of Production", "description": "Track monthly production cost. Sep: ₹31,731, Oct: ₹31,020. Aim for continuous reduction.", "weight": 2.0},
+                {"name": "Internal Audit Score", "description": "Target: 85%. Based on audit conducted by Umesh sir's team. Aug: 77%, Q3: 70%. Improve compliance across production floor.", "weight": 1.5},
+                {"name": "SOP Implementation", "description": "Track SOP milestones. Completed: Fire fighting system. In progress: Nut Tacking Machine Operation & Maintenance.", "weight": 1.0},
+                {"name": "Team Oversight — Nitesh, Saurav, Awdhesh", "description": "Conduct regular Minutes of Meeting with direct reports: Nitesh Bhashker (Production), Saurav Kumar (Quality), Awdhesh Kumar (Store). Track: Target vs Achievement, New Initiatives, Challenges, Announcements.", "weight": 1.5},
             ]
         },
     }
