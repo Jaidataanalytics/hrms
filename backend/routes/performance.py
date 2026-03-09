@@ -273,6 +273,113 @@ async def get_mis_compliance(request: Request, date: Optional[str] = None):
     }
 
 
+
+# ==================== MANAGER TEAM VIEW ====================
+
+@router.get("/my-team")
+async def get_my_team(request: Request):
+    """Get employees reporting to current user"""
+    user = await get_current_user(request)
+    emp_id = user.get("employee_id")
+    if not emp_id:
+        return []
+    team = await db.employees.find(
+        {"reporting_manager_id": emp_id, "is_active": True},
+        {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1, "department_id": 1, "designation": 1}
+    ).to_list(100)
+    return team
+
+
+@router.get("/my-team-compliance")
+async def get_team_compliance(request: Request, date: Optional[str] = None):
+    """MIS compliance for manager's direct reports"""
+    user = await get_current_user(request)
+    emp_id = user.get("employee_id")
+    if not emp_id:
+        return {"date": "", "team": [], "filled": 0, "not_filled": 0}
+
+    check_date = date or str(datetime.now(timezone.utc).date())
+    team = await db.employees.find(
+        {"reporting_manager_id": emp_id, "is_active": True},
+        {"_id": 0, "employee_id": 1, "first_name": 1, "last_name": 1, "department_id": 1}
+    ).to_list(100)
+    team_ids = [t["employee_id"] for t in team]
+
+    # Get which team members have MIS templates
+    templates = await db.mis_templates.find(
+        {"employee_id": {"$in": team_ids}, "is_active": True},
+        {"_id": 0, "employee_id": 1}
+    ).to_list(100)
+    template_emp_ids = {t["employee_id"] for t in templates}
+
+    # Get submissions
+    submissions = await db.mis_entries.find(
+        {"date": check_date, "employee_id": {"$in": list(template_emp_ids)}},
+        {"_id": 0, "employee_id": 1, "status": 1, "entry_id": 1}
+    ).to_list(100)
+    submitted_map = {s["employee_id"]: s for s in submissions}
+
+    results = []
+    for t in team:
+        eid = t["employee_id"]
+        has_template = eid in template_emp_ids
+        sub = submitted_map.get(eid)
+        results.append({
+            "employee_id": eid,
+            "employee_name": f"{t.get('first_name', '')} {t.get('last_name', '')}".strip(),
+            "has_template": has_template,
+            "submitted": sub is not None,
+            "status": sub["status"] if sub else "not_submitted",
+            "entry_id": sub["entry_id"] if sub else None
+        })
+
+    filled = sum(1 for r in results if r["submitted"])
+    return {"date": check_date, "team": results, "filled": filled, "not_filled": len(results) - filled, "total": len(results)}
+
+
+@router.get("/my-team-entries")
+async def get_team_entries(request: Request, date: Optional[str] = None):
+    """Get MIS entries for manager's team for a specific date"""
+    user = await get_current_user(request)
+    emp_id = user.get("employee_id")
+    if not emp_id:
+        return []
+
+    check_date = date or str(datetime.now(timezone.utc).date())
+    team = await db.employees.find(
+        {"reporting_manager_id": emp_id, "is_active": True},
+        {"_id": 0, "employee_id": 1}
+    ).to_list(100)
+    team_ids = [t["employee_id"] for t in team]
+
+    entries = await db.mis_entries.find(
+        {"date": check_date, "employee_id": {"$in": team_ids}},
+        {"_id": 0}
+    ).to_list(500)
+    return entries
+
+
+@router.get("/all-kpi-definitions")
+async def list_all_kpi_definitions(request: Request):
+    """Admin: Get ALL active KPI definitions grouped by employee"""
+    user = await get_current_user(request)
+    if not is_admin_or_hr(user.get("role")):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    defs = await db.kpi_definitions.find({"is_active": True}, {"_id": 0}).to_list(500)
+    return defs
+
+
+@router.get("/all-kra-definitions")
+async def list_all_kra_definitions(request: Request):
+    """Admin: Get ALL active KRA definitions"""
+    user = await get_current_user(request)
+    if not is_admin_or_hr(user.get("role")):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    defs = await db.kra_definitions.find({"is_active": True}, {"_id": 0}).to_list(500)
+    return defs
+
+
+
 # ==================== MIS SUMMARY ====================
 
 @router.get("/mis-summary")
