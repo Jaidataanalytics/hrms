@@ -34,6 +34,11 @@ app = FastAPI(title="Sharda HR API", version="1.0.0")
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Root-level health check for Kubernetes probes
+@app.get("/health")
+async def root_health():
+    return {"status": "healthy"}
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
