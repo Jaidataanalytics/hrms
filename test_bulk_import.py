@@ -5,7 +5,7 @@ import sys
 
 def test_bulk_import_endpoints():
     """Test bulk import specific endpoints"""
-    base_url = "https://sync-prod-engine.preview.emergentagent.com/api"
+    base_url = "https://perf-mgmt-rebuild.preview.emergentagent.com/api"
     
     # Login first
     login_response = requests.post(f"{base_url}/auth/login", json={

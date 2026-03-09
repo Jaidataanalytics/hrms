@@ -4160,7 +4160,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://sync-prod-engine.preview.emergentagent.com",
+        "https://perf-mgmt-rebuild.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
         "https://shardahrms.com",

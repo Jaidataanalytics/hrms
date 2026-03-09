@@ -15,7 +15,7 @@ import requests
 import os
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://sync-prod-engine.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://perf-mgmt-rebuild.preview.emergentagent.com').rstrip('/')
 
 
 class TestPayrollAuth:

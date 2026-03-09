@@ -16,7 +16,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://sync-prod-engine.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://perf-mgmt-rebuild.preview.emergentagent.com')
 
 class TestAssetOperations:
     """Test asset CRUD operations"""
