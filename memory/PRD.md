@@ -121,6 +121,31 @@ On-the-fly normalization during payroll processing:
 - Frontend Dev Tools tab updated: shows "Pull Data from Production" with live collection count, clearer labels
 - Test: 17/17 backend + 100% frontend (iteration_45)
 
+### Performance Management System Overhaul (Mar 9, 2026)
+- Complete rebuild of the Performance page with employee-specific architecture
+- **Backend** (`/app/backend/routes/performance.py`): 1000+ lines with 20+ API endpoints
+  - MIS Templates CRUD (employee-specific daily MIS sheets)
+  - MIS Entries (submit, verify, reject with manager remarks)
+  - MIS Compliance tracking (who has/hasn't submitted)
+  - MIS Summary aggregation (sums, averages, compliance rates by period)
+  - KPI Definitions CRUD (with auto-calculation types: sum, average, compliance%, ratio%, inverse)
+  - KPI Scores auto-calculation from MIS entries + manual override support
+  - KRA Definitions CRUD (for senior executives and employees)
+  - Evaluations CRUD (quarterly/half-yearly/annual cycles with self/manager/HR ratings)
+  - Company Dashboard (department summaries, cross-department verification)
+  - Manager Team endpoints (my-team, my-team-compliance, my-team-entries)
+  - Seed Data endpoint (populates demo data for Accounts dept + 5 Senior Executives)
+- **Frontend** broken into 7 sub-components:
+  - `OverviewTab`: KPI score, MIS entries, KRA, evaluations stat cards + KPI/KRA details
+  - `MisEntryTab`: Daily MIS form (number, boolean, dropdown, text fields) + entry history
+  - `KpiTab`: KPI scores table with weighted score, target vs actual, source indicator
+  - `EvaluationsTab`: Evaluation list, create (HR), self-assessment (employee), status tracking
+  - `AdminTab`: Seed data, MIS compliance, template management, KPI/KRA definitions by employee
+  - `ManagerTab`: Team compliance, MIS entry review, verify/reject workflow
+  - `CompanyDashboard`: Company-wide stats, senior exec KRAs, cross-dept verification
+- **DB Collections**: mis_templates, mis_entries, kpi_definitions, kpi_scores, kra_definitions, evaluations
+- **Test**: 100% backend (25/25) + 100% frontend (iteration_47)
+
 ### Previous Implementations
 - UI/UX overhaul (glass-morphism light theme)
 - Token-based auth across all pages
@@ -154,6 +179,7 @@ On-the-fly normalization during payroll processing:
 - [x] Biometric employee code in manual employee creation & edit (DONE - Feb 13, 2026)
 - [x] Two-step leave approval: Employee → Manager → HR (DONE - Mar 5, 2026)
 - [x] Sync from production pulls ALL collections dynamically (DONE - Feb 19, 2026)
+- [x] Performance Management System Overhaul (DONE - Mar 9, 2026)
 
 ### P1 (High)
 - [x] Dynamic dashboard celebration theming (DONE - Feb 13, 2026)
@@ -179,10 +205,13 @@ On-the-fly normalization during payroll processing:
 - `/app/backend/routes/payroll_v2.py` - Payroll calculation engine
 - `/app/backend/routes/sop.py` - SOP management with role-based access
 - `/app/backend/routes/data_management.py` - Data sync endpoints
+- `/app/backend/routes/performance.py` - Performance Management APIs (MIS, KPI, KRA, Evaluations)
 - `/app/backend/server.py` - Auth, attendance endpoints
+- `/app/frontend/src/pages/PerformancePage.js` - Performance page orchestrator
+- `/app/frontend/src/pages/performance/` - Sub-components (OverviewTab, MisEntryTab, KpiTab, EvaluationsTab, AdminTab, ManagerTab, CompanyDashboard)
 - `/app/frontend/src/pages/SOPPage.js` - SOP UI with role-based views
 
 ## Credentials
-- Admin: admin@shardahr.com / Admin@123
-- Employee: employee@shardahr.com / Admin@123
+- Admin: admin@shardahr.com / password
+- Employee: employee@shardahr.com / password
 - Deployed sync: jai@j.com / j
