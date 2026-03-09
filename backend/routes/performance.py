@@ -857,6 +857,80 @@ async def seed_employee_data(request: Request):
     # REAL EMPLOYEE MIS & KPI DATA (from uploaded documents)
     # =====================================================
     EMPLOYEE_MIS = {
+        # --- RUDRA PRATAP SINGH - Accounts (Daily MIS) ---
+        "EMP31088E46": {
+            "name": "Rudra Pratap Singh",
+            "frequency": "daily",
+            "fields": [
+                {"key": "payments_processed", "label": "Payments Processed Today", "type": "number"},
+                {"key": "payment_value", "label": "Value of Payments Processed (INR)", "type": "number"},
+                {"key": "receipts_recorded", "label": "Receipts Recorded Today", "type": "number"},
+                {"key": "outstanding_followups", "label": "Outstanding Follow-ups Done", "type": "number"},
+                {"key": "vendor_mismatches", "label": "Vendor Ledger Mismatches Identified", "type": "number"},
+                {"key": "tally_updated", "label": "Tally Updated Till Date", "type": "boolean"},
+                {"key": "bank_statements_updated", "label": "Bank Statements Updated", "type": "boolean"},
+                {"key": "bank_entries_posted", "label": "Bank Entries Posted", "type": "number"},
+                {"key": "clearances_provided", "label": "Clearances Provided", "type": "number"},
+                {"key": "dealer_statements_updated", "label": "Dealer Statements Updated", "type": "boolean"},
+                {"key": "cash_ledger_posted", "label": "Cash Ledger Entries Posted", "type": "number"},
+                {"key": "expense_entries_posted", "label": "Expense Entries Posted", "type": "number"},
+                {"key": "reconciliation_2b_done", "label": "2B Reconciliation Done", "type": "boolean"},
+                {"key": "voucher_check_done", "label": "Voucher Check Completed", "type": "boolean"},
+                {"key": "stock_statement_submitted", "label": "Stock Statement Submitted", "type": "boolean"},
+                {"key": "critical_pending", "label": "Critical Pending Items", "type": "text"},
+                {"key": "delay_reasons", "label": "Delay Reasons", "type": "text"},
+            ],
+            "kpis": [
+                {"name": "Timely Payment %", "unit": "%", "target_value": 95, "calculation_type": "compliance", "mis_field_key": "tally_updated", "category": "financial", "weight": 1.5},
+                {"name": "Payment Errors", "unit": "count", "target_value": 2, "calculation_type": "inverse_sum", "mis_field_key": "vendor_mismatches", "category": "quality", "weight": 1.0},
+                {"name": "Vendor Reconciliation %", "unit": "%", "target_value": 95, "calculation_type": "compliance", "mis_field_key": "dealer_statements_updated", "category": "compliance", "weight": 1.2},
+                {"name": "Bank Reconciliation %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "bank_statements_updated", "category": "compliance", "weight": 1.2},
+                {"name": "2B Reconciliation %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "reconciliation_2b_done", "category": "compliance", "weight": 1.0},
+                {"name": "Voucher Verification %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "voucher_check_done", "category": "compliance", "weight": 1.0},
+                {"name": "Stock Statement Timeliness %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "stock_statement_submitted", "category": "compliance", "weight": 0.8},
+                {"name": "Bank Receipt Posting TAT", "unit": "avg", "target_value": 10, "calculation_type": "average", "mis_field_key": "bank_entries_posted", "category": "efficiency", "weight": 1.0},
+            ],
+        },
+        # --- ROUNAK SINGH - Accounts (Daily MIS) ---
+        "EMP35946842": {
+            "name": "Rounak Singh",
+            "frequency": "daily",
+            "fields": [
+                {"key": "followups_done", "label": "Follow-ups Done", "type": "number"},
+                {"key": "entries_made", "label": "Entries Made Today", "type": "number"},
+                {"key": "supplier_gst_check", "label": "Checking with Suppliers for GST Filings", "type": "dropdown", "options": ["Completed", "Partial", "Not Done", "N/A"]},
+                {"key": "sewa_updation", "label": "SEWA Updation", "type": "dropdown", "options": ["Completed", "Partial", "Not Done"]},
+                {"key": "gst_reconciliation_done", "label": "GST Reconciliation Done", "type": "boolean"},
+                {"key": "expense_entries_done", "label": "All Expense Entries Done", "type": "boolean"},
+                {"key": "critical_pending", "label": "Critical Pending Items", "type": "text"},
+            ],
+            "kpis": [
+                {"name": "GST Reconciliation %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "gst_reconciliation_done", "category": "compliance", "weight": 2.0},
+                {"name": "Expense Entry %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "expense_entries_done", "category": "compliance", "weight": 1.5},
+                {"name": "Daily Follow-ups", "unit": "avg", "target_value": 5, "calculation_type": "average", "mis_field_key": "followups_done", "category": "activity", "weight": 1.0},
+            ],
+        },
+        # --- PRAVEEN KUMAR VERMA - Accounts (Daily MIS) ---
+        "EMP6BE094D9": {
+            "name": "Praveen Kumar Verma",
+            "frequency": "daily",
+            "fields": [
+                {"key": "tax_invoices", "label": "Tax Invoices (with e-Invoicing & e-Way Bill)", "type": "number"},
+                {"key": "purchase_entries", "label": "Purchase Entries", "type": "number"},
+                {"key": "clearance_sales_match", "label": "Clearance & Sales Register Match", "type": "dropdown", "options": ["Matched", "Partial Match", "Mismatch", "Not Done"]},
+                {"key": "dg_manufacturing_entry", "label": "DG Manufacturing Entry", "type": "dropdown", "options": ["Completed", "Partial", "Not Done"]},
+                {"key": "dispatch_register", "label": "Daily Dispatch Register Maintained", "type": "boolean"},
+                {"key": "tds_on_purchase", "label": "TDS on Purchase", "type": "dropdown", "options": ["Completed", "Partial", "Not Done", "N/A"]},
+                {"key": "debit_credit_resolved", "label": "Debit/Credit Notes Issues Resolved", "type": "number"},
+                {"key": "critical_pending", "label": "Critical Pending Items", "type": "text"},
+            ],
+            "kpis": [
+                {"name": "Petty Cash Handling Accuracy", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "financial", "weight": 1.5},
+                {"name": "All Accounts Entry Completion", "unit": "%", "target_value": 100, "calculation_type": "manual", "category": "compliance", "weight": 2.0},
+                {"name": "Debit/Credit Notes Resolution", "unit": "avg", "target_value": 3, "calculation_type": "average", "mis_field_key": "debit_credit_resolved", "category": "efficiency", "weight": 1.0},
+                {"name": "Dispatch Register Maintenance %", "unit": "%", "target_value": 100, "calculation_type": "compliance", "mis_field_key": "dispatch_register", "category": "compliance", "weight": 1.2},
+            ],
+        },
         # --- AWDHESH KUMAR - Store (Quarterly MIS) ---
         "EMP4282E9BF": {
             "name": "Awdhesh Kumar",
