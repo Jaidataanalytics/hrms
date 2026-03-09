@@ -1033,11 +1033,15 @@ async def get_company_dashboard(request: Request, period: str = "monthly"):
 
 # ==================== SEED DATA ====================
 
+_auto_seed_bypass = False
+
 @router.post("/seed-data")
 async def seed_employee_data(request: Request):
-    user = await get_current_user(request)
-    if not is_admin_or_hr(user.get("role")):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    global _auto_seed_bypass
+    if not _auto_seed_bypass:
+        user = await get_current_user(request)
+        if not is_admin_or_hr(user.get("role")):
+            raise HTTPException(status_code=403, detail="Not authorized")
 
     created = {"templates": 0, "kpis": 0, "kras": 0}
     now = datetime.now(timezone.utc).isoformat()
@@ -1763,3 +1767,52 @@ async def seed_employee_data(request: Request):
         "message": f"Seeded {created['templates']} MIS templates, {created['kpis']} KPIs, {created['kras']} KRAs",
         **created
     }
+
+
+async def auto_seed_performance_data():
+    """Auto-seed performance data on startup if none exists."""
+    import logging
+    logger = logging.getLogger("performance.seed")
+    
+    existing = await db.mis_templates.count_documents({"created_by": "system"})
+    if existing > 0:
+        logger.info(f"Performance data already seeded ({existing} templates). Skipping.")
+        return
+    
+    logger.info("No performance seed data found. Running auto-seed...")
+    
+    try:
+        created = {"templates": 0, "kpis": 0, "kras": 0}
+        now = datetime.now(timezone.utc).isoformat()
+        
+        departments = await db.departments.find({"is_active": True}, {"_id": 0}).to_list(30)
+        dept_map = {d["department_id"]: d["name"] for d in departments}
+        
+        # Import the seed data dicts from the seed endpoint
+        # We need to reconstruct them here - they're defined inline in seed_employee_data
+        # Instead, call seed_employee_data with auth bypass
+        
+        # Direct approach: delete old system data and re-seed
+        await db.mis_templates.delete_many({"created_by": "system"})
+        await db.kpi_definitions.delete_many({"created_by": "system"})
+        await db.kra_definitions.delete_many({"created_by": "system"})
+        
+        # We need the EMPLOYEE_MIS and SENIOR_EXEC_KRAS data
+        # Since they're defined inline, we extract them by calling the function body
+        # The cleanest way: use an internal flag to skip auth
+        
+        logger.info("Auto-seed: triggering seed via internal call...")
+        
+        # Use a module-level flag
+        global _auto_seed_bypass
+        _auto_seed_bypass = True
+        
+        from unittest.mock import MagicMock
+        fake_request = MagicMock()
+        result = await seed_employee_data(fake_request)
+        
+        _auto_seed_bypass = False
+        logger.info(f"Auto-seed complete: {result.get('message', result)}")
+    except Exception as e:
+        logger.error(f"Auto-seed failed: {e}", exc_info=True)
+        _auto_seed_bypass = False

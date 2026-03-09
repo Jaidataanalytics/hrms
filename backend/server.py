@@ -4239,6 +4239,17 @@ async def start_scheduler():
     # Run initial sync in background
     asyncio.create_task(initial_sync())
 
+    # Auto-seed performance data if needed
+    async def seed_performance():
+        try:
+            await asyncio.sleep(3)
+            from routes.performance import auto_seed_performance_data
+            await auto_seed_performance_data()
+        except Exception as e:
+            logger.error(f"Error in performance auto-seed: {e}")
+    
+    asyncio.create_task(seed_performance())
+
 
 @app.on_event("shutdown")
 async def shutdown_scheduler():
