@@ -163,6 +163,273 @@ async def create_contract_worker(data: dict, request: Request):
     return worker
 
 
+# ==================== TEMPLATE DOWNLOAD & BULK UPLOAD ====================
+# NOTE: These must be defined BEFORE /workers/{worker_id} to avoid route conflicts
+
+TEMPLATE_COLUMNS = ["Sl No", "Employee Code", "Name", "Designation", "Date of Joining", "Ph.no", "Adhar no", "Contractor name"]
+
+
+@router.get("/workers/template/download")
+async def download_worker_template(request: Request):
+    """Download Excel template for contract workers bulk upload"""
+    from fastapi.responses import Response
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    import io
+
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Contract Workers List"
+
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="thin"), bottom=Side(style="thin")
+    )
+
+    for col_idx, header in enumerate(TEMPLATE_COLUMNS, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    col_widths = [8, 16, 25, 20, 16, 15, 16, 25]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = w
+
+    sample = [1, "CW001", "Sample Name", "Helper", "2026-01-15", "9876543210", "123456789012", "Contractor ABC"]
+    for col_idx, val in enumerate(sample, 1):
+        cell = ws.cell(row=2, column=col_idx, value=val)
+        cell.border = thin_border
+        cell.font = Font(color="999999", italic=True)
+
+    ws.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=contract_worker_template.xlsx"}
+    )
+
+
+@router.get("/workers/export")
+async def export_workers(request: Request):
+    """Export all contract workers as Excel file matching the template format"""
+    from fastapi.responses import Response
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    import io
+
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    workers = await db.contract_workers.find({"is_active": True}, {"_id": 0}).to_list(1000)
+    contractors_list = await db.contractors.find({"is_active": True}, {"_id": 0}).to_list(100)
+    contractor_map = {c["contractor_id"]: c.get("name") or c.get("company_name", "") for c in contractors_list}
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Contract Workers List"
+
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="thin"), bottom=Side(style="thin")
+    )
+
+    for col_idx, header in enumerate(TEMPLATE_COLUMNS, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    col_widths = [8, 16, 25, 20, 16, 15, 16, 25]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = w
+
+    for idx, worker in enumerate(workers, 1):
+        row = [
+            idx,
+            worker.get("employee_code") or worker.get("worker_id", ""),
+            worker.get("name", ""),
+            worker.get("designation", ""),
+            worker.get("joining_date", ""),
+            worker.get("phone", ""),
+            worker.get("aadhar_number", ""),
+            contractor_map.get(worker.get("contractor_id"), "")
+        ]
+        for col_idx, val in enumerate(row, 1):
+            cell = ws.cell(row=idx + 1, column=col_idx, value=val)
+            cell.border = thin_border
+
+    ws.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=contract_workers_export.xlsx"}
+    )
+
+
+@router.post("/workers/bulk-upload")
+async def bulk_upload_workers(request: Request):
+    """Bulk upload contract workers from Excel file matching the template format"""
+    from openpyxl import load_workbook
+    import io
+
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    form = await request.form()
+    file = form.get("file")
+    if not file:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
+    content = await file.read()
+    wb = load_workbook(io.BytesIO(content))
+    ws = wb.active
+
+    headers = [str(cell.value or "").strip() for cell in ws[1]]
+
+    col_map = {}
+    for idx, h in enumerate(headers):
+        hl = h.lower().strip()
+        if hl in ("sl no", "sl.no", "s.no", "sno", "sl no."):
+            col_map["sl_no"] = idx
+        elif hl in ("employee code", "emp code", "emp_code", "employee_code"):
+            col_map["employee_code"] = idx
+        elif hl == "name":
+            col_map["name"] = idx
+        elif hl == "designation":
+            col_map["designation"] = idx
+        elif hl in ("date of joining", "doj", "joining date", "date_of_joining"):
+            col_map["joining_date"] = idx
+        elif hl in ("ph.no", "ph no", "phone", "phone no", "phone number", "mobile"):
+            col_map["phone"] = idx
+        elif hl in ("adhar no", "aadhar no", "aadhaar no", "aadhar number", "aadhaar number", "adhar no."):
+            col_map["aadhar_number"] = idx
+        elif hl in ("contractor name", "contractor", "agency", "contractor_name"):
+            col_map["contractor_name"] = idx
+
+    if "name" not in col_map:
+        raise HTTPException(status_code=400, detail="Required column 'Name' not found in the uploaded file")
+
+    contractors_list = await db.contractors.find({"is_active": True}, {"_id": 0}).to_list(100)
+    contractor_lookup = {}
+    for c in contractors_list:
+        cname = (c.get("name") or c.get("company_name") or "").strip().lower()
+        if cname:
+            contractor_lookup[cname] = c["contractor_id"]
+
+    created = 0
+    skipped = 0
+    errors = []
+    now = datetime.now(timezone.utc).isoformat()
+
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not row or all(v is None for v in row):
+            continue
+
+        def get_val(key):
+            idx = col_map.get(key)
+            if idx is not None and idx < len(row):
+                v = row[idx]
+                return str(v).strip() if v is not None else ""
+            return ""
+
+        name = get_val("name")
+        if not name:
+            skipped += 1
+            continue
+
+        contractor_name_raw = get_val("contractor_name")
+        contractor_id = None
+        if contractor_name_raw:
+            contractor_id = contractor_lookup.get(contractor_name_raw.lower())
+            if not contractor_id:
+                new_id = f"CONT-{uuid.uuid4().hex[:8].upper()}"
+                new_contractor = {
+                    "contractor_id": new_id,
+                    "name": contractor_name_raw,
+                    "company_name": contractor_name_raw,
+                    "status": "active",
+                    "is_active": True,
+                    "created_by": user["user_id"],
+                    "created_at": now
+                }
+                await db.contractors.insert_one(new_contractor)
+                contractor_lookup[contractor_name_raw.lower()] = new_id
+                contractor_id = new_id
+
+        joining_date = get_val("joining_date")
+        if joining_date:
+            for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):
+                try:
+                    joining_date = datetime.strptime(joining_date.split(" ")[0], fmt).strftime("%Y-%m-%d")
+                    break
+                except ValueError:
+                    continue
+
+        employee_code = get_val("employee_code")
+        phone = get_val("phone")
+        aadhar = get_val("aadhar_number")
+        designation = get_val("designation")
+
+        if employee_code:
+            existing = await db.contract_workers.find_one(
+                {"employee_code": employee_code, "is_active": True}
+            )
+            if existing:
+                skipped += 1
+                errors.append(f"Row {row_idx}: Employee Code '{employee_code}' already exists")
+                continue
+
+        worker = {
+            "worker_id": f"CW-{uuid.uuid4().hex[:8].upper()}",
+            "employee_code": employee_code,
+            "name": name,
+            "designation": designation,
+            "phone": phone,
+            "aadhar_number": aadhar,
+            "joining_date": joining_date,
+            "contractor_id": contractor_id,
+            "status": "active",
+            "is_active": True,
+            "created_by": user["user_id"],
+            "created_at": now
+        }
+
+        await db.contract_workers.insert_one(worker)
+        created += 1
+
+    return {
+        "message": f"Uploaded {created} workers, {skipped} skipped",
+        "created": created,
+        "skipped": skipped,
+        "errors": errors
+    }
+
+
 @router.get("/workers/{worker_id}")
 async def get_contract_worker(worker_id: str, request: Request):
     """Get contract worker details"""
@@ -493,4 +760,5 @@ async def download_worker_document(worker_id: str, document_type: str, request: 
             "Content-Disposition": f"attachment; filename={doc.get('file_name', 'document')}"
         }
     )
+
 

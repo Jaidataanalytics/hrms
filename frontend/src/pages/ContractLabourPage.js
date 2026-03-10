@@ -56,6 +56,8 @@ const ContractLabourPage = () => {
   const [showDocUploadDialog, setShowDocUploadDialog] = useState(false);
   const [docUploadForm, setDocUploadForm] = useState({ document_type: '', file: null });
   const [uploading, setUploading] = useState(false);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null);
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
@@ -291,6 +293,85 @@ const ContractLabourPage = () => {
   const getContractorName = (contractorId) => {
     const contractor = contractors.find(c => c.contractor_id === contractorId);
     return contractor?.name || contractor?.company_name || 'Unknown';
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch(`${API_URL}/labour/workers/template/download`, {
+        credentials: 'include', headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contract_worker_template.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success('Template downloaded');
+      } else {
+        toast.error('Failed to download template');
+      }
+    } catch (error) {
+      toast.error('Failed to download template');
+    }
+  };
+
+  const handleExportWorkers = async () => {
+    try {
+      const response = await fetch(`${API_URL}/labour/workers/export`, {
+        credentials: 'include', headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contract_workers_export.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success('Workers exported');
+      } else {
+        toast.error('Failed to export workers');
+      }
+    } catch (error) {
+      toast.error('Failed to export workers');
+    }
+  };
+
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setBulkUploading(true);
+    setUploadResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${API_URL}/labour/workers/bulk-upload`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setUploadResult(result);
+        toast.success(result.message);
+        fetchWorkers();
+        fetchContractors();
+      } else {
+        const err = await response.json();
+        toast.error(err.detail || 'Upload failed');
+      }
+    } catch (error) {
+      toast.error('Failed to upload file');
+    } finally {
+      setBulkUploading(false);
+      e.target.value = '';
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -764,19 +845,61 @@ const ContractLabourPage = () => {
                   <CardTitle className="text-lg">Contract Workers</CardTitle>
                   <CardDescription>Click on a worker to view full details</CardDescription>
                 </div>
-                <Button onClick={() => {
-                  setWorkerForm({
-                    name: '', phone: '', address: '', aadhar_number: '', emergency_contact_name: '',
-                    emergency_contact_phone: '', contractor_id: '', daily_wage: '', joining_date: '',
-                    contract_end_date: '', photo_url: ''
-                  });
-                  setSelectedWorker(null);
-                  setShowWorkerDialog(true);
-                }} data-testid="add-worker-btn">
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Worker
-                </Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" onClick={handleDownloadTemplate} data-testid="download-template-btn">
+                    <Download className="w-4 h-4 mr-1" />
+                    Template
+                  </Button>
+                  <Button variant="outline" onClick={handleExportWorkers} data-testid="export-workers-btn">
+                    <Download className="w-4 h-4 mr-1" />
+                    Export
+                  </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleBulkUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      data-testid="bulk-upload-input"
+                      disabled={bulkUploading}
+                    />
+                    <Button variant="outline" disabled={bulkUploading} data-testid="bulk-upload-btn">
+                      {bulkUploading ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                      Upload
+                    </Button>
+                  </div>
+                  <Button onClick={() => {
+                    setWorkerForm({
+                      name: '', phone: '', address: '', aadhar_number: '', emergency_contact_name: '',
+                      emergency_contact_phone: '', contractor_id: '', daily_wage: '', joining_date: '',
+                      contract_end_date: '', photo_url: ''
+                    });
+                    setSelectedWorker(null);
+                    setShowWorkerDialog(true);
+                  }} data-testid="add-worker-btn">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Worker
+                  </Button>
+                </div>
               </div>
+              {uploadResult && (
+                <div className={`mt-3 p-3 rounded-lg border ${uploadResult.errors?.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`} data-testid="upload-result">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{uploadResult.message}</p>
+                      {uploadResult.errors?.length > 0 && (
+                        <ul className="mt-1 text-xs text-amber-700">
+                          {uploadResult.errors.slice(0, 5).map((err, i) => <li key={i}>{err}</li>)}
+                          {uploadResult.errors.length > 5 && <li>...and {uploadResult.errors.length - 5} more</li>}
+                        </ul>
+                      )}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setUploadResult(null)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {loading ? (

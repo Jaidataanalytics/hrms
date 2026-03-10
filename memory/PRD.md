@@ -222,6 +222,13 @@ On-the-fly normalization during payroll processing:
 - Period selector (Monthly/Weekly/Quarterly) filters all insights data
 - Tested: 100% backend (16/16) and frontend pass rate
 
+### Contract Worker Template Upload/Download (Mar 10, 2026)
+- Added Excel template download matching user's exact format: Sl No, Employee Code, Name, Designation, Date of Joining, Ph.no, Adhar no, Contractor name
+- Added bulk export of all existing contract workers in the same template format
+- Added bulk upload from Excel with smart features: auto-create contractors, duplicate detection by Employee Code, flexible date parsing, column name fuzzy matching
+- Backend APIs: `GET /api/labour/workers/template/download`, `GET /api/labour/workers/export`, `POST /api/labour/workers/bulk-upload`
+- Frontend: Template, Export, Upload buttons added to Contract Labour workers tab
+
 ## Key Files
 - `/app/backend/routes/payroll.py` - Payroll API routes + Sunday-as-leave orchestration
 - `/app/backend/routes/payroll_v2.py` - Payroll calculation engine
