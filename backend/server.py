@@ -3114,6 +3114,305 @@ async def reject_leave(leave_id: str, rejection_reason: str, request: Request):
     return {"message": "Leave rejected"}
 
 
+
+# ==================== WORK FROM HOME (WFH) REQUESTS ====================
+
+class WFHApplyRequest(BaseModel):
+    from_date: str
+    to_date: str
+    reason: str
+
+@api_router.post("/wfh/apply")
+async def apply_wfh(wfh_data: WFHApplyRequest, request: Request):
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="No employee profile linked")
+    
+    from datetime import datetime as dt
+    from_dt = dt.strptime(wfh_data.from_date, "%Y-%m-%d")
+    to_dt = dt.strptime(wfh_data.to_date, "%Y-%m-%d")
+    days = (to_dt - from_dt).days + 1
+    
+    if days < 1:
+        raise HTTPException(status_code=400, detail="To date must be on or after from date")
+    
+    # Determine manager (same logic as leave)
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    manager_id = None
+    if employee:
+        if employee.get("reporting_manager_id"):
+            manager_id = employee["reporting_manager_id"]
+        elif employee.get("department_id"):
+            dept = await db.departments.find_one({"department_id": employee["department_id"]}, {"_id": 0})
+            if dept and dept.get("head_employee_id"):
+                manager_id = dept["head_employee_id"]
+    
+    if manager_id == employee_id:
+        manager_id = None
+    
+    now = datetime.now(timezone.utc).isoformat()
+    wfh_request = {
+        "wfh_id": f"WFH-{uuid.uuid4().hex[:8].upper()}",
+        "employee_id": employee_id,
+        "from_date": wfh_data.from_date,
+        "to_date": wfh_data.to_date,
+        "days": days,
+        "reason": wfh_data.reason,
+        "status": "pending",
+        "applied_on": now,
+        "created_at": now,
+        "dept_head_id": manager_id,
+        "dept_head_status": "pending" if manager_id else "not_required",
+        "hr_status": "pending"
+    }
+    
+    await db.wfh_requests.insert_one(wfh_request)
+    wfh_request.pop("_id", None)
+    
+    # Notify manager
+    if manager_id:
+        mgr_user = await db.users.find_one({"employee_id": manager_id}, {"_id": 0, "user_id": 1})
+        if mgr_user:
+            await create_notification(
+                mgr_user["user_id"],
+                "WFH Approval Required",
+                f"{user.get('name', 'Employee')} has applied for WFH from {wfh_data.from_date} to {wfh_data.to_date}",
+                "info", "wfh", "/dashboard/leave"
+            )
+    
+    return wfh_request
+
+
+@api_router.get("/wfh/my-requests")
+async def get_my_wfh_requests(request: Request, status: Optional[str] = None):
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    if not employee_id:
+        return []
+    
+    query = {"employee_id": employee_id}
+    if status:
+        query["status"] = status
+    
+    requests = await db.wfh_requests.find(query, {"_id": 0}).sort("applied_on", -1).to_list(100)
+    return requests
+
+
+@api_router.get("/wfh/pending-approvals")
+async def get_pending_wfh_approvals(request: Request):
+    user = await get_current_user(request)
+    
+    employee_id = user.get("employee_id")
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    
+    reportees = await db.employees.find({"reporting_manager_id": employee_id}, {"employee_id": 1, "_id": 0}).to_list(100)
+    reportee_ids = [r["employee_id"] for r in reportees]
+    
+    headed_depts = await db.departments.find({"head_employee_id": employee_id}, {"department_id": 1, "_id": 0}).to_list(20)
+    headed_dept_ids = [d["department_id"] for d in headed_depts]
+    
+    dept_emp_ids = []
+    if headed_dept_ids:
+        dept_emps = await db.employees.find(
+            {"department_id": {"$in": headed_dept_ids}},
+            {"employee_id": 1, "_id": 0}
+        ).to_list(500)
+        dept_emp_ids = [e["employee_id"] for e in dept_emps]
+    
+    all_manageable_ids = list(set(reportee_ids + dept_emp_ids))
+    
+    if not all_manageable_ids and not is_hr:
+        return []
+    
+    if is_hr:
+        query = {"status": "pending"}
+    elif all_manageable_ids:
+        query = {
+            "status": "pending",
+            "$or": [
+                {"employee_id": {"$in": all_manageable_ids}, "dept_head_status": "pending"},
+                {"dept_head_id": employee_id, "dept_head_status": "pending"}
+            ]
+        }
+    else:
+        return []
+    
+    requests = await db.wfh_requests.find(query, {"_id": 0}).sort("applied_on", -1).to_list(100)
+    
+    for req in requests:
+        emp = await db.employees.find_one(
+            {"$or": [{"employee_id": req.get("employee_id")}, {"emp_code": req.get("employee_id")}]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "emp_code": 1}
+        )
+        if emp:
+            req["employee_name"] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+            req["emp_code"] = emp.get("emp_code", req.get("employee_id"))
+        else:
+            usr = await db.users.find_one({"employee_id": req.get("employee_id")}, {"_id": 0, "name": 1})
+            req["employee_name"] = usr.get("name") if usr else req.get("employee_id", "Unknown")
+            req["emp_code"] = req.get("employee_id")
+    
+    return requests
+
+
+@api_router.put("/wfh/{wfh_id}/approve")
+async def approve_wfh(wfh_id: str, request: Request):
+    user = await get_current_user(request)
+    
+    wfh_req = await db.wfh_requests.find_one({"wfh_id": wfh_id}, {"_id": 0})
+    if not wfh_req:
+        raise HTTPException(status_code=404, detail="WFH request not found")
+    
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    is_dept_head = wfh_req.get("dept_head_id") == user.get("employee_id")
+    
+    if not is_dept_head and not is_hr and user.get("employee_id"):
+        applicant = await db.employees.find_one(
+            {"employee_id": wfh_req.get("employee_id")},
+            {"_id": 0, "reporting_manager_id": 1}
+        )
+        if applicant and applicant.get("reporting_manager_id") == user.get("employee_id"):
+            is_dept_head = True
+    
+    update_fields = {"approved_on": datetime.now(timezone.utc).isoformat()}
+    
+    if is_dept_head and wfh_req.get("dept_head_status") == "pending":
+        update_fields["dept_head_status"] = "approved"
+        update_fields["dept_head_approved_by"] = user.get("employee_id")
+        update_fields["dept_head_approved_on"] = datetime.now(timezone.utc).isoformat()
+        if wfh_req.get("hr_status") == "pending":
+            update_fields["status"] = "pending"
+        message = "WFH approved by manager. Pending HR approval."
+    elif is_hr:
+        update_fields["hr_status"] = "approved"
+        update_fields["hr_approved_by"] = user.get("employee_id") or user["user_id"]
+        update_fields["status"] = "approved"
+        update_fields["approved_by"] = user.get("employee_id") or user["user_id"]
+        message = "WFH approved successfully"
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized to approve this WFH request")
+    
+    await db.wfh_requests.update_one({"wfh_id": wfh_id}, {"$set": update_fields})
+    
+    # Mark attendance as WFH for approved dates
+    if update_fields.get("status") == "approved":
+        from datetime import datetime as dt, timedelta
+        from_dt = dt.strptime(wfh_req["from_date"], "%Y-%m-%d")
+        to_dt = dt.strptime(wfh_req["to_date"], "%Y-%m-%d")
+        current = from_dt
+        while current <= to_dt:
+            date_str = current.strftime("%Y-%m-%d")
+            await db.attendance.update_one(
+                {"employee_id": wfh_req["employee_id"], "date": date_str},
+                {"$set": {
+                    "employee_id": wfh_req["employee_id"],
+                    "date": date_str,
+                    "status": "wfh",
+                    "source": "wfh_approved",
+                    "wfh_id": wfh_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
+            current += timedelta(days=1)
+    
+    # Notify employee
+    emp_user = await db.users.find_one({"employee_id": wfh_req["employee_id"]}, {"_id": 0, "user_id": 1})
+    if emp_user:
+        await create_notification(
+            emp_user["user_id"],
+            "WFH Approved" if update_fields.get("status") == "approved" else "WFH: Manager Approved",
+            f"Your WFH from {wfh_req['from_date']} to {wfh_req['to_date']} has been {'approved' if update_fields.get('status') == 'approved' else 'approved by manager (pending HR)'}",
+            "success", "wfh"
+        )
+    
+    # Notify HR if manager approved
+    if is_dept_head and update_fields.get("status") == "pending":
+        hr_users = await db.users.find(
+            {"role": {"$in": ["super_admin", "hr_admin"]}, "is_active": True},
+            {"_id": 0, "user_id": 1}
+        ).to_list(10)
+        for hr_u in hr_users:
+            await create_notification(
+                hr_u["user_id"],
+                "WFH Pending HR Approval",
+                f"Manager has approved WFH for employee {wfh_req.get('employee_id')}. Your approval is required.",
+                "info", "wfh", "/dashboard/leave"
+            )
+    
+    return {"message": message}
+
+
+@api_router.put("/wfh/{wfh_id}/reject")
+async def reject_wfh(wfh_id: str, request: Request, rejection_reason: str = ""):
+    user = await get_current_user(request)
+    
+    wfh_req = await db.wfh_requests.find_one({"wfh_id": wfh_id}, {"_id": 0})
+    if not wfh_req:
+        raise HTTPException(status_code=404, detail="WFH request not found")
+    
+    is_hr = user.get("role") in ["super_admin", "hr_admin", "hr_executive"]
+    is_dept_head = wfh_req.get("dept_head_id") == user.get("employee_id")
+    
+    if not is_dept_head and not is_hr and user.get("employee_id"):
+        applicant = await db.employees.find_one(
+            {"employee_id": wfh_req.get("employee_id")},
+            {"_id": 0, "reporting_manager_id": 1}
+        )
+        if applicant and applicant.get("reporting_manager_id") == user.get("employee_id"):
+            is_dept_head = True
+    
+    if not is_hr and not is_dept_head:
+        raise HTTPException(status_code=403, detail="Not authorized to reject this WFH request")
+    
+    await db.wfh_requests.update_one(
+        {"wfh_id": wfh_id},
+        {"$set": {
+            "status": "rejected",
+            "approved_by": user.get("employee_id") or user["user_id"],
+            "approved_on": datetime.now(timezone.utc).isoformat(),
+            "rejection_reason": rejection_reason,
+            "rejected_by_role": "manager" if is_dept_head and not is_hr else "hr"
+        }}
+    )
+    
+    emp_user = await db.users.find_one({"employee_id": wfh_req["employee_id"]}, {"_id": 0, "user_id": 1})
+    if emp_user:
+        await create_notification(
+            emp_user["user_id"],
+            "WFH Rejected",
+            f"Your WFH from {wfh_req['from_date']} to {wfh_req['to_date']} has been rejected. Reason: {rejection_reason or 'N/A'}",
+            "error", "wfh"
+        )
+    
+    return {"message": "WFH request rejected"}
+
+
+@api_router.put("/wfh/{wfh_id}/cancel")
+async def cancel_wfh(wfh_id: str, request: Request):
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    
+    wfh_req = await db.wfh_requests.find_one({"wfh_id": wfh_id}, {"_id": 0})
+    if not wfh_req:
+        raise HTTPException(status_code=404, detail="WFH request not found")
+    
+    if wfh_req.get("employee_id") != employee_id:
+        raise HTTPException(status_code=403, detail="Can only cancel your own requests")
+    
+    if wfh_req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Can only cancel pending requests")
+    
+    await db.wfh_requests.update_one(
+        {"wfh_id": wfh_id},
+        {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "WFH request cancelled"}
+
+
 # ==================== LEAVE BALANCE MANAGEMENT ====================
 
 @api_router.get("/leave/balances/all")

@@ -76,6 +76,13 @@ const LeavePage = () => {
   const [showCoDialog, setShowCoDialog] = useState(false);
   const [coForm, setCoForm] = useState({ worked_dates: '', reason: '' });
 
+  // WFH states
+  const [wfhRequests, setWfhRequests] = useState([]);
+  const [wfhApprovals, setWfhApprovals] = useState([]);
+  const [showWfhDialog, setShowWfhDialog] = useState(false);
+  const [wfhSubmitting, setWfhSubmitting] = useState(false);
+  const [wfhForm, setWfhForm] = useState({ from_date: null, to_date: null, reason: '' });
+
   const [leaveForm, setLeaveForm] = useState({
     leave_type_id: '',
     from_date: null,
@@ -131,6 +138,19 @@ const LeavePage = () => {
       // Fetch CO requests
       const coRes = await fetch(`${API_URL}/co-requests`, { credentials: 'include', headers: authHeaders });
       if (coRes.ok) setCoRequests(await coRes.json());
+
+      // Fetch WFH requests
+      const wfhRes = await fetch(`${API_URL}/wfh/my-requests`, { credentials: 'include', headers: authHeaders });
+      if (wfhRes.ok) setWfhRequests(await wfhRes.json());
+
+      // Fetch WFH pending approvals
+      try {
+        const wfhApprovalsRes = await fetch(`${API_URL}/wfh/pending-approvals`, { credentials: 'include', headers: authHeaders });
+        if (wfhApprovalsRes.ok) {
+          const wfhApps = await wfhApprovalsRes.json();
+          setWfhApprovals(wfhApps);
+        }
+      } catch (e) { /* Not authorized */ }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -178,6 +198,68 @@ const LeavePage = () => {
       });
       toast.success('CO rejected'); fetchData();
     } catch { toast.error('Failed'); }
+  };
+
+  const handleApplyWfh = async () => {
+    if (!wfhForm.from_date || !wfhForm.to_date || !wfhForm.reason) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    setWfhSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/wfh/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          from_date: format(wfhForm.from_date, 'yyyy-MM-dd'),
+          to_date: format(wfhForm.to_date, 'yyyy-MM-dd'),
+          reason: wfhForm.reason
+        })
+      });
+      if (res.ok) {
+        toast.success('WFH request submitted');
+        setShowWfhDialog(false);
+        setWfhForm({ from_date: null, to_date: null, reason: '' });
+        fetchData();
+      } else {
+        const e = await res.json();
+        toast.error(e.detail || 'Failed to submit');
+      }
+    } catch { toast.error('Failed to submit WFH request'); }
+    finally { setWfhSubmitting(false); }
+  };
+
+  const handleCancelWfh = async (wfhId) => {
+    try {
+      const res = await fetch(`${API_URL}/wfh/${wfhId}/cancel`, {
+        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+      });
+      if (res.ok) { toast.success('WFH request cancelled'); fetchData(); }
+      else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
+    } catch { toast.error('Failed to cancel'); }
+  };
+
+  const handleApproveWfh = async (wfhId) => {
+    try {
+      const res = await fetch(`${API_URL}/wfh/${wfhId}/approve`, {
+        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+      });
+      if (res.ok) { const d = await res.json(); toast.success(d.message); fetchData(); }
+      else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
+    } catch { toast.error('Failed to approve'); }
+  };
+
+  const handleRejectWfh = async (wfhId) => {
+    const reason = prompt('Rejection reason:');
+    if (reason === null) return;
+    try {
+      const res = await fetch(`${API_URL}/wfh/${wfhId}/reject?rejection_reason=${encodeURIComponent(reason)}`, {
+        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+      });
+      if (res.ok) { toast.success('WFH request rejected'); fetchData(); }
+      else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
+    } catch { toast.error('Failed to reject'); }
   };
 
   const handleApplyLeave = async () => {
@@ -566,11 +648,17 @@ const LeavePage = () => {
           <TabsTrigger value="co-requests" data-testid="tab-co-requests">
             CO Requests
           </TabsTrigger>
-          {isManager && (
+          <TabsTrigger value="wfh" data-testid="tab-wfh">
+            Work From Home
+            {wfhRequests.filter(r => r.status === 'pending').length > 0 && (
+              <Badge className="ml-2 h-5 px-1.5">{wfhRequests.filter(r => r.status === 'pending').length}</Badge>
+            )}
+          </TabsTrigger>
+          {(isManager || wfhApprovals.length > 0) && (
             <TabsTrigger value="approvals" data-testid="tab-approvals">
               Pending Approvals
-              {pendingApprovals.length > 0 && (
-                <Badge variant="destructive" className="ml-2 h-5 px-1.5">{pendingApprovals.length}</Badge>
+              {(pendingApprovals.length + wfhApprovals.length) > 0 && (
+                <Badge variant="destructive" className="ml-2 h-5 px-1.5">{pendingApprovals.length + wfhApprovals.length}</Badge>
               )}
             </TabsTrigger>
           )}
@@ -710,7 +798,77 @@ const LeavePage = () => {
           </Card>
         </TabsContent>
 
-        {isManager && (
+        {/* WFH Tab */}
+        <TabsContent value="wfh">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    Work From Home Requests
+                  </CardTitle>
+                  <CardDescription>Apply for and track your WFH requests</CardDescription>
+                </div>
+                <Button onClick={() => setShowWfhDialog(true)} data-testid="apply-wfh-btn">
+                  <Plus className="w-4 h-4 mr-1" /> Apply WFH
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {wfhRequests.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                  <p>No WFH requests yet</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>From</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Applied On</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {wfhRequests.map(req => (
+                      <TableRow key={req.wfh_id} data-testid={`wfh-row-${req.wfh_id}`}>
+                        <TableCell>{req.from_date}</TableCell>
+                        <TableCell>{req.to_date}</TableCell>
+                        <TableCell>{req.days}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{req.reason}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            req.status === 'approved' ? 'default' :
+                            req.status === 'rejected' ? 'destructive' :
+                            req.status === 'cancelled' ? 'outline' : 'secondary'
+                          } data-testid={`wfh-status-${req.wfh_id}`}>
+                            {req.status === 'pending' && req.dept_head_status === 'approved' ? 'Manager Approved' : req.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-500">
+                          {req.applied_on ? new Date(req.applied_on).toLocaleDateString() : ''}
+                        </TableCell>
+                        <TableCell>
+                          {req.status === 'pending' && (
+                            <Button variant="ghost" size="sm" onClick={() => handleCancelWfh(req.wfh_id)} data-testid={`cancel-wfh-${req.wfh_id}`}>
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {(isManager || wfhApprovals.length > 0) && (
           <TabsContent value="approvals">
             <Card>
               <CardHeader className="pb-3">
@@ -782,10 +940,64 @@ const LeavePage = () => {
                   ) : (
                     <div className="text-center py-8">
                       <CheckCircle2 className="w-12 h-12 text-emerald-300 mx-auto mb-4" />
-                      <p className="text-slate-500">No pending approvals</p>
+                      <p className="text-slate-500">No pending leave approvals</p>
                     </div>
                   )}
                 </div>
+
+                {/* WFH Approvals */}
+                {wfhApprovals.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> WFH Requests ({wfhApprovals.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {wfhApprovals.map(req => (
+                        <div
+                          key={req.wfh_id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-blue-50 rounded-lg gap-4"
+                          data-testid={`wfh-approval-${req.wfh_id}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">
+                                {req.employee_name || req.employee_id}
+                                {req.emp_code && <span className="text-xs text-slate-400 ml-2">({req.emp_code})</span>}
+                              </p>
+                              <p className="text-sm text-blue-600 font-medium mt-0.5">Work From Home</p>
+                              <p className="text-sm text-slate-500">
+                                {req.from_date} to {req.to_date} ({req.days} day{req.days > 1 ? 's' : ''})
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">{req.reason}</p>
+                              {req.dept_head_status && req.dept_head_status !== 'not_required' && (
+                                <div className="flex gap-2 mt-1.5">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${req.dept_head_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    Manager: {req.dept_head_status}
+                                  </span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${req.hr_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    HR: {req.hr_status || 'pending'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 sm:flex-shrink-0">
+                            <Button size="sm" onClick={() => handleApproveWfh(req.wfh_id)} className="gap-1" data-testid={`approve-wfh-${req.wfh_id}`}>
+                              <CheckCircle2 className="w-4 h-4" /> Approve
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleRejectWfh(req.wfh_id)}
+                              className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50" data-testid={`reject-wfh-${req.wfh_id}`}>
+                              <XCircle className="w-4 h-4" /> Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1244,6 +1456,63 @@ const LeavePage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCoDialog(false)}>Cancel</Button>
             <Button onClick={handleSubmitCO} data-testid="submit-co-btn">Submit Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WFH Apply Dialog */}
+      <Dialog open={showWfhDialog} onOpenChange={setShowWfhDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Apply for Work From Home</DialogTitle>
+            <DialogDescription>Select dates and provide a reason for your WFH request</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>From Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="wfh-from-date">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {wfhForm.from_date ? format(wfhForm.from_date, 'PPP') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar mode="single" selected={wfhForm.from_date} onSelect={d => setWfhForm({...wfhForm, from_date: d, to_date: wfhForm.to_date && d > wfhForm.to_date ? d : wfhForm.to_date})} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>To Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="wfh-to-date">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {wfhForm.to_date ? format(wfhForm.to_date, 'PPP') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar mode="single" selected={wfhForm.to_date} onSelect={d => setWfhForm({...wfhForm, to_date: d})} disabled={d => wfhForm.from_date && d < wfhForm.from_date} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Reason *</Label>
+              <Textarea
+                value={wfhForm.reason}
+                onChange={e => setWfhForm({...wfhForm, reason: e.target.value})}
+                placeholder="e.g., Need to work from home for personal reasons"
+                rows={3}
+                data-testid="wfh-reason-input"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWfhDialog(false)}>Cancel</Button>
+            <Button onClick={handleApplyWfh} disabled={wfhSubmitting} data-testid="submit-wfh-btn">
+              {wfhSubmitting ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : null}
+              Submit WFH Request
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
