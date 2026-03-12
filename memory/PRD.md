@@ -239,6 +239,22 @@ On-the-fly normalization during payroll processing:
 - Notifications sent to manager on apply, HR after manager approval, employee on approve/reject
 - Tested: 100% backend (14/14), 100% frontend pass rate
 
+### Achievement Tracker + Production Employee KPIs/MIS (Mar 12, 2026)
+- **Achievement Tracker**: Employee self-service with manager endorsement flow
+  - Employees submit achievements (Category, Title, Description, Impact)
+  - Managers/HR see Pending Endorsements with Endorse/Reject buttons
+  - Categories: Innovation, Achievement, Improvement, IT, Planning, Training, Quality, Other
+  - Notifications on submit, endorse, and reject
+- **5 New Production Employees** added with KPIs and MIS:
+  - Ashish Banerjee (Powder Coating): 5 KPIs, daily + monthly MIS
+  - Vicky Kumar (Planning DG SET & MLT): 6 KPIs, daily + monthly MIS
+  - Vishal Yadav (DG Production): 5 KPIs, daily + monthly MIS
+  - Rahul Kumar (Cutting/Punching): 6 KPIs, daily + monthly MIS
+  - Surendra Bediya (Baseframe): 5 KPIs, daily + monthly MIS
+- **Auto-seed migration**: Changed from "check on every restart" to migration-based (perf_seed_v3 flag). Runs once ever, then skips with 1 lightweight query.
+- Total: 31 MIS templates, 136 KPIs, 29 KRAs across 26 employees
+- Tested: 100% backend (24/24), 100% frontend
+
 ## Key Files
 - `/app/backend/routes/payroll.py` - Payroll API routes + Sunday-as-leave orchestration
 - `/app/backend/routes/payroll_v2.py` - Payroll calculation engine
