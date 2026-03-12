@@ -229,6 +229,16 @@ On-the-fly normalization during payroll processing:
 - Backend APIs: `GET /api/labour/workers/template/download`, `GET /api/labour/workers/export`, `POST /api/labour/workers/bulk-upload`
 - Frontend: Template, Export, Upload buttons added to Contract Labour workers tab
 
+### Work From Home (WFH) Request/Approval Flow (Mar 12, 2026)
+- Full WFH request lifecycle: Apply -> Manager Approve -> HR Approve -> Auto-mark attendance as WFH
+- Backend APIs: POST /api/wfh/apply, GET /api/wfh/my-requests, GET /api/wfh/pending-approvals, PUT /api/wfh/{id}/approve, PUT /api/wfh/{id}/reject, PUT /api/wfh/{id}/cancel
+- Two-step approval flow mirroring leave: Manager first, then HR
+- When fully approved, attendance auto-marked as 'wfh' for all dates in the range
+- Frontend: "Work From Home" tab on Leave page with apply dialog (calendar date pickers), requests table, cancel button
+- WFH approvals shown in Pending Approvals tab with blue styling to differentiate from leaves
+- Notifications sent to manager on apply, HR after manager approval, employee on approve/reject
+- Tested: 100% backend (14/14), 100% frontend pass rate
+
 ## Key Files
 - `/app/backend/routes/payroll.py` - Payroll API routes + Sunday-as-leave orchestration
 - `/app/backend/routes/payroll_v2.py` - Payroll calculation engine
