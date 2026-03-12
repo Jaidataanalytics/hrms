@@ -13,6 +13,7 @@ import AdminTab from './performance/AdminTab';
 import ManagerTab from './performance/ManagerTab';
 import CompanyDashboard from './performance/CompanyDashboard';
 import InsightsTab from './performance/InsightsTab';
+import AchievementsTab from './performance/AchievementsTab';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -109,6 +110,7 @@ const PerformancePage = () => {
           <TabsTrigger value="mis-entry" data-testid="tab-mis-entry">My MIS</TabsTrigger>
           <TabsTrigger value="kpi" data-testid="tab-kpi">My KPIs</TabsTrigger>
           <TabsTrigger value="evaluations" data-testid="tab-evaluations">Evaluations</TabsTrigger>
+          <TabsTrigger value="achievements" data-testid="tab-achievements">Achievements</TabsTrigger>
           {showManager && <TabsTrigger value="manager" data-testid="tab-manager">Team Review</TabsTrigger>}
           {showAdmin && <TabsTrigger value="admin" data-testid="tab-admin">Admin</TabsTrigger>}
           {showCompany && <TabsTrigger value="company" data-testid="tab-company">Company</TabsTrigger>}
@@ -129,6 +131,10 @@ const PerformancePage = () => {
 
         <TabsContent value="evaluations">
           <EvaluationsTab user={user} evaluations={evaluations} employees={employees} isHR={isHR} authHeaders={authHeaders} onRefresh={fetchAll} />
+        </TabsContent>
+
+        <TabsContent value="achievements">
+          <AchievementsTab authHeaders={authHeaders} isManager={hasTeam} isHR={isHR} />
         </TabsContent>
 
         {showManager && (

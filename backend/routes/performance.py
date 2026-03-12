@@ -18,6 +18,12 @@ async def get_current_user(request: Request) -> dict:
     return await auth_get_user(request)
 
 
+async def create_notification(user_id: str, title: str, message: str, type: str = "info", category: str = "general"):
+    """Create notification - imported from server.py"""
+    from server import create_notification as server_create_notification
+    return await server_create_notification(user_id, title, message, type, category)
+
+
 def is_admin_or_hr(role):
     return role in ["super_admin", "hr_admin", "hr_executive"]
 
@@ -1031,6 +1037,179 @@ async def get_company_dashboard(request: Request, period: str = "monthly"):
     }
 
 
+# ==================== ACHIEVEMENT TRACKER ====================
+
+ACHIEVEMENT_CATEGORIES = ["Innovation", "Achievement", "Improvement", "IT", "Planning", "Training", "Quality", "Other"]
+
+@router.post("/achievements")
+async def submit_achievement(request: Request):
+    """Employee submits an achievement for manager endorsement"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="No employee profile linked")
+    
+    body = await request.json()
+    title = body.get("title", "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Title is required")
+    
+    employee = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0})
+    manager_id = None
+    if employee:
+        manager_id = employee.get("reporting_manager_id")
+        if not manager_id and employee.get("department_id"):
+            dept = await db.departments.find_one({"department_id": employee["department_id"]}, {"_id": 0})
+            if dept:
+                manager_id = dept.get("head_employee_id")
+    if manager_id == employee_id:
+        manager_id = None
+
+    now = datetime.now(timezone.utc).isoformat()
+    achievement = {
+        "achievement_id": f"ACH-{uuid.uuid4().hex[:8].upper()}",
+        "employee_id": employee_id,
+        "employee_name": user.get("name", ""),
+        "category": body.get("category", "Other"),
+        "title": title,
+        "description": body.get("description", ""),
+        "impact": body.get("impact", "Medium"),
+        "status": "pending",
+        "submitted_on": now,
+        "created_at": now,
+        "manager_id": manager_id,
+    }
+    await db.achievements.insert_one(achievement)
+    achievement.pop("_id", None)
+    
+    if manager_id:
+        mgr_user = await db.users.find_one({"employee_id": manager_id}, {"_id": 0, "user_id": 1})
+        if mgr_user:
+            await create_notification(
+                mgr_user["user_id"],
+                "Achievement Endorsement Required",
+                f"{user.get('name', 'Employee')} submitted: {title}",
+                "info", "achievement"
+            )
+    
+    return achievement
+
+
+@router.get("/achievements")
+async def get_achievements(request: Request, employee_id: Optional[str] = None, status: Optional[str] = None):
+    """Get achievements - own or team's"""
+    user = await get_current_user(request)
+    is_hr = is_admin_or_hr(user.get("role"))
+    
+    query = {}
+    if employee_id:
+        query["employee_id"] = employee_id
+    elif not is_hr:
+        query["employee_id"] = user.get("employee_id")
+    
+    if status:
+        query["status"] = status
+    
+    achievements = await db.achievements.find(query, {"_id": 0}).sort("submitted_on", -1).to_list(200)
+    return achievements
+
+
+@router.get("/achievements/pending")
+async def get_pending_achievements(request: Request):
+    """Get achievements pending manager endorsement"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    is_hr = is_admin_or_hr(user.get("role"))
+    
+    if is_hr:
+        query = {"status": "pending"}
+    else:
+        reportees = await db.employees.find({"reporting_manager_id": employee_id}, {"employee_id": 1, "_id": 0}).to_list(100)
+        reportee_ids = [r["employee_id"] for r in reportees]
+        
+        headed_depts = await db.departments.find({"head_employee_id": employee_id}, {"department_id": 1, "_id": 0}).to_list(20)
+        if headed_depts:
+            dept_emps = await db.employees.find(
+                {"department_id": {"$in": [d["department_id"] for d in headed_depts]}},
+                {"employee_id": 1, "_id": 0}
+            ).to_list(500)
+            reportee_ids += [e["employee_id"] for e in dept_emps]
+        
+        reportee_ids = list(set(reportee_ids))
+        if not reportee_ids:
+            return []
+        query = {"status": "pending", "employee_id": {"$in": reportee_ids}}
+    
+    return await db.achievements.find(query, {"_id": 0}).sort("submitted_on", -1).to_list(200)
+
+
+@router.put("/achievements/{achievement_id}/endorse")
+async def endorse_achievement(achievement_id: str, request: Request):
+    """Manager endorses an achievement"""
+    user = await get_current_user(request)
+    
+    ach = await db.achievements.find_one({"achievement_id": achievement_id}, {"_id": 0})
+    if not ach:
+        raise HTTPException(status_code=404, detail="Achievement not found")
+    
+    body = await request.json()
+    
+    await db.achievements.update_one(
+        {"achievement_id": achievement_id},
+        {"$set": {
+            "status": "endorsed",
+            "endorsed_by": user.get("employee_id") or user["user_id"],
+            "endorsed_by_name": user.get("name", ""),
+            "endorsed_on": datetime.now(timezone.utc).isoformat(),
+            "manager_remarks": body.get("remarks", "")
+        }}
+    )
+    
+    emp_user = await db.users.find_one({"employee_id": ach["employee_id"]}, {"_id": 0, "user_id": 1})
+    if emp_user:
+        await create_notification(
+            emp_user["user_id"],
+            "Achievement Endorsed",
+            f"Your achievement '{ach['title']}' has been endorsed by {user.get('name', 'Manager')}",
+            "success", "achievement"
+        )
+    
+    return {"message": "Achievement endorsed successfully"}
+
+
+@router.put("/achievements/{achievement_id}/reject")
+async def reject_achievement(achievement_id: str, request: Request):
+    """Manager rejects an achievement"""
+    user = await get_current_user(request)
+    
+    ach = await db.achievements.find_one({"achievement_id": achievement_id}, {"_id": 0})
+    if not ach:
+        raise HTTPException(status_code=404, detail="Achievement not found")
+    
+    body = await request.json()
+    
+    await db.achievements.update_one(
+        {"achievement_id": achievement_id},
+        {"$set": {
+            "status": "rejected",
+            "rejected_by": user.get("employee_id") or user["user_id"],
+            "rejected_on": datetime.now(timezone.utc).isoformat(),
+            "rejection_reason": body.get("reason", "")
+        }}
+    )
+    
+    emp_user = await db.users.find_one({"employee_id": ach["employee_id"]}, {"_id": 0, "user_id": 1})
+    if emp_user:
+        await create_notification(
+            emp_user["user_id"],
+            "Achievement Not Endorsed",
+            f"Your achievement '{ach['title']}' was not endorsed. Reason: {body.get('reason', 'N/A')}",
+            "error", "achievement"
+        )
+    
+    return {"message": "Achievement rejected"}
+
+
 # ==================== SEED DATA ====================
 
 _auto_seed_bypass = False
@@ -1259,6 +1438,170 @@ async def seed_employee_data(request: Request):
                  "scoring_rubric": "Orders Closed / Leads * 100. Measures sales effectiveness. >=30%=100, 20-29%=80, 10-19%=50, <10%=20", "max_marks": 100},
                 {"name": "Customer Visit Productivity", "unit": "%", "target_value": 20, "calculation_type": "percentage", "mis_field_key": "orders_closed", "mis_field_key_2": "customer_visits", "category": "efficiency", "weight": 1.0,
                  "scoring_rubric": "Orders/Visits * 100. Are visits translating to business? >=20%=100, 10-19%=70, 5-9%=40, <5%=10", "max_marks": 100},
+            ],
+        },
+        # ============================================================
+        # PRODUCTION / FABRICATION DEPARTMENT (from uploaded KPI sheets)
+        # ============================================================
+        # --- ASHISH BANERJEE - Powder Coating ---
+        "EMPC216D32A": {
+            "name": "Ashish Banerjee",
+            "role": "Powder Coating",
+            "frequency": "daily",
+            "fields": [
+                {"key": "units_painted", "label": "Units Painted Today", "type": "number"},
+                {"key": "rework_pieces", "label": "Rework Pieces (if any)", "type": "number"},
+                {"key": "remarks", "label": "Remarks", "type": "text"},
+            ],
+            "monthly_fields": [
+                {"key": "documents_updated", "label": "Documents Updated (ISO/MEPS file count)", "type": "number"},
+                {"key": "innovation_tried", "label": "Any improvement/innovation tried?", "type": "boolean"},
+                {"key": "innovation_desc", "label": "If yes, describe", "type": "text"},
+                {"key": "training_conducted", "label": "Training conducted or attended?", "type": "boolean"},
+                {"key": "training_topic", "label": "Training topic", "type": "text"},
+                {"key": "training_hours", "label": "Training hours", "type": "number"},
+            ],
+            "kpis": [
+                {"name": "Production Output", "unit": "points", "target_value": 3600, "calculation_type": "sum", "mis_field_key": "units_painted", "category": "production", "weight": 20,
+                 "scoring_rubric": "Annual sum vs 3600 target. >=3600=5, 3000-3599=4, 2400-2999=3.5, 1800-2399=3, <1800=2", "max_marks": 5, "achieved": 2564.75, "score": 3.5},
+                {"name": "Rejection/Rework", "unit": "count", "target_value": 20, "calculation_type": "inverse_sum", "mis_field_key": "rework_pieces", "category": "quality", "weight": 20,
+                 "scoring_rubric": "Lower is better. <=10=5, 11-20=4, 21-30=3.5, 31-40=3, >40=2", "max_marks": 5, "achieved": 40, "score": 3.5},
+                {"name": "Documentation Compliance", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "documents_updated", "category": "compliance", "weight": 20,
+                 "scoring_rubric": "All ISO/MEPS docs updated per schedule", "max_marks": 5, "score": 4},
+                {"name": "Improvement/Innovation", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "innovation_tried", "category": "innovation", "weight": 20,
+                 "scoring_rubric": "Quality and impact of innovations submitted", "max_marks": 5, "score": 3.5},
+                {"name": "Training", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "training_conducted", "category": "development", "weight": 20,
+                 "scoring_rubric": "Training sessions conducted/attended", "max_marks": 5, "score": 4},
+            ],
+        },
+        # --- VICKY KUMAR - Planning (DG SET & MLT) ---
+        "EMP6DB371FD": {
+            "name": "Vicky Kumar",
+            "role": "Planning (DG SET & MLT)",
+            "frequency": "daily",
+            "fields": [
+                {"key": "dg_sets_dispatched", "label": "DG Sets Dispatched Today", "type": "number"},
+                {"key": "planning_gaps", "label": "Planning Gaps Noted", "type": "number"},
+                {"key": "dms_updated", "label": "DMS Entry Updated", "type": "boolean"},
+                {"key": "remarks", "label": "Remarks", "type": "text"},
+            ],
+            "monthly_fields": [
+                {"key": "documents_updated", "label": "Documents Updated Count", "type": "number"},
+                {"key": "innovation_tried", "label": "Any improvement/innovation tried?", "type": "boolean"},
+                {"key": "innovation_desc", "label": "If yes, describe", "type": "text"},
+                {"key": "training_conducted", "label": "Training conducted or attended?", "type": "boolean"},
+                {"key": "training_topic", "label": "Training topic", "type": "text"},
+                {"key": "training_hours", "label": "Training hours", "type": "number"},
+            ],
+            "kpis": [
+                {"name": "Planning (DG SET & MLT)", "unit": "points", "target_value": 3600, "calculation_type": "sum", "mis_field_key": "dg_sets_dispatched", "category": "production", "weight": 25,
+                 "scoring_rubric": "Annual dispatch vs 3600 target. >=3600=5, 3000-3599=4, 2400-2999=3.5, <2400=3", "max_marks": 5, "achieved": 3100, "score": 3.5},
+                {"name": "Gap in Planning", "unit": "count", "target_value": 240, "calculation_type": "inverse_sum", "mis_field_key": "planning_gaps", "category": "quality", "weight": 15,
+                 "scoring_rubric": "Planning accuracy. Lower gaps = better", "max_marks": 5, "score": 3.5},
+                {"name": "Document (DMS Entry)", "unit": "score", "target_value": 5, "calculation_type": "compliance", "mis_field_key": "dms_updated", "category": "compliance", "weight": 15,
+                 "scoring_rubric": "Daily DMS entry updated", "max_marks": 5, "score": 4},
+                {"name": "Improvement/Innovation", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "innovation_tried", "category": "innovation", "weight": 15,
+                 "scoring_rubric": "Quality of innovations submitted", "max_marks": 5, "score": 3.5},
+                {"name": "Training", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "training_conducted", "category": "development", "weight": 15,
+                 "scoring_rubric": "Training sessions conducted/attended", "max_marks": 5, "score": 3.5},
+                {"name": "Extra Curricular Activities", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "", "category": "extra", "weight": 15,
+                 "scoring_rubric": "Loading/unloading, extra duties", "max_marks": 5, "score": 4},
+            ],
+        },
+        # --- VISHAL YADAV - DG Production / Line Assembly ---
+        "EMP337B108D": {
+            "name": "Vishal Kumar Yadav",
+            "role": "DG Production / New Products",
+            "frequency": "daily",
+            "fields": [
+                {"key": "dg_sets_produced", "label": "DG Sets Produced Today", "type": "number"},
+                {"key": "rejection_qty", "label": "Rejection Qty (if any)", "type": "number"},
+                {"key": "remarks", "label": "Remarks", "type": "text"},
+            ],
+            "monthly_fields": [
+                {"key": "documents_updated", "label": "ISO/MEPS Files Updated (count)", "type": "number"},
+                {"key": "innovation_tried", "label": "Any improvement/innovation tried?", "type": "boolean"},
+                {"key": "innovation_desc", "label": "If yes, describe", "type": "text"},
+                {"key": "training_conducted", "label": "Training conducted or attended?", "type": "boolean"},
+                {"key": "training_topic", "label": "Training topic", "type": "text"},
+                {"key": "training_hours", "label": "Training hours", "type": "number"},
+            ],
+            "kpis": [
+                {"name": "DG Production Output", "unit": "points", "target_value": 3600, "calculation_type": "sum", "mis_field_key": "dg_sets_produced", "category": "production", "weight": 30,
+                 "scoring_rubric": "Annual production vs 3600 target. >=3600=5, 3000-3599=4, 2400-2999=3.6, <2400=3", "max_marks": 5, "achieved": 2531, "score": 3.6},
+                {"name": "Rejection/Rework", "unit": "count", "target_value": 0, "calculation_type": "inverse_sum", "mis_field_key": "rejection_qty", "category": "quality", "weight": 25,
+                 "scoring_rubric": "Lower is better. 0=5, 1-2=4, 3-5=3.5, 6-10=3, >10=2", "max_marks": 5, "achieved": 2, "score": 4},
+                {"name": "Documentation Compliance", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "documents_updated", "category": "compliance", "weight": 20,
+                 "scoring_rubric": "ISO/MEPS files maintained", "max_marks": 5, "achieved": 3, "score": 4},
+                {"name": "Improvement/Innovation", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "innovation_tried", "category": "innovation", "weight": 15,
+                 "scoring_rubric": "Quality and impact of innovations", "max_marks": 5, "score": 3.5},
+                {"name": "Training", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "training_conducted", "category": "development", "weight": 10,
+                 "scoring_rubric": "Training sessions conducted/attended", "max_marks": 5, "achieved": 2, "score": 3.5},
+            ],
+        },
+        # --- RAHUL KUMAR - Canopy Cutting/Punching (Fabrication) ---
+        "EMP24427A32": {
+            "name": "Rahul Kumar",
+            "role": "Canopy Cutting/Punching",
+            "frequency": "daily",
+            "fields": [
+                {"key": "pieces_cut_punched", "label": "Pieces Cut/Punched Today", "type": "number"},
+                {"key": "scrap_pieces", "label": "Scrap Pieces (if any)", "type": "number"},
+                {"key": "remarks", "label": "Remarks", "type": "text"},
+            ],
+            "monthly_fields": [
+                {"key": "documents_updated", "label": "ISO/MEPS Files Updated (count)", "type": "number"},
+                {"key": "innovation_tried", "label": "Any improvement/innovation tried?", "type": "boolean"},
+                {"key": "innovation_desc", "label": "If yes, describe", "type": "text"},
+                {"key": "training_conducted", "label": "Training conducted or attended?", "type": "boolean"},
+                {"key": "training_topic", "label": "Training topic", "type": "text"},
+                {"key": "training_hours", "label": "Training hours", "type": "number"},
+                {"key": "scrap_pct", "label": "Scrap Generation %", "type": "number"},
+            ],
+            "kpis": [
+                {"name": "Cutting/Punching Output", "unit": "points", "target_value": 3600, "calculation_type": "sum", "mis_field_key": "pieces_cut_punched", "category": "production", "weight": 30,
+                 "scoring_rubric": "Annual output vs 3600 target. >=3600=5, 3200-3599=4.5, 2800-3199=4, 2400-2799=3.5, <2400=3", "max_marks": 5, "achieved": 3465, "score": 4.5},
+                {"name": "Rejection/Reutilization", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "scrap_pieces", "category": "quality", "weight": 25,
+                 "scoring_rubric": "Material reutilization and low rejection", "max_marks": 5, "score": 4},
+                {"name": "Documentation Compliance", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "documents_updated", "category": "compliance", "weight": 20,
+                 "scoring_rubric": "ISO/MEPS files maintained and updated regularly", "max_marks": 5, "score": 4},
+                {"name": "Improvement/Innovation", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "innovation_tried", "category": "innovation", "weight": 15,
+                 "scoring_rubric": "Quality and impact of innovations", "max_marks": 5, "score": 3.5},
+                {"name": "Training", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "training_conducted", "category": "development", "weight": 10,
+                 "scoring_rubric": "Training sessions conducted/attended", "max_marks": 5, "achieved": 2, "score": 4},
+                {"name": "Scrap Generation", "unit": "%", "target_value": 8, "calculation_type": "manual", "mis_field_key": "scrap_pct", "category": "quality", "weight": 0,
+                 "scoring_rubric": "8-10%=Good, 11-12%=Average, 13-14%=Below Average. Tracked but not scored.", "max_marks": 5},
+            ],
+        },
+        # --- SURENDRA BEDIYA - Baseframe ---
+        "EMP80FE0506": {
+            "name": "Surendra Bediya",
+            "role": "Baseframe Production",
+            "frequency": "daily",
+            "fields": [
+                {"key": "baseframes_completed", "label": "Baseframes Completed Today", "type": "number"},
+                {"key": "rework_pieces", "label": "Rework Pieces (if any)", "type": "number"},
+                {"key": "remarks", "label": "Remarks", "type": "text"},
+            ],
+            "monthly_fields": [
+                {"key": "documents_updated", "label": "ISO/MEPS Files Updated (count)", "type": "number"},
+                {"key": "innovation_tried", "label": "Any improvement/innovation tried?", "type": "boolean"},
+                {"key": "innovation_desc", "label": "If yes, describe", "type": "text"},
+                {"key": "training_conducted", "label": "Training conducted or attended?", "type": "boolean"},
+                {"key": "training_topic", "label": "Training topic", "type": "text"},
+                {"key": "training_hours", "label": "Training hours", "type": "number"},
+            ],
+            "kpis": [
+                {"name": "Baseframe Production Output", "unit": "points", "target_value": 3600, "calculation_type": "sum", "mis_field_key": "baseframes_completed", "category": "production", "weight": 30,
+                 "scoring_rubric": "Annual output vs 3600 target. >=3600=5, 3000-3599=4, 2400-2999=3.6, <2400=3", "max_marks": 5, "achieved": 2563.5, "score": 3.6},
+                {"name": "Rejection/Reworks", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "rework_pieces", "category": "quality", "weight": 25,
+                 "scoring_rubric": "Lower reworks = better score", "max_marks": 5, "score": 4},
+                {"name": "Documentation Compliance", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "documents_updated", "category": "compliance", "weight": 20,
+                 "scoring_rubric": "ISO/MEPS files maintained and updated regularly", "max_marks": 5, "score": 4},
+                {"name": "Improvement/Innovation", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "innovation_tried", "category": "innovation", "weight": 15,
+                 "scoring_rubric": "Quality and impact of innovations", "max_marks": 5, "score": 3.5},
+                {"name": "Training", "unit": "score", "target_value": 5, "calculation_type": "manual", "mis_field_key": "training_conducted", "category": "development", "weight": 10,
+                 "scoring_rubric": "Training sessions conducted/attended", "max_marks": 5, "achieved": 12, "score": 3.5},
             ],
         },
     }
@@ -1719,6 +2062,24 @@ async def seed_employee_data(request: Request):
         await db.mis_templates.insert_one(template)
         created["templates"] += 1
 
+        # Create monthly MIS template if monthly_fields exist
+        if data.get("monthly_fields"):
+            monthly_template = {
+                "template_id": f"mist_{uuid.uuid4().hex[:12]}",
+                "employee_id": emp_id,
+                "employee_name": data["name"],
+                "department_id": dept_id,
+                "department_name": dept_name,
+                "name": f"{data['name']} - Monthly MIS",
+                "frequency": "monthly",
+                "fields": data["monthly_fields"],
+                "is_active": True,
+                "created_at": now,
+                "created_by": "system"
+            }
+            await db.mis_templates.insert_one(monthly_template)
+            created["templates"] += 1
+
         for kpi_data in data.get("kpis", []):
             kpi = {
                 "kpi_id": f"kpi_{uuid.uuid4().hex[:12]}",
@@ -1770,40 +2131,19 @@ async def seed_employee_data(request: Request):
 
 
 async def auto_seed_performance_data():
-    """Auto-seed performance data on startup if none exists."""
+    """Auto-seed performance data on startup using migration flag (runs only once ever)."""
     import logging
     logger = logging.getLogger("performance.seed")
     
-    existing = await db.mis_templates.count_documents({"created_by": "system"})
-    if existing > 0:
-        logger.info(f"Performance data already seeded ({existing} templates). Skipping.")
+    # Check migration flag - lightweight single query
+    migration = await db.migrations.find_one({"migration_id": "perf_seed_v3"})
+    if migration:
+        logger.info("Performance seed migration already ran. Skipping.")
         return
     
-    logger.info("No performance seed data found. Running auto-seed...")
+    logger.info("First-time deployment detected. Running performance data seed...")
     
     try:
-        created = {"templates": 0, "kpis": 0, "kras": 0}
-        now = datetime.now(timezone.utc).isoformat()
-        
-        departments = await db.departments.find({"is_active": True}, {"_id": 0}).to_list(30)
-        dept_map = {d["department_id"]: d["name"] for d in departments}
-        
-        # Import the seed data dicts from the seed endpoint
-        # We need to reconstruct them here - they're defined inline in seed_employee_data
-        # Instead, call seed_employee_data with auth bypass
-        
-        # Direct approach: delete old system data and re-seed
-        await db.mis_templates.delete_many({"created_by": "system"})
-        await db.kpi_definitions.delete_many({"created_by": "system"})
-        await db.kra_definitions.delete_many({"created_by": "system"})
-        
-        # We need the EMPLOYEE_MIS and SENIOR_EXEC_KRAS data
-        # Since they're defined inline, we extract them by calling the function body
-        # The cleanest way: use an internal flag to skip auth
-        
-        logger.info("Auto-seed: triggering seed via internal call...")
-        
-        # Use a module-level flag
         global _auto_seed_bypass
         _auto_seed_bypass = True
         
@@ -1812,7 +2152,15 @@ async def auto_seed_performance_data():
         result = await seed_employee_data(fake_request)
         
         _auto_seed_bypass = False
-        logger.info(f"Auto-seed complete: {result.get('message', result)}")
+        
+        # Mark migration as complete
+        await db.migrations.insert_one({
+            "migration_id": "perf_seed_v3",
+            "ran_at": datetime.now(timezone.utc).isoformat(),
+            "result": result.get("message", str(result))
+        })
+        
+        logger.info(f"Auto-seed complete and migration marked: {result.get('message', result)}")
     except Exception as e:
         logger.error(f"Auto-seed failed: {e}", exc_info=True)
         _auto_seed_bypass = False
