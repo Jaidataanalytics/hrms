@@ -30,11 +30,16 @@ import {
   Plane,
   LogIn,
   LogOut,
-  Navigation
+  Navigation,
+  Gift,
+  PartyPopper,
+  CalendarDays,
+  BarChart3
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 import CelebrationBanner from '../components/CelebrationBanner';
 import CelebrationModal from '../components/CelebrationModal';
+import WidgetCustomizer, { CustomizeButton, getWidgetPrefs, isWidgetEnabled } from '../components/WidgetCustomizer';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -54,9 +59,13 @@ const Dashboard = () => {
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [tourAttendanceCheck, setTourAttendanceCheck] = useState(null);
   const [celebrationModal, setCelebrationModal] = useState(null);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [widgetPrefs, setWidgetPrefs] = useState(() => getWidgetPrefs(user?.user_id));
+  const [widgetData, setWidgetData] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchWidgetData();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -124,6 +133,17 @@ const Dashboard = () => {
       console.error('Error fetching dashboard:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWidgetData = async () => {
+    try {
+      const res = await fetch(`${API_URL}/dashboard/widget-data`, {
+        credentials: 'include', headers: getAuthHeaders(),
+      });
+      if (res.ok) setWidgetData(await res.json());
+    } catch (e) {
+      console.error('Widget data error:', e);
     }
   };
 
@@ -324,7 +344,17 @@ const Dashboard = () => {
           </p>
           <div className="header-accent-line mt-3 max-w-[200px]" />
         </div>
+        <CustomizeButton onClick={() => setShowCustomizer(true)} />
       </motion.div>
+
+      {/* Widget Customizer Dialog */}
+      {showCustomizer && (
+        <WidgetCustomizer
+          userId={user?.user_id}
+          onClose={() => setShowCustomizer(false)}
+          onSave={(prefs) => setWidgetPrefs(prefs)}
+        />
+      )}
 
       {/* Remote Check-in Shortcut - only for eligible employees */}
       {tourStatus?.can_remote_checkin && (
@@ -483,6 +513,7 @@ const Dashboard = () => {
         {/* Left Column - Attendance & Leave */}
         <div className="lg:col-span-8 space-y-6">
           {/* Today's Attendance Status */}
+          {isWidgetEnabled(widgetPrefs, 'attendance') && (
           <Card data-testid="attendance-status-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
@@ -535,8 +566,10 @@ const Dashboard = () => {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Leave Balance */}
+          {isWidgetEnabled(widgetPrefs, 'leave_balance') && (
           <Card data-testid="leave-balance-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -580,11 +613,111 @@ const Dashboard = () => {
               )}
             </CardContent>
           </Card>
+          )}
+
+          {/* Monthly Attendance Summary Widget */}
+          {isWidgetEnabled(widgetPrefs, 'monthly_summary') && widgetData?.monthly_attendance && (
+            <Card data-testid="monthly-summary-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  <BarChart3 className="w-5 h-5 text-indigo-600" />
+                  This Month's Attendance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Present', value: widgetData.monthly_attendance.present, color: 'emerald' },
+                    { label: 'Absent', value: widgetData.monthly_attendance.absent, color: 'red' },
+                    { label: 'On Leave', value: widgetData.monthly_attendance.leave, color: 'amber' },
+                    { label: 'On Tour', value: widgetData.monthly_attendance.tour, color: 'blue' },
+                  ].map((item) => (
+                    <div key={item.label} className={`p-3 bg-${item.color}-50 rounded-lg text-center border border-${item.color}-100`}>
+                      <p className={`text-2xl font-bold text-${item.color}-700`}>{item.value}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {widgetData.monthly_attendance.late > 0 && (
+                  <p className="text-xs text-amber-600 mt-2 text-center">
+                    {widgetData.monthly_attendance.late} late arrival{widgetData.monthly_attendance.late !== 1 ? 's' : ''} this month
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column - Announcements & Quick Actions */}
         <div className="lg:col-span-4 space-y-6">
+          {/* Upcoming Holidays Widget */}
+          {isWidgetEnabled(widgetPrefs, 'upcoming_holidays') && widgetData?.upcoming_holidays?.length > 0 && (
+            <Card data-testid="upcoming-holidays-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                    <CalendarDays className="w-5 h-5 text-orange-600" />
+                    Upcoming Holidays
+                  </CardTitle>
+                  <Link to="/dashboard/holidays">
+                    <Button variant="ghost" size="sm">View All</Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {widgetData.upcoming_holidays.slice(0, 4).map((h, idx) => {
+                  const d = new Date(h.date + 'T00:00:00');
+                  const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
+                  const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  return (
+                    <div key={idx} className="flex items-center gap-3 p-2.5 bg-orange-50 rounded-lg border border-orange-100">
+                      <div className="w-10 h-10 rounded-lg bg-orange-100 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-orange-700 leading-none">{dateStr.split(' ')[0]}</span>
+                        <span className="text-[10px] text-orange-500 leading-none">{dateStr.split(' ')[1]}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{h.name}</p>
+                        <p className="text-xs text-slate-500">{dayName}{h.is_half_day ? ' (Half Day)' : ''}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Team Birthdays Widget */}
+          {isWidgetEnabled(widgetPrefs, 'team_birthdays') && widgetData?.team_birthdays?.length > 0 && (
+            <Card data-testid="team-birthdays-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  <Gift className="w-5 h-5 text-pink-500" />
+                  Birthdays This Month
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {widgetData.team_birthdays.slice(0, 5).map((b, idx) => {
+                  const initials = b.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?';
+                  const dateStr = b.date ? new Date(`2026-${b.date}`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
+                  return (
+                    <div key={idx} className="flex items-center gap-3 p-2.5 bg-pink-50 rounded-lg border border-pink-100">
+                      <Avatar className="w-8 h-8">
+                        <AvatarFallback className="bg-pink-200 text-pink-700 text-xs font-bold">{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{b.name}</p>
+                        <p className="text-xs text-slate-500">{b.department}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs text-pink-600 border-pink-200 shrink-0">{dateStr}</Badge>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Recent Announcements */}
+          {isWidgetEnabled(widgetPrefs, 'announcements') && (
           <Card data-testid="announcements-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -613,9 +746,10 @@ const Dashboard = () => {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* My SOPs Card */}
-          {mySops.length > 0 && (
+          {isWidgetEnabled(widgetPrefs, 'sops') && mySops.length > 0 && (
             <Card data-testid="my-sops-card">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -659,6 +793,7 @@ const Dashboard = () => {
           )}
 
           {/* Quick Actions */}
+          {isWidgetEnabled(widgetPrefs, 'quick_actions') && (
           <Card className="quick-action-card" data-testid="quick-actions-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
@@ -692,9 +827,10 @@ const Dashboard = () => {
               </Link>
             </CardContent>
           </Card>
+          )}
 
           {/* My Assets Card */}
-          {myAssets && (
+          {isWidgetEnabled(widgetPrefs, 'assets') && myAssets && (
             <Card data-testid="my-assets-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
@@ -729,7 +865,7 @@ const Dashboard = () => {
           )}
 
           {/* My Tours Card */}
-          {myTours.length > 0 && (
+          {isWidgetEnabled(widgetPrefs, 'tours') && myTours.length > 0 && (
             <Card data-testid="my-tours-card">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -765,7 +901,7 @@ const Dashboard = () => {
           )}
 
           {/* My Expenses Card */}
-          {myExpenses.length > 0 && (
+          {isWidgetEnabled(widgetPrefs, 'expenses') && myExpenses.length > 0 && (
             <Card data-testid="my-expenses-card">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">

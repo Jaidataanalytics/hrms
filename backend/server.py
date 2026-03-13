@@ -4125,6 +4125,72 @@ async def get_employee_dashboard(request: Request):
         "recent_announcements": announcements
     }
 
+
+@api_router.get("/dashboard/widget-data")
+async def get_widget_data(request: Request):
+    """Extra widget data for employee self-service dashboard: upcoming holidays, team birthdays, monthly attendance"""
+    user = await get_current_user(request)
+    employee_id = user.get("employee_id")
+    today = datetime.now(timezone.utc)
+    today_str = today.strftime("%Y-%m-%d")
+    today_mmdd = today.strftime("-%m-%d")
+
+    # Upcoming holidays (next 5)
+    holidays = await db.holidays.find(
+        {"date": {"$gte": today_str}}, {"_id": 0}
+    ).sort("date", 1).limit(5).to_list(5)
+
+    # Team birthdays — events with type 'birthday' this month
+    month_str = today.strftime("-%m-")
+    birthday_events = await db.events.find(
+        {"event_type": "birthday", "event_date": {"$regex": month_str}},
+        {"_id": 0, "emp_code": 1, "event_date": 1}
+    ).to_list(100)
+
+    # Enrich with employee names
+    team_birthdays = []
+    for evt in birthday_events:
+        emp = await db.employees.find_one(
+            {"$or": [{"employee_id": evt.get("emp_code")}, {"emp_code": evt.get("emp_code")}]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "department": 1, "department_name": 1, "picture": 1}
+        )
+        name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip() if emp else evt.get("emp_code", "")
+        dd = evt.get("event_date", "")[-5:]  # MM-DD
+        team_birthdays.append({
+            "name": name,
+            "date": dd,
+            "department": (emp.get("department_name") or emp.get("department") or "") if emp else "",
+            "picture": emp.get("picture") if emp else None,
+        })
+    team_birthdays.sort(key=lambda x: x["date"])
+
+    # Monthly attendance summary
+    month_start = today.replace(day=1).strftime("%Y-%m-%d")
+    monthly_attendance = {"present": 0, "absent": 0, "leave": 0, "tour": 0, "late": 0, "total_days": today.day}
+    if employee_id:
+        att_records = await db.attendance.find(
+            {"employee_id": employee_id, "date": {"$gte": month_start, "$lte": today_str}},
+            {"_id": 0, "status": 1}
+        ).to_list(31)
+        for rec in att_records:
+            status = (rec.get("status") or "").lower()
+            if status in ("present", "present_late"):
+                monthly_attendance["present"] += 1
+            elif status == "absent":
+                monthly_attendance["absent"] += 1
+            elif status == "leave":
+                monthly_attendance["leave"] += 1
+            elif status == "tour":
+                monthly_attendance["tour"] += 1
+            if "late" in status:
+                monthly_attendance["late"] += 1
+
+    return {
+        "upcoming_holidays": holidays,
+        "team_birthdays": team_birthdays,
+        "monthly_attendance": monthly_attendance,
+    }
+
 # ==================== ROLES & PERMISSIONS ====================
 
 @api_router.get("/roles")
@@ -4461,6 +4527,7 @@ from routes.sop import router as sop_router
 from routes.calendar import router as calendar_router
 from routes.meetings import router as meetings_router
 from routes.events import router as events_router
+from routes.org_chart import router as org_chart_router
 from routes.notifications import router as notifications_router
 from routes.push_notifications import router as push_router
 from services.biometric_sync import set_db as set_biometric_sync_db
@@ -4493,6 +4560,7 @@ api_router.include_router(calendar_router)
 api_router.include_router(meetings_router)
 api_router.include_router(notifications_router)
 api_router.include_router(events_router)
+api_router.include_router(org_chart_router)
 api_router.include_router(push_router)
 
 # CORS Configuration - Starlette native middleware with regex for reliable preflight handling

@@ -46,7 +46,8 @@ import {
   Search,
   FileSpreadsheet,
   UsersRound,
-  PartyPopper
+  PartyPopper,
+  Network
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalSearch from '../components/GlobalSearch';
@@ -103,6 +104,7 @@ const DashboardLayout = () => {
     { name: 'SOPs', path: '/dashboard/sop', icon: FileSpreadsheet },
     { name: 'Training', path: '/dashboard/training', icon: GraduationCap },
     { name: 'Tour Management', path: '/dashboard/tour-management', icon: Plane },
+    { name: 'Org Chart', path: '/dashboard/org-chart', icon: Network },
   ];
 
   const hrMenuItems = [{ name: 'Employees', path: '/dashboard/employees', icon: Users }];

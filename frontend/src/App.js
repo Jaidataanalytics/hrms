@@ -31,6 +31,7 @@ import UserManagementPage from "./pages/UserManagementPage";
 import TrainingPage from "./pages/TrainingPage";
 import TravelPage from "./pages/TravelPage";
 import TourManagementPage from "./pages/TourManagementPage";
+import OrgChartPage from "./pages/OrgChartPage";
 import DataManagementPage from "./pages/DataManagementPage";
 import BiometricPage from "./pages/BiometricPage";
 import InsurancePage from "./pages/InsurancePage";
@@ -138,6 +139,7 @@ function AppRouter() {
         <Route path="travel" element={<TravelPage />} />
         <Route path="tours" element={<TourManagementPage />} />
         <Route path="tour-management" element={<TourManagementPage />} />
+        <Route path="org-chart" element={<OrgChartPage />} />
         <Route path="data-management" element={<DataManagementPage />} />
         <Route path="biometric" element={<BiometricPage />} />
         <Route path="insurance" element={<InsurancePage />} />
