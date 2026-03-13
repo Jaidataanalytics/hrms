@@ -679,10 +679,35 @@ tbody td {
     transition: background 0.5s ease;
 }
 
+/* Celebration floating orbs in background */
+.celebration-theme::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.04;
+    background-size: 60px 60px;
+    animation: celebrationDrift 20s linear infinite;
+}
+
+@keyframes celebrationDrift {
+    0% { background-position: 0 0, 30px 30px; }
+    100% { background-position: 60px 60px, 90px 90px; }
+}
+
 /* Birthday Theme — warm amber/gold accents */
 .celebration-theme-birthday::before {
     background: linear-gradient(90deg, #f59e0b, #f97316, #f59e0b);
     animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-birthday::after {
+    background-image:
+        radial-gradient(circle 8px, #f59e0b 100%, transparent 100%),
+        radial-gradient(circle 4px, #fcd34d 100%, transparent 100%);
 }
 .celebration-theme-birthday .stat-card {
     border-top: 2px solid rgba(245, 158, 11, 0.3);
@@ -703,11 +728,20 @@ tbody td {
     border-color: rgba(245, 158, 11, 0.4);
     box-shadow: 0 4px 16px -4px rgba(245, 158, 11, 0.15);
 }
+.celebration-theme-birthday [class*="CardHeader"] h3,
+.celebration-theme-birthday .section-pill {
+    color: #92400e !important;
+}
 
 /* Work Anniversary Theme — blue/indigo accents */
 .celebration-theme-work_anniversary::before {
     background: linear-gradient(90deg, #3b82f6, #6366f1, #3b82f6);
     animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-work_anniversary::after {
+    background-image:
+        radial-gradient(circle 8px, #3b82f6 100%, transparent 100%),
+        radial-gradient(circle 4px, #818cf8 100%, transparent 100%);
 }
 .celebration-theme-work_anniversary .stat-card {
     border-top: 2px solid rgba(59, 130, 246, 0.3);
@@ -728,11 +762,20 @@ tbody td {
     border-color: rgba(59, 130, 246, 0.4);
     box-shadow: 0 4px 16px -4px rgba(59, 130, 246, 0.15);
 }
+.celebration-theme-work_anniversary [class*="CardHeader"] h3,
+.celebration-theme-work_anniversary .section-pill {
+    color: #1e40af !important;
+}
 
 /* Marriage Anniversary Theme — rose/pink accents */
 .celebration-theme-marriage_anniversary::before {
     background: linear-gradient(90deg, #ec4899, #f43f5e, #ec4899);
     animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-marriage_anniversary::after {
+    background-image:
+        radial-gradient(circle 8px, #ec4899 100%, transparent 100%),
+        radial-gradient(circle 4px, #f9a8d4 100%, transparent 100%);
 }
 .celebration-theme-marriage_anniversary .stat-card {
     border-top: 2px solid rgba(236, 72, 153, 0.3);
@@ -753,11 +796,20 @@ tbody td {
     border-color: rgba(236, 72, 153, 0.4);
     box-shadow: 0 4px 16px -4px rgba(236, 72, 153, 0.15);
 }
+.celebration-theme-marriage_anniversary [class*="CardHeader"] h3,
+.celebration-theme-marriage_anniversary .section-pill {
+    color: #9d174d !important;
+}
 
 /* Custom Event Theme — emerald/teal accents */
 .celebration-theme-custom::before {
     background: linear-gradient(90deg, #10b981, #14b8a6, #10b981);
     animation: shimmerBar 3s ease-in-out infinite;
+}
+.celebration-theme-custom::after {
+    background-image:
+        radial-gradient(circle 8px, #10b981 100%, transparent 100%),
+        radial-gradient(circle 4px, #6ee7b7 100%, transparent 100%);
 }
 .celebration-theme-custom .stat-card {
     border-top: 2px solid rgba(16, 185, 129, 0.3);
@@ -777,6 +829,10 @@ tbody td {
 .celebration-theme-custom .quick-action-card:hover {
     border-color: rgba(16, 185, 129, 0.4);
     box-shadow: 0 4px 16px -4px rgba(16, 185, 129, 0.15);
+}
+.celebration-theme-custom [class*="CardHeader"] h3,
+.celebration-theme-custom .section-pill {
+    color: #065f46 !important;
 }
 
 @keyframes shimmerBar {

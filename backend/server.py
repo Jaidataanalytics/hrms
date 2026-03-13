@@ -4464,7 +4464,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://perf-insights-7.preview.emergentagent.com",
+        "https://theme-switcher-demo.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
         "https://shardahrms.com",

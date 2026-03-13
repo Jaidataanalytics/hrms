@@ -7,7 +7,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://perf-insights-7.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://theme-switcher-demo.preview.emergentagent.com').rstrip('/')
 SESSION_TOKEN = os.environ.get('TEST_SESSION_TOKEN', '')
 
 

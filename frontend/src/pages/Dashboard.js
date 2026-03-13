@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 import CelebrationBanner from '../components/CelebrationBanner';
+import CelebrationModal from '../components/CelebrationModal';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -52,6 +53,7 @@ const Dashboard = () => {
   const [tourStatus, setTourStatus] = useState(null);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [tourAttendanceCheck, setTourAttendanceCheck] = useState(null);
+  const [celebrationModal, setCelebrationModal] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -277,8 +279,31 @@ const Dashboard = () => {
 
   return (
     <div className={`space-y-6 ${celebrationTheme ? `celebration-theme celebration-theme-${celebrationTheme}` : ''}`} data-testid="dashboard-page">
+      {/* Celebration Modal - shows once per day */}
+      {celebrationModal && (
+        <CelebrationModal
+          event={celebrationModal}
+          onClose={() => {
+            const today = new Date().toISOString().split('T')[0];
+            localStorage.setItem(`celebration_shown_${user?.user_id}`, today);
+            setCelebrationModal(null);
+          }}
+        />
+      )}
+
       {/* Celebration Banner */}
-      <CelebrationBanner onThemeDetected={setCelebrationTheme} />
+      <CelebrationBanner
+        onThemeDetected={setCelebrationTheme}
+        onMyEvent={(myEvent) => {
+          if (myEvent) {
+            const today = new Date().toISOString().split('T')[0];
+            const lastShown = localStorage.getItem(`celebration_shown_${user?.user_id}`);
+            if (lastShown !== today) {
+              setCelebrationModal(myEvent);
+            }
+          }
+        }}
+      />
 
       {/* Welcome Section */}
       <motion.div 
