@@ -767,38 +767,38 @@ tbody td {
     color: #1e40af !important;
 }
 
-/* Marriage Anniversary Theme — rose/pink accents */
+/* Marriage Anniversary Theme — romantic red/rose accents */
 .celebration-theme-marriage_anniversary::before {
-    background: linear-gradient(90deg, #ec4899, #f43f5e, #ec4899);
+    background: linear-gradient(90deg, #e11d48, #be123c, #e11d48);
     animation: shimmerBar 3s ease-in-out infinite;
 }
 .celebration-theme-marriage_anniversary::after {
     background-image:
-        radial-gradient(circle 8px, #ec4899 100%, transparent 100%),
-        radial-gradient(circle 4px, #f9a8d4 100%, transparent 100%);
+        radial-gradient(circle 8px, #e11d48 100%, transparent 100%),
+        radial-gradient(circle 4px, #fb7185 100%, transparent 100%);
 }
 .celebration-theme-marriage_anniversary .stat-card {
-    border-top: 2px solid rgba(236, 72, 153, 0.3);
-    background: linear-gradient(135deg, rgba(253,242,248,0.6), rgba(252,231,243,0.3)) !important;
+    border-top: 2px solid rgba(225, 29, 72, 0.3);
+    background: linear-gradient(135deg, rgba(255,241,242,0.6), rgba(255,228,230,0.3)) !important;
 }
 .celebration-theme-marriage_anniversary .stat-card:hover {
-    box-shadow: 0 4px 24px -4px rgba(236, 72, 153, 0.2);
-    border-top-color: rgba(236, 72, 153, 0.6);
+    box-shadow: 0 4px 24px -4px rgba(225, 29, 72, 0.2);
+    border-top-color: rgba(225, 29, 72, 0.6);
 }
 .celebration-theme-marriage_anniversary .dashboard-welcome {
-    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%);
-    border: 1px solid rgba(236, 72, 153, 0.2);
+    background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 50%, #fecdd3 100%);
+    border: 1px solid rgba(225, 29, 72, 0.2);
 }
 .celebration-theme-marriage_anniversary .quick-action-card {
-    border-color: rgba(236, 72, 153, 0.15);
+    border-color: rgba(225, 29, 72, 0.15);
 }
 .celebration-theme-marriage_anniversary .quick-action-card:hover {
-    border-color: rgba(236, 72, 153, 0.4);
-    box-shadow: 0 4px 16px -4px rgba(236, 72, 153, 0.15);
+    border-color: rgba(225, 29, 72, 0.4);
+    box-shadow: 0 4px 16px -4px rgba(225, 29, 72, 0.15);
 }
 .celebration-theme-marriage_anniversary [class*="CardHeader"] h3,
 .celebration-theme-marriage_anniversary .section-pill {
-    color: #9d174d !important;
+    color: #9f1239 !important;
 }
 
 /* Custom Event Theme — emerald/teal accents */
