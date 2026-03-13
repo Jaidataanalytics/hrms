@@ -263,6 +263,19 @@ On-the-fly normalization during payroll processing:
 - Total: 37 MIS templates, 155 KPIs, 29 KRAs across 29 employees
 - Auto-seed migration bumped to v4
 
+### Smart MIS Redesign + KPI Auto-Calculation Engine (Mar 13, 2026)
+- **Redesigned MIS fields** for Abritee, Preeti, Shainy: Neutral daily work log framing instead of pointed KPI questions
+  - "Overdue Enquiries" → "Enquiries Followed Up Today" + "Total in Pipeline" (system calculates overdue %)
+  - "Unassigned Cleared" → "Enquiries Closed/Resolved" + "New Received" (system calculates clearance rate)
+  - All fields use positive/neutral language; KPI metrics derived behind the scenes
+- **KPI Auto-Calculation Engine**: New endpoint `GET /api/performance/kpi-auto-calculate/{employee_id}`
+  - Aggregates daily MIS entries over configurable period (weekly/monthly/quarterly)
+  - Evaluates auto_formula expressions (ratios, averages, min/max) against MIS field sums/averages
+  - Applies scoring rubric to convert calculated values to scores (10-point scale)
+  - Returns weighted total score with per-KPI breakdown
+- **MIS templates now support**: `required: true` flag, `auto_formula` on KPIs for engine linkage
+- Migration bumped to v5; verified with simulated data: 85.6% weighted score for Abritee test case
+
 ## Key Files
 - `/app/backend/routes/payroll.py` - Payroll API routes + Sunday-as-leave orchestration
 - `/app/backend/routes/payroll_v2.py` - Payroll calculation engine

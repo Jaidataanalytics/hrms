@@ -1037,6 +1037,167 @@ async def get_company_dashboard(request: Request, period: str = "monthly"):
     }
 
 
+# ==================== KPI AUTO-CALCULATION ENGINE ====================
+
+def _score_from_rubric(value, scoring_rubric, max_marks):
+    """Convert a calculated value to a score based on the rubric text."""
+    if value is None:
+        return 0
+    rubric = scoring_rubric.lower()
+    
+    # Handle inverse metrics (lower is better, like overdue %)
+    if "below 5%" in rubric and "10/10" in rubric:
+        if value <= 5: return max_marks
+        elif value <= 10: return max_marks * 0.7
+        else: return max_marks * 0.3
+    
+    # Handle percentage-based targets (higher is better)
+    if "100%" in rubric and ("10/10" in rubric or "full" in rubric):
+        if value >= 100: return max_marks
+        elif value >= 95: return max_marks * 0.9
+        elif value >= 80: return max_marks * 0.7
+        elif value >= 70: return max_marks * 0.6
+        else: return max_marks * 0.3
+    
+    if "above 95%" in rubric:
+        if value >= 95: return max_marks
+        elif value >= 80: return max_marks * 0.7
+        else: return max_marks * 0.3
+    
+    # Time-based (lower is better for response time)
+    if "under 15min" in rubric or "15-30" in rubric:
+        if value <= 15: return max_marks
+        elif value <= 30: return max_marks * 0.8
+        elif value <= 60: return max_marks * 0.5
+        else: return max_marks * 0.2
+    
+    # Production targets (sum-based)
+    if "3600" in rubric:
+        ratio = value / 3600
+        if ratio >= 1: return max_marks
+        elif ratio >= 0.85: return max_marks * 0.9
+        elif ratio >= 0.7: return max_marks * 0.72
+        else: return max_marks * 0.6
+    
+    # Default proportional scoring
+    target = max_marks
+    return min(max_marks, (value / 100) * max_marks) if value <= 100 else max_marks
+
+
+@router.get("/kpi-auto-calculate/{employee_id}")
+async def auto_calculate_kpis(employee_id: str, request: Request, period: str = "monthly"):
+    """Auto-calculate KPI scores from MIS entries for an employee."""
+    user = await get_current_user(request)
+    
+    # Date range
+    now = datetime.now(timezone.utc)
+    if period == "weekly":
+        from_date = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+    elif period == "quarterly":
+        from_date = (now - timedelta(days=90)).strftime("%Y-%m-%d")
+    else:
+        from_date = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    to_date = now.strftime("%Y-%m-%d")
+    
+    # Get KPIs with auto formulas
+    kpis = await db.kpi_definitions.find(
+        {"employee_id": employee_id, "calculation_type": "auto", "is_active": True},
+        {"_id": 0}
+    ).to_list(50)
+    
+    if not kpis:
+        return {"employee_id": employee_id, "period": period, "scores": [], "message": "No auto-calculable KPIs found"}
+    
+    # Get MIS entries for the period
+    entries = await db.mis_entries.find(
+        {"employee_id": employee_id, "date": {"$gte": from_date, "$lte": to_date}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    if not entries:
+        return {"employee_id": employee_id, "period": period, "scores": [], "total_entries": 0, "message": "No MIS entries found for this period"}
+    
+    # Aggregate MIS field values
+    field_sums = {}
+    field_counts = {}
+    for entry in entries:
+        data = entry.get("fields", {}) or entry.get("data", {})
+        for key, val in data.items():
+            if isinstance(val, (int, float)):
+                field_sums[key] = field_sums.get(key, 0) + val
+                field_counts[key] = field_counts.get(key, 0) + 1
+    
+    field_avgs = {k: field_sums[k] / field_counts[k] for k in field_sums if field_counts.get(k, 0) > 0}
+    
+    # Calculate each KPI score
+    scores = []
+    for kpi in kpis:
+        formula = kpi.get("auto_formula", "")
+        calculated_value = None
+        
+        if formula:
+            # Parse and evaluate the formula safely
+            try:
+                # Replace field references with actual values
+                expr = formula
+                # Handle avg() function
+                if expr.startswith("avg("):
+                    field_name = expr[4:-1]
+                    calculated_value = field_avgs.get(field_name)
+                # Handle min() function
+                elif expr.startswith("min("):
+                    inner = expr[4:-1]
+                    parts = inner.split(",", 1)
+                    cap = float(parts[0].strip())
+                    sub_expr = parts[1].strip()
+                    for key in sorted(field_sums.keys(), key=len, reverse=True):
+                        sub_expr = sub_expr.replace(key, str(field_sums.get(key, 0)))
+                    sub_expr = sub_expr.replace("max(", "max(").replace("min(", "min(")
+                    result = eval(sub_expr, {"__builtins__": {"max": max, "min": min}})
+                    calculated_value = min(cap, result)
+                else:
+                    # Standard formula: replace field names with sums
+                    for key in sorted(field_sums.keys(), key=len, reverse=True):
+                        expr = expr.replace(key, str(field_sums.get(key, 0)))
+                    # Safety: only allow math operations
+                    allowed = set("0123456789.+-*/() ")
+                    if all(c in allowed for c in expr):
+                        calculated_value = eval(expr)
+                    else:
+                        calculated_value = None
+            except Exception:
+                calculated_value = None
+        
+        score = _score_from_rubric(calculated_value, kpi.get("scoring_rubric", ""), kpi.get("max_marks", 10))
+        
+        scores.append({
+            "kpi_id": kpi.get("kpi_id"),
+            "kpi_name": kpi.get("name"),
+            "weight": kpi.get("weight", 0),
+            "max_marks": kpi.get("max_marks", 10),
+            "calculated_value": round(calculated_value, 2) if calculated_value is not None else None,
+            "auto_score": round(score, 1),
+            "formula": kpi.get("auto_formula", ""),
+            "scoring_rubric": kpi.get("scoring_rubric", ""),
+        })
+    
+    # Calculate weighted total
+    total_weight = sum(s["weight"] for s in scores if s["weight"])
+    weighted_score = sum((s["auto_score"] / s["max_marks"]) * s["weight"] for s in scores if s["weight"] and s["max_marks"]) if total_weight > 0 else 0
+    
+    return {
+        "employee_id": employee_id,
+        "period": period,
+        "from_date": from_date,
+        "to_date": to_date,
+        "total_entries": len(entries),
+        "scores": scores,
+        "weighted_score": round(weighted_score, 1),
+        "total_weight": total_weight,
+        "weighted_percentage": round((weighted_score / total_weight) * 100, 1) if total_weight > 0 else 0
+    }
+
+
 # ==================== ACHIEVEMENT TRACKER ====================
 
 ACHIEVEMENT_CATEGORIES = ["Innovation", "Achievement", "Improvement", "IT", "Planning", "Training", "Quality", "Other"]
@@ -1669,37 +1830,44 @@ async def seed_employee_data(request: Request):
         "name": "Abritee Das Roy",
         "role": "CRM Executive (BH+CG)",
         "frequency": "daily",
+        "required": True,
         "fields": [
-            {"key": "overdue_enquiries", "label": "Overdue Enquiries (BH+CG)", "type": "number"},
-            {"key": "total_enquiries", "label": "Total Active Enquiries", "type": "number"},
-            {"key": "unassigned_cleared", "label": "Unassigned Enquiries Cleared", "type": "number"},
-            {"key": "total_unassigned", "label": "Total Unassigned at Start of Day", "type": "number"},
-            {"key": "calls_made", "label": "Customer Calls Made (Existing + Lost)", "type": "number"},
-            {"key": "calls_target", "label": "Calls Target for the Day", "type": "number"},
-            {"key": "leads_handled", "label": "Online Leads Handled (IndiaMART/FB/Website)", "type": "number"},
-            {"key": "avg_response_time_mins", "label": "Avg Lead Response Time (minutes)", "type": "number"},
-            {"key": "remarks", "label": "Remarks", "type": "text"},
+            {"key": "enquiries_in_pipeline", "label": "Total Enquiries in Your Pipeline", "type": "number", "required": True},
+            {"key": "enquiries_followed_up", "label": "Enquiries Followed Up Today", "type": "number", "required": True},
+            {"key": "new_enquiries_received", "label": "New Enquiries Received Today", "type": "number"},
+            {"key": "enquiries_closed", "label": "Enquiries Closed/Resolved Today", "type": "number"},
+            {"key": "calls_completed", "label": "Customer Calls Completed", "type": "number", "required": True},
+            {"key": "call_target", "label": "Today's Call Target", "type": "number", "required": True},
+            {"key": "online_leads_received", "label": "Online Leads Received (IndiaMART/FB/Web)", "type": "number"},
+            {"key": "online_leads_responded", "label": "Online Leads Responded To", "type": "number"},
+            {"key": "first_response_mins", "label": "First Response Time (mins from receipt)", "type": "number"},
+            {"key": "remarks", "label": "Today's Key Activities / Notes", "type": "text"},
         ],
         "monthly_fields": [
-            {"key": "won_cases", "label": "Won Cases (SO No, Dealer, KVA)", "type": "text"},
-            {"key": "won_count", "label": "Won Cases Count", "type": "number"},
-            {"key": "reports_submitted_on_time", "label": "Monthly reports submitted on time?", "type": "boolean"},
+            {"key": "won_cases_details", "label": "Won Cases This Month (SO No, Dealer, KVA)", "type": "text"},
+            {"key": "won_count", "label": "Total Won Cases", "type": "number"},
+            {"key": "reports_submitted", "label": "Reports Submitted On Time?", "type": "boolean"},
         ],
         "kpis": [
-            {"name": "Overdue Enquiries (BH+CG)", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "overdue_enquiries", "category": "quality", "weight": 10,
-             "scoring_rubric": "Below 5% = Full marks (10/10), 5-10% = proportional, Above 10% = 0 marks", "max_marks": 10},
-            {"name": "Unassigned Enquiries Clearance", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "unassigned_cleared", "category": "quality", "weight": 10,
-             "scoring_rubric": "Below 5% unassigned = Full marks, Above 10% = 0 marks", "max_marks": 10},
-            {"name": "Customer Calling (Existing + Lost)", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "calls_made", "category": "sales", "weight": 10,
-             "scoring_rubric": "CG=35 leads target. Target 100% completion = full marks, Below 100% = 0", "max_marks": 10},
-            {"name": "Lead Handling & Follow-up", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "leads_handled", "category": "sales", "weight": 40,
-             "scoring_rubric": "Based on report: open/faulty/decline, Hot/warm/cold, Follow-up dates & reasons tracked", "max_marks": 10},
-            {"name": "Online Lead Response Time", "unit": "mins", "target_value": 30, "calculation_type": "auto", "mis_field_key": "avg_response_time_mins", "category": "efficiency", "weight": 20,
-             "scoring_rubric": "Measure time from lead shared to first response. Compare with team threshold.", "max_marks": 10},
-            {"name": "Won Cases Identification", "unit": "count", "target_value": 0, "calculation_type": "manual", "mis_field_key": "won_count", "category": "sales", "weight": 5,
-             "scoring_rubric": "Bonus: Proper details (SO No, Dealer name, KVA)", "max_marks": 10},
-            {"name": "Monthly Reports Timeliness", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "mis_field_key": "reports_submitted_on_time", "category": "compliance", "weight": 5,
-             "scoring_rubric": "Target 100% on-time (by 5th of month). Below 100% = 0", "max_marks": 10},
+            {"name": "Pipeline Health (Overdue %)", "unit": "%", "target_value": 5, "calculation_type": "auto", "category": "quality", "weight": 10,
+             "auto_formula": "((enquiries_in_pipeline - enquiries_followed_up) / enquiries_in_pipeline) * 100",
+             "scoring_rubric": "Auto: (Pipeline - Followed Up) / Pipeline × 100. Below 5% = 10/10, 5-10% = 7/10, Above 10% = 3/10", "max_marks": 10},
+            {"name": "Pipeline Clearance Rate", "unit": "%", "target_value": 95, "calculation_type": "auto", "category": "quality", "weight": 10,
+             "auto_formula": "(enquiries_closed / new_enquiries_received) * 100",
+             "scoring_rubric": "Auto: Closed / New Received × 100. Above 95% = 10/10, 80-95% = 7/10, Below 80% = 3/10", "max_marks": 10},
+            {"name": "Call Completion Rate", "unit": "%", "target_value": 100, "calculation_type": "auto", "category": "sales", "weight": 10,
+             "auto_formula": "(calls_completed / call_target) * 100",
+             "scoring_rubric": "Auto: Calls Completed / Target × 100. 100%+ = 10/10, 80-99% = 7/10, Below 80% = 3/10", "max_marks": 10},
+            {"name": "Lead Response & Handling", "unit": "score", "target_value": 10, "calculation_type": "auto", "category": "sales", "weight": 40,
+             "auto_formula": "(online_leads_responded / online_leads_received) * 100",
+             "scoring_rubric": "Auto: Leads Responded / Leads Received × 100. 100% = 10/10, 90-99% = 8/10, 70-89% = 6/10, Below 70% = 3/10", "max_marks": 10},
+            {"name": "Lead Response Speed", "unit": "mins", "target_value": 30, "calculation_type": "auto", "category": "efficiency", "weight": 20,
+             "auto_formula": "avg(first_response_mins)",
+             "scoring_rubric": "Auto: Avg first_response_mins. Under 15min = 10/10, 15-30 = 8/10, 30-60 = 5/10, Over 60 = 2/10", "max_marks": 10},
+            {"name": "Won Cases", "unit": "count", "target_value": 0, "calculation_type": "manual", "category": "sales", "weight": 5,
+             "scoring_rubric": "Monthly: Count of won cases with proper details", "max_marks": 10},
+            {"name": "Reporting Compliance", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "category": "compliance", "weight": 5,
+             "scoring_rubric": "Monthly reports submitted by 5th. On time = 10/10, Late = 0/10", "max_marks": 10},
         ],
     }
 
@@ -1708,32 +1876,37 @@ async def seed_employee_data(request: Request):
         "name": "Preeti Verma",
         "role": "Enquiry Distribution & KPI Admin",
         "frequency": "daily",
+        "required": True,
         "fields": [
-            {"key": "enquiries_assigned", "label": "Enquiries Assigned to BDMs/Dealers", "type": "number"},
-            {"key": "total_enquiries_received", "label": "Total Enquiries Received (HKVA/MKVA)", "type": "number"},
-            {"key": "assigned_within_30min", "label": "Assigned Within 30 Minutes", "type": "number"},
-            {"key": "dispatch_entries_updated", "label": "Dispatch Register Entries Updated", "type": "number"},
-            {"key": "kpi_sheets_updated", "label": "BDM/ASM KPI Sheets Updated", "type": "number"},
-            {"key": "total_kpi_sheets", "label": "Total BDM/ASM KPI Sheets to Maintain", "type": "number"},
-            {"key": "remarks", "label": "Remarks", "type": "text"},
+            {"key": "enquiries_received", "label": "Total Enquiries Received Today (HKVA/MKVA)", "type": "number", "required": True},
+            {"key": "enquiries_distributed", "label": "Enquiries Distributed to BDMs/Dealers", "type": "number", "required": True},
+            {"key": "distributed_within_30", "label": "Distributed Within 30 Minutes", "type": "number", "required": True},
+            {"key": "followups_done", "label": "Follow-ups Completed on Distributed Enquiries", "type": "number"},
+            {"key": "dispatch_entries", "label": "Dispatch Register Entries Made", "type": "number", "required": True},
+            {"key": "kpi_sheets_worked", "label": "BDM/ASM KPI Sheets Updated Today", "type": "number", "required": True},
+            {"key": "total_kpi_sheets", "label": "Total KPI Sheets to Maintain", "type": "number", "required": True},
+            {"key": "remarks", "label": "Today's Key Activities / Notes", "type": "text"},
         ],
         "monthly_fields": [
-            {"key": "won_cases", "label": "Won Cases Identified (SO No, Dealer, KVA)", "type": "text"},
-            {"key": "won_count", "label": "Won Cases Count", "type": "number"},
-            {"key": "reports_submitted_on_time", "label": "Monthly reports submitted on time?", "type": "boolean"},
-            {"key": "audit_completed", "label": "KPI Sheet Audit Completed?", "type": "boolean"},
+            {"key": "won_cases_details", "label": "Won Cases Identified (SO No, Dealer, KVA)", "type": "text"},
+            {"key": "won_count", "label": "Total Won Cases", "type": "number"},
+            {"key": "reports_submitted", "label": "Reports Submitted On Time?", "type": "boolean"},
+            {"key": "audit_done", "label": "KPI Sheet Audit Completed?", "type": "boolean"},
         ],
         "kpis": [
-            {"name": "Enquiry Distribution & Follow-up", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "assigned_within_30min", "category": "efficiency", "weight": 40,
-             "scoring_rubric": "% HKVA/MKVA enquiries assigned within 30 mins & punctual follow-up", "max_marks": 10},
-            {"name": "Dispatch Register", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "dispatch_entries_updated", "category": "compliance", "weight": 10,
-             "scoring_rubric": "Dealer-wise registers updated on time daily", "max_marks": 10},
-            {"name": "KPI Sheet Maintenance & Audit", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "kpi_sheets_updated", "category": "compliance", "weight": 40,
-             "scoring_rubric": "% sheets updated for all BDMs/ASMs & audit completed", "max_marks": 10},
-            {"name": "Monthly Reports Timeliness", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "mis_field_key": "reports_submitted_on_time", "category": "compliance", "weight": 5,
-             "scoring_rubric": "Target 100% on-time (by 5th of month). Below 100% = 0", "max_marks": 10},
-            {"name": "Won Cases Identification", "unit": "count", "target_value": 0, "calculation_type": "manual", "mis_field_key": "won_count", "category": "sales", "weight": 5,
-             "scoring_rubric": "Bonus: Proper details (SO No, Dealer name, KVA)", "max_marks": 10},
+            {"name": "Distribution Speed & Accuracy", "unit": "%", "target_value": 95, "calculation_type": "auto", "category": "efficiency", "weight": 40,
+             "auto_formula": "(distributed_within_30 / enquiries_received) * 100",
+             "scoring_rubric": "Auto: Distributed within 30min / Total received × 100. Above 95% = 10/10, 80-95% = 7/10, Below 80% = 3/10", "max_marks": 10},
+            {"name": "Dispatch Register Accuracy", "unit": "score", "target_value": 10, "calculation_type": "auto", "category": "compliance", "weight": 10,
+             "auto_formula": "min(10, (dispatch_entries / max(enquiries_distributed, 1)) * 10)",
+             "scoring_rubric": "Auto: Entries should match distributed enquiries. 100% match = 10/10", "max_marks": 10},
+            {"name": "KPI Sheet Completion", "unit": "%", "target_value": 100, "calculation_type": "auto", "category": "compliance", "weight": 40,
+             "auto_formula": "(kpi_sheets_worked / total_kpi_sheets) * 100",
+             "scoring_rubric": "Auto: Sheets updated / Total sheets × 100. 100% = 10/10, 90-99% = 8/10, Below 90% = 5/10", "max_marks": 10},
+            {"name": "Reporting Compliance", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "category": "compliance", "weight": 5,
+             "scoring_rubric": "Monthly reports submitted by 5th. On time = 10/10, Late = 0/10", "max_marks": 10},
+            {"name": "Won Cases", "unit": "count", "target_value": 0, "calculation_type": "manual", "category": "sales", "weight": 5,
+             "scoring_rubric": "Monthly: Count of won cases with proper details", "max_marks": 10},
         ],
     }
 
@@ -1742,37 +1915,44 @@ async def seed_employee_data(request: Request):
         "name": "Shainy Priyanka Kujur",
         "role": "CRM Executive (JH+BH)",
         "frequency": "daily",
+        "required": True,
         "fields": [
-            {"key": "overdue_enquiries", "label": "Overdue Enquiries (JH)", "type": "number"},
-            {"key": "total_enquiries", "label": "Total Active Enquiries", "type": "number"},
-            {"key": "unassigned_cleared", "label": "Unassigned Enquiries Cleared (JH)", "type": "number"},
-            {"key": "total_unassigned", "label": "Total Unassigned at Start of Day", "type": "number"},
-            {"key": "calls_made", "label": "Customer Calls Made (JH+BH Existing + Lost)", "type": "number"},
-            {"key": "calls_target", "label": "Calls Target (35+35 leads)", "type": "number"},
-            {"key": "leads_handled", "label": "Leads Managed (IndiaMART/RERA incl LMH)", "type": "number"},
-            {"key": "remarks", "label": "Remarks", "type": "text"},
+            {"key": "enquiries_in_pipeline", "label": "Total Enquiries in Your Pipeline (JH+BH)", "type": "number", "required": True},
+            {"key": "enquiries_followed_up", "label": "Enquiries Followed Up Today", "type": "number", "required": True},
+            {"key": "new_enquiries_received", "label": "New Enquiries Received Today", "type": "number"},
+            {"key": "enquiries_closed", "label": "Enquiries Closed/Resolved Today", "type": "number"},
+            {"key": "calls_completed", "label": "Customer Calls Completed (JH+BH)", "type": "number", "required": True},
+            {"key": "call_target", "label": "Today's Call Target", "type": "number", "required": True},
+            {"key": "leads_received", "label": "Leads Received (IndiaMART/RERA/LMH)", "type": "number"},
+            {"key": "leads_actioned", "label": "Leads Actioned/Responded To", "type": "number"},
+            {"key": "audit_entries_today", "label": "Enquiry Audit Entries Reviewed", "type": "number"},
+            {"key": "remarks", "label": "Today's Key Activities / Notes", "type": "text"},
         ],
         "monthly_fields": [
-            {"key": "jh_audit_completed", "label": "JH Open Enquiry Audit Completed? (weekly)", "type": "boolean"},
-            {"key": "won_cases", "label": "Won Cases (SO No, Dealer, KVA)", "type": "text"},
-            {"key": "won_count", "label": "Won Cases Count", "type": "number"},
-            {"key": "reports_submitted_on_time", "label": "Monthly reports submitted on time?", "type": "boolean"},
+            {"key": "won_cases_details", "label": "Won Cases (SO No, Dealer, KVA)", "type": "text"},
+            {"key": "won_count", "label": "Total Won Cases", "type": "number"},
+            {"key": "reports_submitted", "label": "Reports Submitted On Time?", "type": "boolean"},
         ],
         "kpis": [
-            {"name": "Overdue Enquiries (JH)", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "overdue_enquiries", "category": "quality", "weight": 10,
-             "scoring_rubric": "Below 5% = Full marks, Above 10% = 0", "max_marks": 10},
-            {"name": "Unassigned Enquiries Clearance (JH)", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "unassigned_cleared", "category": "quality", "weight": 10,
-             "scoring_rubric": "Below 5% unassigned = Full marks, Above 10% = 0", "max_marks": 10},
-            {"name": "Customer Calling (JH+BH)", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "calls_made", "category": "sales", "weight": 10,
-             "scoring_rubric": "JH+BH 35+35 leads. Target 100% completion = full marks", "max_marks": 10},
-            {"name": "Lead Management (IndiaMART/RERA/LMH)", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "leads_handled", "category": "sales", "weight": 40,
-             "scoring_rubric": "Based on report: open/faulty/decline, Hot/warm/cold, Follow-up dates & reasons", "max_marks": 10},
-            {"name": "JH Open Enquiry Audit", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "jh_audit_completed", "category": "compliance", "weight": 20,
-             "scoring_rubric": "Weekly audit: Enquiry Ageing Days, No of Follow-ups, Last Follow-up date, Next Follow-up date", "max_marks": 10},
-            {"name": "Monthly Reports Timeliness", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "mis_field_key": "reports_submitted_on_time", "category": "compliance", "weight": 5,
-             "scoring_rubric": "Target 100% on-time (by 5th of month). Below 100% = 0", "max_marks": 10},
-            {"name": "Won Cases Identification", "unit": "count", "target_value": 0, "calculation_type": "manual", "mis_field_key": "won_count", "category": "sales", "weight": 5,
-             "scoring_rubric": "Bonus: Proper details (SO No, Dealer name, KVA)", "max_marks": 10},
+            {"name": "Pipeline Health (Overdue %)", "unit": "%", "target_value": 5, "calculation_type": "auto", "category": "quality", "weight": 10,
+             "auto_formula": "((enquiries_in_pipeline - enquiries_followed_up) / enquiries_in_pipeline) * 100",
+             "scoring_rubric": "Auto: (Pipeline - Followed Up) / Pipeline × 100. Below 5% = 10/10, 5-10% = 7/10, Above 10% = 3/10", "max_marks": 10},
+            {"name": "Pipeline Clearance Rate", "unit": "%", "target_value": 95, "calculation_type": "auto", "category": "quality", "weight": 10,
+             "auto_formula": "(enquiries_closed / new_enquiries_received) * 100",
+             "scoring_rubric": "Auto: Closed / New Received × 100. Above 95% = 10/10, 80-95% = 7/10, Below 80% = 3/10", "max_marks": 10},
+            {"name": "Call Completion Rate", "unit": "%", "target_value": 100, "calculation_type": "auto", "category": "sales", "weight": 10,
+             "auto_formula": "(calls_completed / call_target) * 100",
+             "scoring_rubric": "Auto: Calls / Target × 100. 100%+ = 10/10, 80-99% = 7/10, Below 80% = 3/10", "max_marks": 10},
+            {"name": "Lead Response & Management", "unit": "score", "target_value": 10, "calculation_type": "auto", "category": "sales", "weight": 40,
+             "auto_formula": "(leads_actioned / leads_received) * 100",
+             "scoring_rubric": "Auto: Leads Actioned / Received × 100. 100% = 10/10, 90-99% = 8/10, 70-89% = 6/10, Below 70% = 3/10", "max_marks": 10},
+            {"name": "Enquiry Audit Diligence", "unit": "score", "target_value": 10, "calculation_type": "auto", "category": "compliance", "weight": 20,
+             "auto_formula": "min(10, (audit_entries_today / max(enquiries_in_pipeline, 1)) * 50)",
+             "scoring_rubric": "Auto: Audit entries reviewed relative to pipeline size. Regular reviews = higher score", "max_marks": 10},
+            {"name": "Reporting Compliance", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "category": "compliance", "weight": 5,
+             "scoring_rubric": "Monthly reports submitted by 5th. On time = 10/10, Late = 0/10", "max_marks": 10},
+            {"name": "Won Cases", "unit": "count", "target_value": 0, "calculation_type": "manual", "category": "sales", "weight": 5,
+             "scoring_rubric": "Monthly: Count of won cases with proper details", "max_marks": 10},
         ],
     }
     
@@ -2167,6 +2347,7 @@ async def seed_employee_data(request: Request):
             "name": f"{data['name']} - {freq_label} MIS",
             "frequency": freq,
             "fields": data["fields"],
+            "required": data.get("required", False),
             "is_active": True,
             "created_at": now,
             "created_by": "system"
@@ -2208,6 +2389,7 @@ async def seed_employee_data(request: Request):
                 "category": kpi_data.get("category", "operational"),
                 "scoring_rubric": kpi_data.get("scoring_rubric", ""),
                 "max_marks": kpi_data.get("max_marks", 100),
+                "auto_formula": kpi_data.get("auto_formula", ""),
                 "is_active": True,
                 "created_at": now,
                 "created_by": "system"
@@ -2248,7 +2430,7 @@ async def auto_seed_performance_data():
     logger = logging.getLogger("performance.seed")
     
     # Check migration flag - lightweight single query
-    migration = await db.migrations.find_one({"migration_id": "perf_seed_v4"})
+    migration = await db.migrations.find_one({"migration_id": "perf_seed_v5"})
     if migration:
         logger.info("Performance seed migration already ran. Skipping.")
         return
@@ -2267,7 +2449,7 @@ async def auto_seed_performance_data():
         
         # Mark migration as complete
         await db.migrations.insert_one({
-            "migration_id": "perf_seed_v4",
+            "migration_id": "perf_seed_v5",
             "ran_at": datetime.now(timezone.utc).isoformat(),
             "result": result.get("message", str(result))
         })
