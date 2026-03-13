@@ -192,6 +192,7 @@ On-the-fly normalization during payroll processing:
 
 ### P1 (High)
 - [x] Dynamic dashboard celebration theming (DONE - Feb 13, 2026)
+- [x] Event-based celebration modal + immersive theming (DONE - Mar 13, 2026)
 - [ ] Full E2E testing of leave approvals, CO requests, cancellations
 - [ ] Mobile app build fix (MainActivity.java + Gradle config)
 - [ ] Mobile location permissions
@@ -275,6 +276,19 @@ On-the-fly normalization during payroll processing:
   - Returns weighted total score with per-KPI breakdown
 - **MIS templates now support**: `required: true` flag, `auto_formula` on KPIs for engine linkage
 - Migration bumped to v5; verified with simulated data: 85.6% weighted score for Abritee test case
+
+### Event-Based Dynamic Dashboard Theming Enhancement (Mar 13, 2026)
+- **CelebrationModal component**: Full-screen animated popup card that appears once per day when an employee has an event
+  - Birthday: amber/gold theme with Gift icon, "Happy Birthday!" message
+  - Work Anniversary: blue/indigo theme with Star icon, shows years badge
+  - Marriage Anniversary: rose/pink theme with Heart icon
+  - Custom events: emerald/teal theme with PartyPopper icon
+  - Animated floating particles, sparkle effects, gradient backgrounds
+  - Once-per-day display via localStorage (`celebration_shown_{user_id}`)
+- **Enhanced CSS theming**: Deeper visual treatment for the entire dashboard
+  - Animated shimmer bar, floating particle background, themed stat cards/welcome/quick-actions
+- Files: `CelebrationModal.js` (new), `CelebrationBanner.js` (updated), `Dashboard.js` (updated), `index.css` (enhanced)
+- Tested: 100% backend (13/13), 100% frontend (iteration_51)
 
 ## Key Files
 - `/app/backend/routes/payroll.py` - Payroll API routes + Sunday-as-leave orchestration
