@@ -1663,6 +1663,118 @@ async def seed_employee_data(request: Request):
              "scoring_rubric": "CTR = Clicks/Impressions * 100", "max_marks": 100},
         ],
     }
+
+    # --- ABRITEE DAS ROY - CRM/Lead Management (BH+CG) ---
+    EMPLOYEE_MIS["EMP7BEEC93A"] = {
+        "name": "Abritee Das Roy",
+        "role": "CRM Executive (BH+CG)",
+        "frequency": "daily",
+        "fields": [
+            {"key": "overdue_enquiries", "label": "Overdue Enquiries (BH+CG)", "type": "number"},
+            {"key": "total_enquiries", "label": "Total Active Enquiries", "type": "number"},
+            {"key": "unassigned_cleared", "label": "Unassigned Enquiries Cleared", "type": "number"},
+            {"key": "total_unassigned", "label": "Total Unassigned at Start of Day", "type": "number"},
+            {"key": "calls_made", "label": "Customer Calls Made (Existing + Lost)", "type": "number"},
+            {"key": "calls_target", "label": "Calls Target for the Day", "type": "number"},
+            {"key": "leads_handled", "label": "Online Leads Handled (IndiaMART/FB/Website)", "type": "number"},
+            {"key": "avg_response_time_mins", "label": "Avg Lead Response Time (minutes)", "type": "number"},
+            {"key": "remarks", "label": "Remarks", "type": "text"},
+        ],
+        "monthly_fields": [
+            {"key": "won_cases", "label": "Won Cases (SO No, Dealer, KVA)", "type": "text"},
+            {"key": "won_count", "label": "Won Cases Count", "type": "number"},
+            {"key": "reports_submitted_on_time", "label": "Monthly reports submitted on time?", "type": "boolean"},
+        ],
+        "kpis": [
+            {"name": "Overdue Enquiries (BH+CG)", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "overdue_enquiries", "category": "quality", "weight": 10,
+             "scoring_rubric": "Below 5% = Full marks (10/10), 5-10% = proportional, Above 10% = 0 marks", "max_marks": 10},
+            {"name": "Unassigned Enquiries Clearance", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "unassigned_cleared", "category": "quality", "weight": 10,
+             "scoring_rubric": "Below 5% unassigned = Full marks, Above 10% = 0 marks", "max_marks": 10},
+            {"name": "Customer Calling (Existing + Lost)", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "calls_made", "category": "sales", "weight": 10,
+             "scoring_rubric": "CG=35 leads target. Target 100% completion = full marks, Below 100% = 0", "max_marks": 10},
+            {"name": "Lead Handling & Follow-up", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "leads_handled", "category": "sales", "weight": 40,
+             "scoring_rubric": "Based on report: open/faulty/decline, Hot/warm/cold, Follow-up dates & reasons tracked", "max_marks": 10},
+            {"name": "Online Lead Response Time", "unit": "mins", "target_value": 30, "calculation_type": "auto", "mis_field_key": "avg_response_time_mins", "category": "efficiency", "weight": 20,
+             "scoring_rubric": "Measure time from lead shared to first response. Compare with team threshold.", "max_marks": 10},
+            {"name": "Won Cases Identification", "unit": "count", "target_value": 0, "calculation_type": "manual", "mis_field_key": "won_count", "category": "sales", "weight": 5,
+             "scoring_rubric": "Bonus: Proper details (SO No, Dealer name, KVA)", "max_marks": 10},
+            {"name": "Monthly Reports Timeliness", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "mis_field_key": "reports_submitted_on_time", "category": "compliance", "weight": 5,
+             "scoring_rubric": "Target 100% on-time (by 5th of month). Below 100% = 0", "max_marks": 10},
+        ],
+    }
+
+    # --- PREETI VERMA - Enquiry Distribution & KPI Administration ---
+    EMPLOYEE_MIS["EMP19256641"] = {
+        "name": "Preeti Verma",
+        "role": "Enquiry Distribution & KPI Admin",
+        "frequency": "daily",
+        "fields": [
+            {"key": "enquiries_assigned", "label": "Enquiries Assigned to BDMs/Dealers", "type": "number"},
+            {"key": "total_enquiries_received", "label": "Total Enquiries Received (HKVA/MKVA)", "type": "number"},
+            {"key": "assigned_within_30min", "label": "Assigned Within 30 Minutes", "type": "number"},
+            {"key": "dispatch_entries_updated", "label": "Dispatch Register Entries Updated", "type": "number"},
+            {"key": "kpi_sheets_updated", "label": "BDM/ASM KPI Sheets Updated", "type": "number"},
+            {"key": "total_kpi_sheets", "label": "Total BDM/ASM KPI Sheets to Maintain", "type": "number"},
+            {"key": "remarks", "label": "Remarks", "type": "text"},
+        ],
+        "monthly_fields": [
+            {"key": "won_cases", "label": "Won Cases Identified (SO No, Dealer, KVA)", "type": "text"},
+            {"key": "won_count", "label": "Won Cases Count", "type": "number"},
+            {"key": "reports_submitted_on_time", "label": "Monthly reports submitted on time?", "type": "boolean"},
+            {"key": "audit_completed", "label": "KPI Sheet Audit Completed?", "type": "boolean"},
+        ],
+        "kpis": [
+            {"name": "Enquiry Distribution & Follow-up", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "assigned_within_30min", "category": "efficiency", "weight": 40,
+             "scoring_rubric": "% HKVA/MKVA enquiries assigned within 30 mins & punctual follow-up", "max_marks": 10},
+            {"name": "Dispatch Register", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "dispatch_entries_updated", "category": "compliance", "weight": 10,
+             "scoring_rubric": "Dealer-wise registers updated on time daily", "max_marks": 10},
+            {"name": "KPI Sheet Maintenance & Audit", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "kpi_sheets_updated", "category": "compliance", "weight": 40,
+             "scoring_rubric": "% sheets updated for all BDMs/ASMs & audit completed", "max_marks": 10},
+            {"name": "Monthly Reports Timeliness", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "mis_field_key": "reports_submitted_on_time", "category": "compliance", "weight": 5,
+             "scoring_rubric": "Target 100% on-time (by 5th of month). Below 100% = 0", "max_marks": 10},
+            {"name": "Won Cases Identification", "unit": "count", "target_value": 0, "calculation_type": "manual", "mis_field_key": "won_count", "category": "sales", "weight": 5,
+             "scoring_rubric": "Bonus: Proper details (SO No, Dealer name, KVA)", "max_marks": 10},
+        ],
+    }
+
+    # --- SHAINY PRIYANKA KUJUR - CRM/Lead Management (JH+BH) ---
+    EMPLOYEE_MIS["EMP1979D304"] = {
+        "name": "Shainy Priyanka Kujur",
+        "role": "CRM Executive (JH+BH)",
+        "frequency": "daily",
+        "fields": [
+            {"key": "overdue_enquiries", "label": "Overdue Enquiries (JH)", "type": "number"},
+            {"key": "total_enquiries", "label": "Total Active Enquiries", "type": "number"},
+            {"key": "unassigned_cleared", "label": "Unassigned Enquiries Cleared (JH)", "type": "number"},
+            {"key": "total_unassigned", "label": "Total Unassigned at Start of Day", "type": "number"},
+            {"key": "calls_made", "label": "Customer Calls Made (JH+BH Existing + Lost)", "type": "number"},
+            {"key": "calls_target", "label": "Calls Target (35+35 leads)", "type": "number"},
+            {"key": "leads_handled", "label": "Leads Managed (IndiaMART/RERA incl LMH)", "type": "number"},
+            {"key": "remarks", "label": "Remarks", "type": "text"},
+        ],
+        "monthly_fields": [
+            {"key": "jh_audit_completed", "label": "JH Open Enquiry Audit Completed? (weekly)", "type": "boolean"},
+            {"key": "won_cases", "label": "Won Cases (SO No, Dealer, KVA)", "type": "text"},
+            {"key": "won_count", "label": "Won Cases Count", "type": "number"},
+            {"key": "reports_submitted_on_time", "label": "Monthly reports submitted on time?", "type": "boolean"},
+        ],
+        "kpis": [
+            {"name": "Overdue Enquiries (JH)", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "overdue_enquiries", "category": "quality", "weight": 10,
+             "scoring_rubric": "Below 5% = Full marks, Above 10% = 0", "max_marks": 10},
+            {"name": "Unassigned Enquiries Clearance (JH)", "unit": "%", "target_value": 5, "calculation_type": "auto", "mis_field_key": "unassigned_cleared", "category": "quality", "weight": 10,
+             "scoring_rubric": "Below 5% unassigned = Full marks, Above 10% = 0", "max_marks": 10},
+            {"name": "Customer Calling (JH+BH)", "unit": "%", "target_value": 100, "calculation_type": "auto", "mis_field_key": "calls_made", "category": "sales", "weight": 10,
+             "scoring_rubric": "JH+BH 35+35 leads. Target 100% completion = full marks", "max_marks": 10},
+            {"name": "Lead Management (IndiaMART/RERA/LMH)", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "leads_handled", "category": "sales", "weight": 40,
+             "scoring_rubric": "Based on report: open/faulty/decline, Hot/warm/cold, Follow-up dates & reasons", "max_marks": 10},
+            {"name": "JH Open Enquiry Audit", "unit": "score", "target_value": 10, "calculation_type": "manual", "mis_field_key": "jh_audit_completed", "category": "compliance", "weight": 20,
+             "scoring_rubric": "Weekly audit: Enquiry Ageing Days, No of Follow-ups, Last Follow-up date, Next Follow-up date", "max_marks": 10},
+            {"name": "Monthly Reports Timeliness", "unit": "boolean", "target_value": 1, "calculation_type": "manual", "mis_field_key": "reports_submitted_on_time", "category": "compliance", "weight": 5,
+             "scoring_rubric": "Target 100% on-time (by 5th of month). Below 100% = 0", "max_marks": 10},
+            {"name": "Won Cases Identification", "unit": "count", "target_value": 0, "calculation_type": "manual", "mis_field_key": "won_count", "category": "sales", "weight": 5,
+             "scoring_rubric": "Bonus: Proper details (SO No, Dealer name, KVA)", "max_marks": 10},
+        ],
+    }
     
     # ============================================================
     # PURCHASE DEPARTMENT
@@ -2136,7 +2248,7 @@ async def auto_seed_performance_data():
     logger = logging.getLogger("performance.seed")
     
     # Check migration flag - lightweight single query
-    migration = await db.migrations.find_one({"migration_id": "perf_seed_v3"})
+    migration = await db.migrations.find_one({"migration_id": "perf_seed_v4"})
     if migration:
         logger.info("Performance seed migration already ran. Skipping.")
         return
@@ -2155,7 +2267,7 @@ async def auto_seed_performance_data():
         
         # Mark migration as complete
         await db.migrations.insert_one({
-            "migration_id": "perf_seed_v3",
+            "migration_id": "perf_seed_v4",
             "ran_at": datetime.now(timezone.utc).isoformat(),
             "result": result.get("message", str(result))
         })

@@ -255,6 +255,14 @@ On-the-fly normalization during payroll processing:
 - Total: 31 MIS templates, 136 KPIs, 29 KRAs across 26 employees
 - Tested: 100% backend (24/24), 100% frontend
 
+### Marketing Team KPIs/MIS - Abritee, Preeti, Shainy (Mar 13, 2026)
+- Added 3 Marketing employees from KPI Format FY26-27 files:
+  - Abritee Das Roy (CRM BH+CG): 7 KPIs, daily MIS (9 fields: overdue enquiries, calls, leads, response time) + monthly MIS
+  - Preeti Verma (Enquiry Distribution): 5 KPIs, daily MIS (7 fields: enquiries assigned, dispatch, KPI sheets) + monthly MIS
+  - Shainy Priyanka Kujur (CRM JH+BH): 7 KPIs, daily MIS (8 fields: overdue enquiries, calls, leads) + monthly MIS
+- Total: 37 MIS templates, 155 KPIs, 29 KRAs across 29 employees
+- Auto-seed migration bumped to v4
+
 ## Key Files
 - `/app/backend/routes/payroll.py` - Payroll API routes + Sunday-as-leave orchestration
 - `/app/backend/routes/payroll_v2.py` - Payroll calculation engine
