@@ -3027,6 +3027,32 @@ async def approve_leave(leave_id: str, request: Request):
             {"employee_id": leave_req["employee_id"], "leave_type_id": leave_req["leave_type_id"], "year": current_year},
             {"$inc": {"used": leave_req["days"], "pending": -leave_req["days"]}}
         )
+
+        # Auto-mark attendance as 'leave' for all leave dates
+        from datetime import timedelta
+        try:
+            from_dt = datetime.fromisoformat(leave_req["from_date"].replace("Z", "+00:00")) if "T" in leave_req["from_date"] else datetime.strptime(leave_req["from_date"], "%Y-%m-%d")
+            to_dt = datetime.fromisoformat(leave_req["to_date"].replace("Z", "+00:00")) if "T" in leave_req["to_date"] else datetime.strptime(leave_req["to_date"], "%Y-%m-%d")
+            current_dt = from_dt
+            leave_type = await db.leave_types.find_one({"leave_type_id": leave_req.get("leave_type_id")}, {"_id": 0, "name": 1})
+            leave_type_name = leave_type.get("name", "Leave") if leave_type else "Leave"
+            while current_dt <= to_dt:
+                date_str = current_dt.strftime("%Y-%m-%d")
+                existing = await db.attendance.find_one({"employee_id": leave_req["employee_id"], "date": date_str})
+                if not existing:
+                    await db.attendance.insert_one({
+                        "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
+                        "employee_id": leave_req["employee_id"],
+                        "date": date_str,
+                        "status": "leave",
+                        "remarks": f"On approved {leave_type_name} (Leave ID: {leave_id})",
+                        "source": "leave_approved",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                current_dt += timedelta(days=1)
+        except Exception as e:
+            logger.error(f"Error auto-marking leave attendance for {leave_id}: {e}")
     
     # Notify employee
     emp_user = await db.users.find_one({"employee_id": leave_req["employee_id"]}, {"_id": 0, "user_id": 1})
@@ -4477,6 +4503,78 @@ app.add_middleware(
     max_age=86400,
 )
 
+# ==================== TOUR ATTENDANCE AUTO-MARK ====================
+
+async def auto_mark_tour_attendance():
+    """
+    Auto-mark tour employees as 'tour' if:
+    1. They have an approved tour covering yesterday
+    2. HR didn't manually mark their attendance
+    3. Employee didn't check in themselves
+    Runs daily at 7 AM IST for the previous day.
+    """
+    from datetime import timedelta
+    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    logger.info(f"Tour attendance auto-mark: checking for {yesterday}")
+
+    try:
+        # Find all approved/ongoing tours covering yesterday
+        active_tours = await db.travel_requests.find({
+            "status": {"$in": ["approved", "ongoing"]},
+            "start_date": {"$lte": yesterday},
+            "end_date": {"$gte": yesterday}
+        }, {"_id": 0, "employee_id": 1, "purpose": 1, "location": 1}).to_list(200)
+
+        if not active_tours:
+            logger.info("Tour auto-mark: No active tours for yesterday")
+            return
+
+        tour_employee_ids = [t["employee_id"] for t in active_tours]
+
+        # Check existing attendance (HR manual or employee self check-in)
+        existing_attendance = await db.attendance.find(
+            {"date": yesterday, "employee_id": {"$in": tour_employee_ids}},
+            {"_id": 0, "employee_id": 1}
+        ).to_list(500)
+        attended_ids = set(a["employee_id"] for a in existing_attendance)
+
+        # Check remote check-ins
+        remote_checkins = await db.remote_checkins.find(
+            {"date": yesterday, "employee_id": {"$in": tour_employee_ids}},
+            {"_id": 0, "employee_id": 1}
+        ).to_list(500)
+        checkin_ids = set(c["employee_id"] for c in remote_checkins)
+
+        already_marked = attended_ids | checkin_ids
+        unmarked_ids = [eid for eid in tour_employee_ids if eid not in already_marked]
+
+        if not unmarked_ids:
+            logger.info("Tour auto-mark: All tour employees already have attendance for yesterday")
+            return
+
+        # Auto-mark as 'tour'
+        docs = []
+        for eid in unmarked_ids:
+            tour = next((t for t in active_tours if t["employee_id"] == eid), {})
+            docs.append({
+                "attendance_id": f"att_{uuid.uuid4().hex[:12]}",
+                "employee_id": eid,
+                "date": yesterday,
+                "status": "tour",
+                "remarks": f"Auto-marked: On tour ({tour.get('purpose', 'N/A')}) at {tour.get('location', 'N/A')}",
+                "source": "auto_tour_scheduler",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
+
+        if docs:
+            await db.attendance.insert_many(docs)
+            logger.info(f"Tour auto-mark: Marked {len(docs)} employees as 'tour' for {yesterday}")
+
+    except Exception as e:
+        logger.error(f"Tour auto-mark error: {e}")
+
+
 # ==================== SCHEDULER FOR BIOMETRIC SYNC ====================
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -4511,6 +4609,16 @@ async def start_scheduler():
     
     scheduler.start()
     logger.info("Biometric sync scheduler started - every 3 hours + daily 10:00 AM IST")
+
+    # Tour attendance auto-mark: Run daily at 7 AM IST (1:30 UTC) for previous day
+    scheduler.add_job(
+        auto_mark_tour_attendance,
+        CronTrigger(hour=1, minute=30),
+        id="tour_attendance_auto_mark",
+        name="Tour Attendance Auto-Mark (daily 7:00 AM IST)",
+        replace_existing=True
+    )
+    logger.info("Tour attendance auto-mark scheduler added - daily 7:00 AM IST")
     
     # Run initial sync on startup (in background to not block startup)
     # This ensures production gets data immediately after deployment

@@ -734,15 +734,19 @@ async def list_survey_templates(request: Request):
         {
             "template_id": "builtin_360",
             "template_name": "360 Degree Feedback",
-            "description": "Colleague feedback survey for performance reviews",
+            "description": "Comprehensive multi-rater feedback covering 7 core competencies with behavioral anchors",
             "survey_type": "colleague_feedback",
             "questions": [
-                {"question_id": "q1", "type": "rating", "text": "How effectively does this person communicate?", "scale": 5},
-                {"question_id": "q2", "type": "rating", "text": "How well does this person collaborate with others?", "scale": 5},
-                {"question_id": "q3", "type": "rating", "text": "How reliable is this person in meeting deadlines?", "scale": 5},
-                {"question_id": "q4", "type": "rating", "text": "How would you rate this person's problem-solving skills?", "scale": 5},
-                {"question_id": "q5", "type": "long_text", "text": "What are this person's strengths?"},
-                {"question_id": "q6", "type": "long_text", "text": "What areas could this person improve?"}
+                {"question_id": "q1", "type": "rating", "text": "Leadership & Vision: Takes initiative, sets clear direction, and inspires the team toward shared goals.", "scale": 5, "category": "Leadership & Vision"},
+                {"question_id": "q2", "type": "rating", "text": "Communication: Expresses ideas clearly, listens actively, and provides constructive feedback.", "scale": 5, "category": "Communication"},
+                {"question_id": "q3", "type": "rating", "text": "Teamwork & Collaboration: Works well cross-functionally, resolves conflicts constructively, and supports colleagues.", "scale": 5, "category": "Teamwork & Collaboration"},
+                {"question_id": "q4", "type": "rating", "text": "Technical Competence: Demonstrates strong domain expertise, solves complex problems, and drives innovation.", "scale": 5, "category": "Technical Competence"},
+                {"question_id": "q5", "type": "rating", "text": "Accountability & Work Ethic: Takes ownership, meets deadlines consistently, and maintains high standards.", "scale": 5, "category": "Accountability & Work Ethic"},
+                {"question_id": "q6", "type": "rating", "text": "Adaptability & Growth: Embraces change, learns from feedback, and continuously improves.", "scale": 5, "category": "Adaptability & Growth"},
+                {"question_id": "q7", "type": "rating", "text": "Customer & Stakeholder Focus: Understands stakeholder needs, builds strong relationships, and delivers value.", "scale": 5, "category": "Customer & Stakeholder Focus"},
+                {"question_id": "q8", "type": "long_text", "text": "What are this person's top 2-3 strengths that the organization should leverage?", "category": "Strengths"},
+                {"question_id": "q9", "type": "long_text", "text": "What 1-2 areas would have the biggest positive impact if improved?", "category": "Areas for Improvement"},
+                {"question_id": "q10", "type": "long_text", "text": "Any additional comments or observations?", "category": "General"}
             ]
         }
     ]
@@ -1098,13 +1102,15 @@ async def create_feedback_cycle(data: dict, request: Request):
         "start_date": data.get("start_date"),
         "end_date": data.get("end_date"),
         "questions": data.get("questions", [
-            {"question_id": "fb_q1", "text": "How effective is this person at communication?", "type": "rating", "category": "Communication"},
-            {"question_id": "fb_q2", "text": "How well does this person collaborate with the team?", "type": "rating", "category": "Teamwork"},
-            {"question_id": "fb_q3", "text": "How would you rate their leadership abilities?", "type": "rating", "category": "Leadership"},
-            {"question_id": "fb_q4", "text": "How reliable is this person in meeting deadlines?", "type": "rating", "category": "Reliability"},
-            {"question_id": "fb_q5", "text": "How well does this person handle challenges?", "type": "rating", "category": "Problem Solving"},
-            {"question_id": "fb_q6", "text": "What are this person's key strengths?", "type": "long_text", "category": "Strengths"},
-            {"question_id": "fb_q7", "text": "What areas could this person improve on?", "type": "long_text", "category": "Areas for Improvement"},
+            {"question_id": "fb_q1", "text": "Leadership & Vision: Takes initiative, sets clear direction, and inspires the team.", "type": "rating", "category": "Leadership & Vision"},
+            {"question_id": "fb_q2", "text": "Communication: Expresses ideas clearly, listens actively, and gives constructive feedback.", "type": "rating", "category": "Communication"},
+            {"question_id": "fb_q3", "text": "Teamwork & Collaboration: Works well cross-functionally and supports colleagues.", "type": "rating", "category": "Teamwork & Collaboration"},
+            {"question_id": "fb_q4", "text": "Technical Competence: Demonstrates domain expertise and solves complex problems.", "type": "rating", "category": "Technical Competence"},
+            {"question_id": "fb_q5", "text": "Accountability & Work Ethic: Takes ownership and meets deadlines consistently.", "type": "rating", "category": "Accountability & Work Ethic"},
+            {"question_id": "fb_q6", "text": "Adaptability & Growth: Embraces change and continuously improves.", "type": "rating", "category": "Adaptability & Growth"},
+            {"question_id": "fb_q7", "text": "Customer & Stakeholder Focus: Understands needs and delivers value.", "type": "rating", "category": "Customer & Stakeholder Focus"},
+            {"question_id": "fb_q8", "text": "What are this person's top 2-3 strengths that the organization should leverage?", "type": "long_text", "category": "Strengths"},
+            {"question_id": "fb_q9", "text": "What 1-2 areas would have the biggest positive impact if improved?", "type": "long_text", "category": "Areas for Improvement"},
         ]),
         "allow_self_nomination": data.get("allow_self_nomination", True),
         "min_reviewers": data.get("min_reviewers", 3),
