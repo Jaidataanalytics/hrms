@@ -31,6 +31,16 @@ JWT_EXPIRY_HOURS = 168  # 7 days for better UX
 # Create the main app
 app = FastAPI(title="Sharda HR API", version="1.0.0")
 
+# CORS Configuration
+cors_origins = os.environ.get("CORS_ORIGINS", "*").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in cors_origins],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
