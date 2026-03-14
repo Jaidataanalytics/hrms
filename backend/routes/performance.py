@@ -30,7 +30,9 @@ def is_admin_or_hr(role):
 
 def period_range(period, ref_date=None):
     today = ref_date or datetime.now(timezone.utc).date()
-    if period == "weekly":
+    if period == "daily":
+        start = today
+    elif period == "weekly":
         start = today - timedelta(days=today.weekday())
     elif period == "monthly":
         start = today.replace(day=1)

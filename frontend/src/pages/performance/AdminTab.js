@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import {
   FileText, Plus, Target, Award, Eye, XCircle, AlertTriangle,
-  CheckCircle2, RefreshCw, BarChart3, Database, Trash2
+  CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search
 } from 'lucide-react';
+import MisExplorer from './MisExplorer';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
 
@@ -200,6 +201,19 @@ const AdminTab = ({ employees, authHeaders, period }) => {
           </CardContent>
         </Card>
       )}
+
+      {/* MIS Explorer — View any employee's entries & KPI scores */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Search className="w-5 h-5 text-primary" />MIS Explorer & KPI Viewer
+          </CardTitle>
+          <CardDescription>View any employee's MIS entries, entry counts, and KPI scores for any time period</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MisExplorer employees={employees} authHeaders={authHeaders} />
+        </CardContent>
+      </Card>
 
       {/* MIS Templates */}
       <Card>
