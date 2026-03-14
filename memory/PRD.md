@@ -198,6 +198,7 @@ On-the-fly normalization during payroll processing:
 - [x] Helpdesk Phase 2: 360 Feedback + Surveys (DONE - Mar 13, 2026)
 - [x] Employee Self-Service Dashboard Widgets (DONE - Mar 13, 2026)
 - [x] Team Org Chart Visualization (DONE - Mar 13, 2026)
+- [x] Admin MIS Explorer & KPI Viewer (DONE - Mar 14, 2026)
 - [ ] Full E2E testing of leave approvals, CO requests, cancellations
 - [ ] Mobile app build fix (MainActivity.java + Gradle config)
 - [ ] Mobile location permissions
