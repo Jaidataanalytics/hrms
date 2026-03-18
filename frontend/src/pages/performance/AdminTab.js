@@ -11,9 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import {
   FileText, Plus, Target, Award, Eye, XCircle, AlertTriangle,
-  CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search
+  CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search, TrendingUp
 } from 'lucide-react';
-import MisExplorer from './MisExplorer';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
 
@@ -28,9 +27,18 @@ const AdminTab = ({ employees, authHeaders, period }) => {
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
 
-  // View employee scores
+  // View employee MIS + KPI dialog
   const [viewEmpId, setViewEmpId] = useState('');
   const [viewEmpScores, setViewEmpScores] = useState(null);
+  const [viewEmpEntries, setViewEmpEntries] = useState([]);
+  const [viewEmpSummary, setViewEmpSummary] = useState(null);
+  const [viewPeriod, setViewPeriod] = useState('monthly');
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewEntry, setViewEntry] = useState(null);
+
+  // Filters for MIS templates list
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateDeptFilter, setTemplateDeptFilter] = useState('all');
 
   // Dialogs
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
@@ -71,10 +79,32 @@ const AdminTab = ({ employees, authHeaders, period }) => {
     finally { setSeeding(false); }
   };
 
-  const loadEmpScores = async (empId) => {
+  const loadEmpScores = async (empId, per = viewPeriod) => {
     setViewEmpId(empId);
-    const r = await fetch(`${API}/kpi-scores?employee_id=${empId}&period=${period}`, hdrs);
-    if (r.ok) setViewEmpScores(await r.json());
+    setViewLoading(true);
+    setViewPeriod(per);
+    try {
+      const [eR, sR, kR] = await Promise.all([
+        fetch(`${API}/mis-entries?employee_id=${empId}&period=${per}`, hdrs),
+        fetch(`${API}/mis-summary?employee_id=${empId}&period=${per}`, hdrs),
+        fetch(`${API}/kpi-scores?employee_id=${empId}&period=${per}`, hdrs),
+      ]);
+      if (eR.ok) setViewEmpEntries(await eR.json());
+      if (sR.ok) setViewEmpSummary(await sR.json());
+      if (kR.ok) setViewEmpScores(await kR.json());
+    } catch (err) {
+      toast.error('Failed to load employee data');
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeEmpView = () => {
+    setViewEmpId('');
+    setViewEmpScores(null);
+    setViewEmpEntries([]);
+    setViewEmpSummary(null);
+    setViewEntry(null);
   };
 
   const createTemplate = async () => {
@@ -202,20 +232,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
         </Card>
       )}
 
-      {/* MIS Explorer — View any employee's entries & KPI scores */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Search className="w-5 h-5 text-primary" />MIS Explorer & KPI Viewer
-          </CardTitle>
-          <CardDescription>View any employee's MIS entries, entry counts, and KPI scores for any time period</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MisExplorer employees={employees} authHeaders={authHeaders} />
-        </CardContent>
-      </Card>
-
-      {/* MIS Templates */}
+      {/* MIS Templates — Filterable */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -223,7 +240,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />MIS Templates ({allTemplates.filter(t => t.employee_id).length} employees)
               </CardTitle>
-              <CardDescription>Assign personalized MIS sheets to employees</CardDescription>
+              <CardDescription>Click the view button to see employee's MIS entries and KPI scores</CardDescription>
             </div>
             <Button size="sm" onClick={() => { setTemplateForm({ fields: [{ key: '', label: '', type: 'number' }] }); setShowTemplateDialog(true); }} className="gap-1" data-testid="add-template-btn">
               <Plus className="w-4 h-4" />Assign MIS
@@ -231,22 +248,54 @@ const AdminTab = ({ employees, authHeaders, period }) => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {allTemplates.filter(t => t.employee_id).map(t => (
-              <div key={t.template_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border" data-testid={`template-${t.template_id}`}>
-                <div>
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search employee name..."
+                className="pl-9 h-9"
+                value={templateSearch}
+                onChange={e => setTemplateSearch(e.target.value)}
+                data-testid="template-search-input"
+              />
+            </div>
+            <Select value={templateDeptFilter} onValueChange={setTemplateDeptFilter}>
+              <SelectTrigger className="w-full sm:w-[200px] h-9" data-testid="template-dept-filter">
+                <SelectValue placeholder="All Departments" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {[...new Set(allTemplates.filter(t => t.department_name).map(t => t.department_name))].sort().map(d => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Template list */}
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+            {allTemplates.filter(t => t.employee_id).filter(t => {
+              if (templateSearch && !t.employee_name?.toLowerCase().includes(templateSearch.toLowerCase())) return false;
+              if (templateDeptFilter !== 'all' && t.department_name !== templateDeptFilter) return false;
+              return true;
+            }).map(t => (
+              <div key={t.template_id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${viewEmpId === t.employee_id ? 'bg-blue-50 border-blue-300' : 'bg-slate-50 hover:bg-slate-100'}`} data-testid={`template-${t.template_id}`}>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-sm">{t.employee_name}</p>
-                    {t.frequency && <Badge variant="outline" className="text-[10px] capitalize">{t.frequency}</Badge>}
+                    <p className="font-medium text-sm truncate">{t.employee_name}</p>
+                    {t.frequency && <Badge variant="outline" className="text-[10px] capitalize shrink-0">{t.frequency}</Badge>}
                   </div>
                   <p className="text-xs text-slate-500">{t.department_name} | {t.fields?.length} fields</p>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {t.fields?.slice(0, 4).map(f => <Badge key={f.key} variant="outline" className="text-[10px]">{f.label}</Badge>)}
-                    {(t.fields?.length || 0) > 4 && <Badge variant="outline" className="text-[10px]">+{t.fields.length - 4}</Badge>}
+                    {t.fields?.slice(0, 3).map(f => <Badge key={f.key} variant="outline" className="text-[10px]">{f.label}</Badge>)}
+                    {(t.fields?.length || 0) > 3 && <Badge variant="outline" className="text-[10px]">+{t.fields.length - 3}</Badge>}
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => loadEmpScores(t.employee_id)} data-testid={`view-scores-${t.employee_id}`}><Eye className="w-4 h-4" /></Button>
+                <div className="flex gap-1 shrink-0 ml-2">
+                  <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => loadEmpScores(t.employee_id)} data-testid={`view-scores-${t.employee_id}`}>
+                    <Eye className="w-3.5 h-3.5" />View MIS & KPI
+                  </Button>
                   <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteTemplate(t.template_id)} data-testid={`delete-template-${t.template_id}`}><Trash2 className="w-4 h-4" /></Button>
                 </div>
               </div>
@@ -258,32 +307,180 @@ const AdminTab = ({ employees, authHeaders, period }) => {
         </CardContent>
       </Card>
 
-      {/* Employee KPI Scores Viewer */}
-      {viewEmpScores && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2"><BarChart3 className="w-5 h-5 text-primary" />{getEmpName(viewEmpId)} — KPI Scores</CardTitle>
-              <Button size="sm" variant="ghost" onClick={() => setViewEmpScores(null)}>Close</Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 p-3 bg-slate-50 rounded-lg text-center">
-              <p className={`text-3xl font-bold ${scoreColor(viewEmpScores.weighted_score)}`}>{viewEmpScores.weighted_score}%</p>
-              <p className="text-xs text-slate-400">{viewEmpScores.entry_count} MIS entries</p>
-            </div>
-            {viewEmpScores.scores.map(s => (
-              <div key={s.kpi_id} className={`p-2 rounded border mb-2 ${scoreBg(s.score_percentage)}`}>
-                <div className="flex justify-between text-sm">
-                  <span>{s.name}</span>
-                  <span className={`font-bold ${scoreColor(s.score_percentage)}`}>{s.score_percentage}%</span>
-                </div>
-                <Progress value={Math.min(100, s.score_percentage)} className="h-1.5 mt-1" />
-              </div>
+      {/* Employee MIS Entries + KPI Scores Viewer Dialog */}
+      <Dialog open={!!viewEmpId} onOpenChange={(open) => { if (!open) closeEmpView(); }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto" data-testid="emp-mis-kpi-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              {getEmpName(viewEmpId)} — MIS Entries & KPI Scores
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Period selector */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { value: 'daily', label: 'Today' },
+              { value: 'weekly', label: 'Week' },
+              { value: 'monthly', label: 'Month' },
+              { value: 'quarterly', label: 'Quarter' },
+              { value: 'half_yearly', label: 'Half Year' },
+              { value: 'annual', label: 'Year' },
+            ].map(p => (
+              <Button
+                key={p.value}
+                size="sm"
+                variant={viewPeriod === p.value ? 'default' : 'outline'}
+                onClick={() => loadEmpScores(viewEmpId, p.value)}
+                className="text-xs"
+                data-testid={`period-btn-${p.value}`}
+              >
+                {p.label}
+              </Button>
             ))}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+
+          {viewLoading ? (
+            <div className="flex items-center justify-center h-32"><RefreshCw className="w-6 h-6 animate-spin text-primary" /></div>
+          ) : (
+            <div className="space-y-4">
+              {/* Summary stats row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                  <p className="text-xl font-bold text-blue-700">{viewEmpSummary?.entry_count || 0}</p>
+                  <p className="text-xs text-slate-500">MIS Entries</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border text-center">
+                  <p className="text-xs text-slate-500">{viewEmpSummary?.from_date?.slice(5) || '-'}</p>
+                  <p className="text-xs font-medium text-slate-700">to {viewEmpSummary?.to_date?.slice(5) || '-'}</p>
+                </div>
+                {viewEmpScores && (
+                  <>
+                    <div className={`p-3 rounded-lg border text-center ${scoreBg(viewEmpScores.weighted_score)}`}>
+                      <p className={`text-xl font-bold ${scoreColor(viewEmpScores.weighted_score)}`}>{viewEmpScores.weighted_score}%</p>
+                      <p className="text-xs text-slate-500">KPI Score</p>
+                    </div>
+                    <div className="p-3 bg-violet-50 rounded-lg border border-violet-200 text-center">
+                      <p className="text-xl font-bold text-violet-700">{viewEmpScores.scores?.length || 0}</p>
+                      <p className="text-xs text-slate-500">Active KPIs</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* MIS Field Aggregates */}
+              {viewEmpSummary && Object.keys(viewEmpSummary.sums || {}).length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />MIS Field Totals
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {Object.entries(viewEmpSummary.sums).map(([key, total]) => (
+                      <div key={key} className="p-2.5 bg-slate-50 rounded-lg border">
+                        <p className="text-xs text-slate-500 truncate capitalize">{key.replace(/_/g, ' ')}</p>
+                        <span className="text-base font-bold text-slate-900">{typeof total === 'number' ? total.toLocaleString() : total}</span>
+                        {viewEmpSummary.averages?.[key] !== undefined && (
+                          <span className="text-xs text-blue-500 ml-2">Avg: {viewEmpSummary.averages[key]}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* KPI Score Cards */}
+              {viewEmpScores?.scores?.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                    <Target className="w-4 h-4 text-violet-600" />KPI Scores
+                    <Badge variant="outline" className={`ml-auto ${scoreColor(viewEmpScores.weighted_score)}`}>
+                      Overall: {viewEmpScores.weighted_score}%
+                    </Badge>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {viewEmpScores.scores.map(s => (
+                      <div key={s.kpi_id} className={`p-2.5 rounded-lg border ${scoreBg(s.score_percentage)}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-slate-800 truncate">{s.name}</span>
+                          <span className={`text-sm font-bold ${scoreColor(s.score_percentage)}`}>{s.score_percentage}%</span>
+                        </div>
+                        <Progress value={Math.min(100, s.score_percentage)} className="h-1.5 mb-1" />
+                        <div className="flex justify-between text-xs text-slate-500">
+                          <span>Actual: {s.actual_value}</span>
+                          <span>Target: {s.target_value} {s.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* MIS Entry List */}
+              {viewEmpEntries.length > 0 ? (
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                    <FileText className="w-4 h-4 text-primary" />MIS Entries ({viewEmpEntries.length})
+                  </p>
+                  <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
+                    {viewEmpEntries.map(entry => (
+                      <div
+                        key={entry.entry_id}
+                        className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border hover:bg-slate-100 cursor-pointer transition-colors"
+                        onClick={() => setViewEntry(viewEntry?.entry_id === entry.entry_id ? null : entry)}
+                        data-testid={`mis-entry-row-${entry.entry_id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 flex flex-col items-center justify-center shrink-0">
+                            <span className="text-xs font-bold text-blue-700 leading-none">{entry.date?.slice(8)}</span>
+                            <span className="text-[9px] text-blue-500">
+                              {new Date(entry.date + 'T00:00:00').toLocaleDateString('en-IN', { month: 'short' })}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">{entry.date}</p>
+                            <p className="text-xs text-slate-500">{Object.keys(entry.fields || {}).length} fields</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`text-xs ${
+                          entry.status === 'verified' ? 'text-emerald-600 border-emerald-300' :
+                          entry.status === 'submitted' ? 'text-blue-600 border-blue-300' :
+                          'text-amber-600 border-amber-300'
+                        }`}>
+                          {entry.status === 'verified' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                          {entry.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-slate-50 rounded-lg border">
+                  <FileText className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">No MIS entries submitted for this period</p>
+                </div>
+              )}
+
+              {/* Expanded MIS entry detail */}
+              {viewEntry && (
+                <div className="bg-blue-50 rounded-lg border border-blue-200 p-4" data-testid="mis-entry-expanded">
+                  <p className="text-sm font-semibold text-slate-700 mb-2">Entry Detail — {viewEntry.date}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {Object.entries(viewEntry.fields || {}).map(([key, value]) => (
+                      <div key={key} className="p-2 bg-white rounded border">
+                        <p className="text-xs text-slate-500 capitalize">{key.replace(/_/g, ' ')}</p>
+                        <p className="text-sm font-semibold text-slate-900">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {viewEntry.verified_by_name && (
+                    <p className="text-xs text-emerald-600 mt-2">Verified by {viewEntry.verified_by_name} on {viewEntry.verified_at?.slice(0, 10)}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* KPI Definitions by Employee */}
       <Card>
