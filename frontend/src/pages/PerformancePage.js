@@ -35,7 +35,7 @@ const PerformancePage = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('monthly');
   const [employees, setEmployees] = useState([]);
-  const [myTemplate, setMyTemplate] = useState(null);
+  const [myTemplates, setMyTemplates] = useState([]);
   const [kpiScores, setKpiScores] = useState(null);
   const [kraDefs, setKraDefs] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
@@ -49,10 +49,10 @@ const PerformancePage = () => {
       const eR = await fetch(`${API_URL}/employees`, hdrs);
       if (eR.ok) { const d = await eR.json(); setEmployees(Array.isArray(d) ? d : d.employees || []); }
 
-      // My MIS template
+      // My MIS templates (all frequencies)
       if (user?.employee_id) {
         const tR = await fetch(`${API}/mis-templates/employee/${user.employee_id}`, hdrs);
-        if (tR.ok) { const t = await tR.json(); if (t) setMyTemplate(t); }
+        if (tR.ok) { const t = await tR.json(); setMyTemplates(Array.isArray(t) ? t : t ? [t] : []); }
       }
 
       // My KPI scores
@@ -122,7 +122,7 @@ const PerformancePage = () => {
         </TabsContent>
 
         <TabsContent value="mis-entry">
-          <MisEntryTab user={user} myTemplate={myTemplate} authHeaders={authHeaders} isHR={isHR} />
+          <MisEntryTab user={user} myTemplates={myTemplates} authHeaders={authHeaders} isHR={isHR} />
         </TabsContent>
 
         <TabsContent value="kpi">

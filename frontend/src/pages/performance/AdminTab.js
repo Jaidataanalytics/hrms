@@ -109,11 +109,17 @@ const AdminTab = ({ employees, authHeaders, period }) => {
 
   const createTemplate = async () => {
     try {
+      const payload = {
+        employee_id: templateForm.employee_id,
+        frequency: templateForm.frequency || 'daily',
+        fields: (templateForm.fields || []).filter(f => f.label),
+      };
       const r = await fetch(`${API}/mis-templates`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
-        body: JSON.stringify(templateForm)
+        body: JSON.stringify(payload)
       });
-      if (r.ok) { toast.success('MIS template created'); setShowTemplateDialog(false); setTemplateForm({ fields: [] }); fetchAdminData(); }
+      if (r.ok) { toast.success('MIS template created'); setShowTemplateDialog(false); setTemplateForm({ fields: [], frequency: 'daily' }); fetchAdminData(); }
+      else toast.error('Failed to create template');
     } catch { toast.error('Error'); }
   };
 
@@ -242,7 +248,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
               </CardTitle>
               <CardDescription>Click the view button to see employee's MIS entries and KPI scores</CardDescription>
             </div>
-            <Button size="sm" onClick={() => { setTemplateForm({ fields: [{ key: '', label: '', type: 'number' }] }); setShowTemplateDialog(true); }} className="gap-1" data-testid="add-template-btn">
+            <Button size="sm" onClick={() => { setTemplateForm({ fields: [{ key: '', label: '', type: 'number' }], frequency: 'daily' }); setShowTemplateDialog(true); }} className="gap-1" data-testid="add-template-btn">
               <Plus className="w-4 h-4" />Assign MIS
             </Button>
           </div>
@@ -564,19 +570,33 @@ const AdminTab = ({ employees, authHeaders, period }) => {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Assign MIS Template to Employee</DialogTitle>
-            <DialogDescription>Create a personalized daily MIS sheet</DialogDescription>
+            <DialogDescription>Create a personalized MIS sheet with a specific frequency</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
-            <div>
-              <Label>Employee *</Label>
-              <Select value={templateForm.employee_id || ''} onValueChange={v => setTemplateForm(p => ({ ...p, employee_id: v }))}>
-                <SelectTrigger data-testid="template-employee"><SelectValue placeholder="Select employee" /></SelectTrigger>
-                <SelectContent>
-                  {employees.filter(e => e.is_active !== false).map(e => (
-                    <SelectItem key={e.employee_id} value={e.employee_id}>{e.first_name} {e.last_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Employee *</Label>
+                <Select value={templateForm.employee_id || ''} onValueChange={v => setTemplateForm(p => ({ ...p, employee_id: v }))}>
+                  <SelectTrigger data-testid="template-employee"><SelectValue placeholder="Select employee" /></SelectTrigger>
+                  <SelectContent>
+                    {employees.filter(e => e.is_active !== false).map(e => (
+                      <SelectItem key={e.employee_id} value={e.employee_id}>{e.first_name} {e.last_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Frequency *</Label>
+                <Select value={templateForm.frequency || 'daily'} onValueChange={v => setTemplateForm(p => ({ ...p, frequency: v }))}>
+                  <SelectTrigger data-testid="template-frequency"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">

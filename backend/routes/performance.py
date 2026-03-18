@@ -69,18 +69,27 @@ async def list_mis_templates(
 
 
 @router.get("/mis-templates/employee/{employee_id}")
-async def get_employee_template(employee_id: str, request: Request):
+async def get_employee_templates(employee_id: str, request: Request):
+    """Returns ALL MIS templates for an employee, grouped by frequency"""
     await get_current_user(request)
-    template = await db.mis_templates.find_one(
+    templates = await db.mis_templates.find(
         {"employee_id": employee_id, "is_active": True}, {"_id": 0}
-    )
-    if not template:
+    ).to_list(20)
+
+    # If no employee-specific templates, try department-level
+    if not templates:
         emp = await db.employees.find_one({"employee_id": employee_id}, {"_id": 0, "department_id": 1})
         if emp and emp.get("department_id"):
-            template = await db.mis_templates.find_one(
+            templates = await db.mis_templates.find(
                 {"department_id": emp["department_id"], "employee_id": None, "is_active": True}, {"_id": 0}
-            )
-    return template
+            ).to_list(20)
+
+    # Ensure each template has a frequency field
+    for t in templates:
+        if "frequency" not in t:
+            t["frequency"] = "daily"
+
+    return templates
 
 
 @router.post("/mis-templates")
@@ -90,29 +99,34 @@ async def create_mis_template(data: dict, request: Request):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     emp_id = data.get("employee_id")
+    frequency = data.get("frequency", "daily")
     emp_name = ""
     dept_id = data.get("department_id")
+    dept_name = data.get("department_name", "")
     if emp_id:
         emp = await db.employees.find_one({"employee_id": emp_id}, {"_id": 0})
         if emp:
             emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
             dept_id = dept_id or emp.get("department_id")
+            dept_name = dept_name or emp.get("department_name", emp.get("department", ""))
 
+    freq_label = frequency.capitalize()
     template = {
         "template_id": f"mist_{uuid.uuid4().hex[:12]}",
         "employee_id": emp_id,
         "employee_name": emp_name,
         "department_id": dept_id,
-        "department_name": data.get("department_name", ""),
-        "name": data.get("name", f"{emp_name} Daily MIS" if emp_name else "Daily MIS"),
+        "department_name": dept_name,
+        "frequency": frequency,
+        "name": data.get("name", f"{emp_name} {freq_label} MIS" if emp_name else f"{freq_label} MIS"),
         "fields": data.get("fields", []),
         "is_active": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user.get("employee_id") or user["user_id"]
     }
-    # Upsert: replace if employee-specific template exists
+    # Upsert: replace if employee-specific template for same frequency exists
     if emp_id:
-        existing = await db.mis_templates.find_one({"employee_id": emp_id, "is_active": True})
+        existing = await db.mis_templates.find_one({"employee_id": emp_id, "frequency": frequency, "is_active": True})
         if existing:
             template["template_id"] = existing["template_id"]
             await db.mis_templates.update_one(
@@ -158,7 +172,8 @@ async def list_mis_entries(
     date: Optional[str] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
-    period: Optional[str] = None
+    period: Optional[str] = None,
+    template_id: Optional[str] = None
 ):
     user = await get_current_user(request)
     query = {}
@@ -169,6 +184,8 @@ async def list_mis_entries(
         query["employee_id"] = user.get("employee_id")
     if department_id:
         query["department_id"] = department_id
+    if template_id:
+        query["template_id"] = template_id
     if date:
         query["date"] = date
 
@@ -187,17 +204,37 @@ async def create_mis_entry(data: dict, request: Request):
     user = await get_current_user(request)
     employee_id = data.get("employee_id") or user.get("employee_id")
     entry_date = data.get("date", str(datetime.now(timezone.utc).date()))
+    frequency = data.get("frequency", "daily")
+
+    # Lock logic: quarterly entries for past quarters are locked for non-admin
+    if frequency == "quarterly":
+        today = datetime.now(timezone.utc).date()
+        try:
+            entry_dt = datetime.strptime(entry_date, "%Y-%m-%d").date()
+        except ValueError:
+            entry_dt = today
+        entry_q = (entry_dt.month - 1) // 3
+        current_q = (today.month - 1) // 3
+        entry_year_q = entry_dt.year * 4 + entry_q
+        current_year_q = today.year * 4 + current_q
+        if entry_year_q < current_year_q and not is_admin_or_hr(user.get("role")):
+            raise HTTPException(status_code=403, detail="Quarterly MIS is locked for past quarters. Contact admin or manager.")
 
     existing = await db.mis_entries.find_one(
         {"employee_id": employee_id, "date": entry_date, "template_id": data.get("template_id")},
         {"_id": 0}
     )
 
+    # Check lock on existing entry
+    if existing and existing.get("locked") and not is_admin_or_hr(user.get("role")):
+        raise HTTPException(status_code=403, detail="This MIS entry is locked. Contact admin or manager to edit.")
+
     entry = {
         "entry_id": existing.get("entry_id") if existing else f"mis_{uuid.uuid4().hex[:12]}",
         "employee_id": employee_id,
         "template_id": data.get("template_id"),
         "department_id": data.get("department_id"),
+        "frequency": frequency,
         "date": entry_date,
         "fields": data.get("fields", {}),
         "status": "submitted",
