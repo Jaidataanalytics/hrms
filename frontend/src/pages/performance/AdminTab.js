@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import {
   FileText, Plus, Target, Award, Eye, XCircle, AlertTriangle,
   CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search, TrendingUp,
-  Pencil, Users
+  Pencil, Users, Clock, X as XIcon, UserCheck, UserX
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
@@ -36,6 +36,10 @@ const AdminTab = ({ employees, authHeaders, period }) => {
   const [viewPeriod, setViewPeriod] = useState('monthly');
   const [viewLoading, setViewLoading] = useState(false);
   const [viewEntry, setViewEntry] = useState(null);
+
+  // Compliance view state
+  const [complianceTab, setComplianceTab] = useState('not_submitted');
+  const [complianceMisEntry, setComplianceMisEntry] = useState(null);
 
   // Filters for MIS templates list
   const [templateSearch, setTemplateSearch] = useState('');
@@ -220,58 +224,211 @@ const AdminTab = ({ employees, authHeaders, period }) => {
         </CardContent>
       </Card>
 
-      {/* MIS Compliance */}
-      {compliance && (
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary" />MIS Compliance — {compliance.date}
-              </CardTitle>
-              <Badge variant="outline" className={compliance.filled === compliance.total_assigned ? 'text-emerald-600 border-emerald-300' : 'text-amber-600 border-amber-300'}>
-                {compliance.filled}/{compliance.total_assigned} submitted
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Progress bar */}
-            <div className="mb-4">
-              <div className="flex justify-between text-xs text-slate-500 mb-1">
-                <span>{compliance.filled} submitted</span>
-                <span>{compliance.not_filled} pending</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${compliance.filled === compliance.total_assigned ? 'bg-emerald-500' : compliance.filled > compliance.total_assigned / 2 ? 'bg-blue-500' : 'bg-amber-500'}`}
-                  style={{ width: `${compliance.total_assigned ? (compliance.filled / compliance.total_assigned * 100) : 0}%` }}
-                />
-              </div>
-            </div>
+      {/* MIS Compliance — Redesigned */}
+      {compliance && (() => {
+        const pct = compliance.total_assigned ? Math.round(compliance.filled / compliance.total_assigned * 100) : 0;
+        const filledList = compliance.filled_list || [];
+        const notFilledList = compliance.not_filled_list || [];
 
-            {/* Compact pending list — grouped by department */}
-            {compliance.not_filled_list?.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-slate-500 mb-2">Pending submissions ({compliance.not_filled})</p>
-                <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1">
-                  {Object.entries(
-                    compliance.not_filled_list.reduce((acc, e) => {
-                      const dept = e.department_name || 'Other';
-                      if (!acc[dept]) acc[dept] = [];
-                      acc[dept].push(e);
-                      return acc;
-                    }, {})
-                  ).sort(([, a], [, b]) => b.length - a.length).map(([dept, emps]) => (
-                    <div key={dept} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg border text-xs">
-                      <Badge variant="outline" className="shrink-0 text-[10px] mt-0.5">{dept} ({emps.length})</Badge>
-                      <span className="text-slate-600 leading-relaxed">{emps.map(e => e.employee_name).join(', ')}</span>
-                    </div>
-                  ))}
+        // Group not_filled by department
+        const pendingByDept = notFilledList.reduce((acc, e) => {
+          const dept = e.department_name || 'Other';
+          if (!acc[dept]) acc[dept] = [];
+          acc[dept].push(e);
+          return acc;
+        }, {});
+
+        // Group filled by department
+        const submittedByDept = filledList.reduce((acc, e) => {
+          const dept = e.department_name || 'Other';
+          if (!acc[dept]) acc[dept] = [];
+          acc[dept].push(e);
+          return acc;
+        }, {});
+
+        return (
+          <Card data-testid="compliance-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />MIS Compliance — {compliance.date}
+                </CardTitle>
+                <Badge variant="outline" className={pct === 100 ? 'text-emerald-600 border-emerald-300 bg-emerald-50' : pct >= 50 ? 'text-blue-600 border-blue-300 bg-blue-50' : 'text-red-600 border-red-300 bg-red-50'}>
+                  {compliance.filled}/{compliance.total_assigned} submitted ({pct}%)
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-red-500'}`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              {/* Toggle tabs: Submitted / Not Submitted */}
+              <div className="flex border-b mb-3">
+                <button
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    complianceTab === 'submitted'
+                      ? 'border-emerald-500 text-emerald-700'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                  onClick={() => setComplianceTab('submitted')}
+                  data-testid="compliance-tab-submitted"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  Submitted ({compliance.filled})
+                </button>
+                <button
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    complianceTab === 'not_submitted'
+                      ? 'border-red-500 text-red-700'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                  onClick={() => setComplianceTab('not_submitted')}
+                  data-testid="compliance-tab-not-submitted"
+                >
+                  <UserX className="w-4 h-4" />
+                  Not Submitted ({compliance.not_filled})
+                </button>
+              </div>
+
+              {/* Submitted employees */}
+              {complianceTab === 'submitted' && (
+                <div className="max-h-[320px] overflow-y-auto pr-1" data-testid="compliance-submitted-list">
+                  {filledList.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-slate-400">
+                      <UserX className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                      No submissions yet for {compliance.date}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {Object.entries(submittedByDept).sort(([, a], [, b]) => b.length - a.length).map(([dept, emps]) => (
+                        <div key={dept}>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{dept} ({emps.length})</p>
+                          <div className="space-y-1">
+                            {emps.map(emp => (
+                              <div
+                                key={emp.employee_id}
+                                className="flex items-center justify-between p-2.5 rounded-lg border bg-emerald-50/50 border-emerald-200/60 hover:bg-emerald-100/70 cursor-pointer transition-colors group"
+                                onClick={() => setComplianceMisEntry(emp)}
+                                data-testid={`compliance-submitted-${emp.employee_id}`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  </div>
+                                  <span className="text-sm font-medium text-slate-800">{emp.employee_name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className={`text-[10px] ${
+                                    emp.status === 'verified' ? 'text-emerald-600 border-emerald-300' : 'text-blue-600 border-blue-300'
+                                  }`}>
+                                    {emp.status === 'verified' ? 'Verified' : 'Submitted'}
+                                  </Badge>
+                                  <Eye className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Not Submitted employees */}
+              {complianceTab === 'not_submitted' && (
+                <div className="max-h-[320px] overflow-y-auto pr-1" data-testid="compliance-pending-list">
+                  {notFilledList.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-emerald-600">
+                      <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-400" />
+                      Everyone has submitted their MIS!
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {Object.entries(pendingByDept).sort(([, a], [, b]) => b.length - a.length).map(([dept, emps]) => (
+                        <div key={dept}>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{dept} ({emps.length})</p>
+                          <div className="space-y-1">
+                            {emps.map(emp => (
+                              <div
+                                key={emp.employee_id}
+                                className="flex items-center justify-between p-2.5 rounded-lg border bg-red-50/40 border-red-200/50"
+                                data-testid={`compliance-pending-${emp.employee_id}`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-red-100 border border-red-300 flex items-center justify-center">
+                                    <Clock className="w-3.5 h-3.5 text-red-500" />
+                                  </div>
+                                  <span className="text-sm font-medium text-slate-800">{emp.employee_name}</span>
+                                </div>
+                                <Badge variant="outline" className="text-[10px] text-red-500 border-red-300">Pending</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* MIS Entry Detail Modal — from compliance submitted click */}
+      <Dialog open={!!complianceMisEntry} onOpenChange={(open) => { if (!open) setComplianceMisEntry(null); }}>
+        <DialogContent className="max-w-lg" data-testid="compliance-mis-detail-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-emerald-600" />
+              {complianceMisEntry?.employee_name} — MIS Entry
+            </DialogTitle>
+            <DialogDescription>
+              Submitted on {compliance?.date} | {complianceMisEntry?.department_name}
+            </DialogDescription>
+          </DialogHeader>
+          {complianceMisEntry?.fields && Object.keys(complianceMisEntry.fields).length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="outline" className={`text-xs ${
+                  complianceMisEntry.status === 'verified' ? 'text-emerald-600 border-emerald-300 bg-emerald-50' : 'text-blue-600 border-blue-300 bg-blue-50'
+                }`}>
+                  {complianceMisEntry.status === 'verified' ? <><CheckCircle2 className="w-3 h-3 mr-1" />Verified</> : 'Submitted'}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(complianceMisEntry.fields).map(([key, value]) => (
+                  <div key={key} className="p-2.5 bg-slate-50 rounded-lg border">
+                    <p className="text-xs text-slate-500 capitalize mb-0.5">{key.replace(/_/g, ' ')}</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-slate-400 text-sm">
+              <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+              No field data available for this entry
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setComplianceMisEntry(null)}>Close</Button>
+            <Button size="sm" className="gap-1" onClick={() => { loadEmpScores(complianceMisEntry?.employee_id); setComplianceMisEntry(null); }}>
+              <Eye className="w-3.5 h-3.5" />View Full MIS & KPIs
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* MIS Templates — Filterable */}
       <Card>

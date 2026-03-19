@@ -278,23 +278,36 @@ async def get_mis_compliance(request: Request, date: Optional[str] = None):
 
     check_date = date or str(datetime.now(timezone.utc).date())
 
-    # Get all employees with MIS templates
+    # Get all employees with MIS templates — deduplicate by employee_id
     templates = await db.mis_templates.find(
-        {"is_active": True, "employee_id": {"$ne": None}}, {"_id": 0, "employee_id": 1, "employee_name": 1, "department_id": 1}
+        {"is_active": True, "employee_id": {"$ne": None}},
+        {"_id": 0, "employee_id": 1, "employee_name": 1, "department_id": 1}
     ).to_list(500)
 
-    emp_ids_with_template = [t["employee_id"] for t in templates]
+    seen_emp_ids = set()
+    unique_templates = []
+    for t in templates:
+        eid = t["employee_id"]
+        if eid not in seen_emp_ids:
+            seen_emp_ids.add(eid)
+            unique_templates.append(t)
 
-    # Get today's submissions
+    emp_ids_with_template = list(seen_emp_ids)
+
+    # Get today's submissions with full entry data for filled employees
     submissions = await db.mis_entries.find(
         {"date": check_date, "employee_id": {"$in": emp_ids_with_template}},
-        {"_id": 0, "employee_id": 1, "status": 1}
+        {"_id": 0}
     ).to_list(500)
-    submitted_ids = {s["employee_id"]: s["status"] for s in submissions}
+    submitted_map = {}
+    for s in submissions:
+        eid = s["employee_id"]
+        if eid not in submitted_map:
+            submitted_map[eid] = s
 
     filled = []
     not_filled = []
-    for t in templates:
+    for t in unique_templates:
         emp_id = t["employee_id"]
         dept = await db.departments.find_one({"department_id": t.get("department_id")}, {"_id": 0, "name": 1})
         info = {
@@ -302,15 +315,20 @@ async def get_mis_compliance(request: Request, date: Optional[str] = None):
             "employee_name": t.get("employee_name", ""),
             "department_name": dept.get("name", "") if dept else ""
         }
-        if emp_id in submitted_ids:
-            info["status"] = submitted_ids[emp_id]
+        if emp_id in submitted_map:
+            entry = submitted_map[emp_id]
+            info["status"] = entry.get("status", "submitted")
+            info["entry_id"] = entry.get("entry_id", "")
+            info["fields"] = entry.get("fields", {})
+            info["template_id"] = entry.get("template_id", "")
+            info["submitted_at"] = entry.get("submitted_at", entry.get("created_at", ""))
             filled.append(info)
         else:
             not_filled.append(info)
 
     return {
         "date": check_date,
-        "total_assigned": len(emp_ids_with_template),
+        "total_assigned": len(unique_templates),
         "filled": len(filled),
         "not_filled": len(not_filled),
         "filled_list": filled,
