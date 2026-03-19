@@ -16,7 +16,7 @@ import os
 from datetime import datetime, timedelta
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://theme-switcher-demo.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://employee-mis-tools.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@shardahr.com"
