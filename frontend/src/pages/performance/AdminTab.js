@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import {
   FileText, Plus, Target, Award, Eye, XCircle, AlertTriangle,
-  CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search, TrendingUp
+  CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search, TrendingUp,
+  Pencil, Users
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
@@ -42,6 +43,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
 
   // Dialogs
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
   const [showKpiDialog, setShowKpiDialog] = useState(false);
   const [showKraDialog, setShowKraDialog] = useState(false);
   const [templateForm, setTemplateForm] = useState({ fields: [] });
@@ -169,6 +171,22 @@ const AdminTab = ({ employees, authHeaders, period }) => {
     return e ? `${e.first_name} ${e.last_name}` : id || 'N/A';
   };
 
+  const openEditTemplate = (template) => {
+    setEditingTemplateId(template.template_id);
+    setTemplateForm({
+      employee_id: template.employee_id,
+      frequency: template.frequency || 'daily',
+      fields: template.fields?.length > 0 ? template.fields : [{ key: '', label: '', type: 'number' }],
+    });
+    setShowTemplateDialog(true);
+  };
+
+  const openNewTemplate = () => {
+    setEditingTemplateId(null);
+    setTemplateForm({ fields: [{ key: '', label: '', type: 'number' }], frequency: 'daily' });
+    setShowTemplateDialog(true);
+  };
+
   // Group KPIs and KRAs by employee
   const kpisByEmployee = {};
   allKpis.forEach(k => {
@@ -205,31 +223,48 @@ const AdminTab = ({ employees, authHeaders, period }) => {
       {/* MIS Compliance */}
       {compliance && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />MIS Compliance — {compliance.date}
-            </CardTitle>
-            <CardDescription>{compliance.filled}/{compliance.total_assigned} employees submitted</CardDescription>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-primary" />MIS Compliance — {compliance.date}
+              </CardTitle>
+              <Badge variant="outline" className={compliance.filled === compliance.total_assigned ? 'text-emerald-600 border-emerald-300' : 'text-amber-600 border-amber-300'}>
+                {compliance.filled}/{compliance.total_assigned} submitted
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200 text-center">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
-                <p className="text-2xl font-bold text-emerald-700 mt-1">{compliance.filled}</p>
-                <p className="text-xs text-emerald-600">Submitted</p>
+            {/* Progress bar */}
+            <div className="mb-4">
+              <div className="flex justify-between text-xs text-slate-500 mb-1">
+                <span>{compliance.filled} submitted</span>
+                <span>{compliance.not_filled} pending</span>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-center">
-                <XCircle className="w-6 h-6 text-red-600 mx-auto" />
-                <p className="text-2xl font-bold text-red-700 mt-1">{compliance.not_filled}</p>
-                <p className="text-xs text-red-600">Not Submitted</p>
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${compliance.filled === compliance.total_assigned ? 'bg-emerald-500' : compliance.filled > compliance.total_assigned / 2 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                  style={{ width: `${compliance.total_assigned ? (compliance.filled / compliance.total_assigned * 100) : 0}%` }}
+                />
               </div>
             </div>
+
+            {/* Compact pending list — grouped by department */}
             {compliance.not_filled_list?.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-red-700 mb-2">Not submitted today:</p>
-                <div className="flex flex-wrap gap-2">
-                  {compliance.not_filled_list.map((e, i) => (
-                    <Badge key={i} variant="outline" className="text-red-700 border-red-300">{e.employee_name} ({e.department_name})</Badge>
+                <p className="text-xs font-medium text-slate-500 mb-2">Pending submissions ({compliance.not_filled})</p>
+                <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1">
+                  {Object.entries(
+                    compliance.not_filled_list.reduce((acc, e) => {
+                      const dept = e.department_name || 'Other';
+                      if (!acc[dept]) acc[dept] = [];
+                      acc[dept].push(e);
+                      return acc;
+                    }, {})
+                  ).sort(([, a], [, b]) => b.length - a.length).map(([dept, emps]) => (
+                    <div key={dept} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg border text-xs">
+                      <Badge variant="outline" className="shrink-0 text-[10px] mt-0.5">{dept} ({emps.length})</Badge>
+                      <span className="text-slate-600 leading-relaxed">{emps.map(e => e.employee_name).join(', ')}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -248,7 +283,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
               </CardTitle>
               <CardDescription>Click the view button to see employee's MIS entries and KPI scores</CardDescription>
             </div>
-            <Button size="sm" onClick={() => { setTemplateForm({ fields: [{ key: '', label: '', type: 'number' }], frequency: 'daily' }); setShowTemplateDialog(true); }} className="gap-1" data-testid="add-template-btn">
+            <Button size="sm" onClick={openNewTemplate} className="gap-1" data-testid="add-template-btn">
               <Plus className="w-4 h-4" />Assign MIS
             </Button>
           </div>
@@ -300,7 +335,10 @@ const AdminTab = ({ employees, authHeaders, period }) => {
                 </div>
                 <div className="flex gap-1 shrink-0 ml-2">
                   <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => loadEmpScores(t.employee_id)} data-testid={`view-scores-${t.employee_id}`}>
-                    <Eye className="w-3.5 h-3.5" />View MIS & KPI
+                    <Eye className="w-3.5 h-3.5" />View
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => openEditTemplate(t)} data-testid={`edit-template-${t.template_id}`}>
+                    <Pencil className="w-3.5 h-3.5" />Edit
                   </Button>
                   <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteTemplate(t.template_id)} data-testid={`delete-template-${t.template_id}`}><Trash2 className="w-4 h-4" /></Button>
                 </div>
@@ -569,14 +607,14 @@ const AdminTab = ({ employees, authHeaders, period }) => {
       <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Assign MIS Template to Employee</DialogTitle>
-            <DialogDescription>Create a personalized MIS sheet with a specific frequency</DialogDescription>
+            <DialogTitle>{editingTemplateId ? 'Edit MIS Template' : 'Assign MIS Template to Employee'}</DialogTitle>
+            <DialogDescription>{editingTemplateId ? 'Modify fields and frequency for this template' : 'Create a personalized MIS sheet with a specific frequency'}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Employee *</Label>
-                <Select value={templateForm.employee_id || ''} onValueChange={v => setTemplateForm(p => ({ ...p, employee_id: v }))}>
+                <Select value={templateForm.employee_id || ''} onValueChange={v => setTemplateForm(p => ({ ...p, employee_id: v }))} disabled={!!editingTemplateId}>
                   <SelectTrigger data-testid="template-employee"><SelectValue placeholder="Select employee" /></SelectTrigger>
                   <SelectContent>
                     {employees.filter(e => e.is_active !== false).map(e => (
@@ -587,7 +625,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
               </div>
               <div>
                 <Label>Frequency *</Label>
-                <Select value={templateForm.frequency || 'daily'} onValueChange={v => setTemplateForm(p => ({ ...p, frequency: v }))}>
+                <Select value={templateForm.frequency || 'daily'} onValueChange={v => setTemplateForm(p => ({ ...p, frequency: v }))} disabled={!!editingTemplateId}>
                   <SelectTrigger data-testid="template-frequency"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="daily">Daily</SelectItem>
@@ -654,7 +692,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>Cancel</Button>
-            <Button onClick={createTemplate} disabled={!templateForm.employee_id || !templateForm.fields?.length} data-testid="save-template-btn">Create Template</Button>
+            <Button onClick={createTemplate} disabled={!templateForm.employee_id || !templateForm.fields?.length} data-testid="save-template-btn">{editingTemplateId ? 'Save Changes' : 'Create Template'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
