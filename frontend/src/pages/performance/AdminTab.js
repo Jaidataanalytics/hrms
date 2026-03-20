@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import {
   FileText, Plus, Target, Award, Eye, XCircle, AlertTriangle,
   CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search, TrendingUp,
-  Pencil, Users, Clock, X as XIcon, UserCheck, UserX
+  Pencil, Users, Clock, X as XIcon, UserCheck, UserX, ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
@@ -40,6 +40,8 @@ const AdminTab = ({ employees, authHeaders, period }) => {
   // Compliance view state
   const [complianceTab, setComplianceTab] = useState('not_submitted');
   const [complianceMisEntry, setComplianceMisEntry] = useState(null);
+  const [complianceDate, setComplianceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [complianceLoading, setComplianceLoading] = useState(false);
 
   // Filters for MIS templates list
   const [templateSearch, setTemplateSearch] = useState('');
@@ -56,11 +58,20 @@ const AdminTab = ({ employees, authHeaders, period }) => {
 
   const hdrs = { credentials: 'include', headers: authHeaders };
 
+  const fetchCompliance = useCallback(async (date) => {
+    setComplianceLoading(true);
+    try {
+      const r = await fetch(`${API}/mis-compliance?date=${date}`, hdrs);
+      if (r.ok) setCompliance(await r.json());
+    } catch (err) { console.error(err); }
+    finally { setComplianceLoading(false); }
+  }, [authHeaders]);
+
   const fetchAdminData = useCallback(async () => {
     setLoading(true);
     try {
       const [cR, tR, kpR, krR] = await Promise.all([
-        fetch(`${API}/mis-compliance`, hdrs),
+        fetch(`${API}/mis-compliance?date=${complianceDate}`, hdrs),
         fetch(`${API}/mis-templates`, hdrs),
         fetch(`${API}/all-kpi-definitions`, hdrs),
         fetch(`${API}/all-kra-definitions`, hdrs),
@@ -71,7 +82,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
       if (krR.ok) setAllKras(await krR.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, [authHeaders]);
+  }, [authHeaders, complianceDate]);
 
   useEffect(() => { fetchAdminData(); }, [fetchAdminData]);
 
@@ -229,6 +240,29 @@ const AdminTab = ({ employees, authHeaders, period }) => {
         const pct = compliance.total_assigned ? Math.round(compliance.filled / compliance.total_assigned * 100) : 0;
         const filledList = compliance.filled_list || [];
         const notFilledList = compliance.not_filled_list || [];
+        const today = new Date().toISOString().slice(0, 10);
+        const isToday = complianceDate === today;
+
+        const shiftDate = (days) => {
+          const d = new Date(complianceDate + 'T00:00:00');
+          d.setDate(d.getDate() + days);
+          const newDate = d.toISOString().slice(0, 10);
+          if (newDate > today) return;
+          setComplianceDate(newDate);
+          fetchCompliance(newDate);
+        };
+
+        const handleDateChange = (e) => {
+          const newDate = e.target.value;
+          if (newDate > today) return;
+          setComplianceDate(newDate);
+          fetchCompliance(newDate);
+        };
+
+        const formatDisplayDate = (dateStr) => {
+          const d = new Date(dateStr + 'T00:00:00');
+          return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        };
 
         // Group not_filled by department
         const pendingByDept = notFilledList.reduce((acc, e) => {
@@ -249,14 +283,41 @@ const AdminTab = ({ employees, authHeaders, period }) => {
         return (
           <Card data-testid="compliance-card">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-primary" />MIS Compliance — {compliance.date}
+                  <BarChart3 className="w-5 h-5 text-primary" />MIS Compliance
                 </CardTitle>
                 <Badge variant="outline" className={pct === 100 ? 'text-emerald-600 border-emerald-300 bg-emerald-50' : pct >= 50 ? 'text-blue-600 border-blue-300 bg-blue-50' : 'text-red-600 border-red-300 bg-red-50'}>
                   {compliance.filled}/{compliance.total_assigned} submitted ({pct}%)
                 </Badge>
               </div>
+              {/* Date navigator */}
+              <div className="flex items-center gap-2 mt-2" data-testid="compliance-date-nav">
+                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => shiftDate(-1)} data-testid="compliance-prev-day">
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className="relative flex-1 max-w-[220px]">
+                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={complianceDate}
+                    max={today}
+                    onChange={handleDateChange}
+                    className="w-full h-8 pl-8 pr-2 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                    data-testid="compliance-date-picker"
+                  />
+                </div>
+                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => shiftDate(1)} disabled={isToday} data-testid="compliance-next-day">
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+                {!isToday && (
+                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setComplianceDate(today); fetchCompliance(today); }} data-testid="compliance-today-btn">
+                    Today
+                  </Button>
+                )}
+                {complianceLoading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">{formatDisplayDate(complianceDate)}{isToday ? ' (Today)' : ''}</p>
             </CardHeader>
             <CardContent>
               {/* Progress bar */}
@@ -392,7 +453,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
               {complianceMisEntry?.employee_name} — MIS Entry
             </DialogTitle>
             <DialogDescription>
-              Submitted on {compliance?.date} | {complianceMisEntry?.department_name}
+              Submitted on {complianceMisEntry?.submitted_date || compliance?.date} | {complianceMisEntry?.department_name}
             </DialogDescription>
           </DialogHeader>
           {complianceMisEntry?.fields && Object.keys(complianceMisEntry.fields).length > 0 ? (
