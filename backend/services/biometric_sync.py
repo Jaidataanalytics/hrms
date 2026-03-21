@@ -91,6 +91,34 @@ async def get_employee_map() -> Dict[str, Dict[str, Any]]:
         return {}
 
 
+async def get_contract_worker_map() -> Dict[str, Dict[str, Any]]:
+    """
+    Get mapping of employee_code to contract worker data.
+    """
+    if db is None:
+        return {}
+    try:
+        workers = await db.contract_workers.find(
+            {"is_active": True, "employee_code": {"$exists": True, "$nin": [None, ""]}},
+            {"_id": 0, "worker_id": 1, "employee_code": 1, "name": 1, "contractor_id": 1}
+        ).to_list(2000)
+        
+        cw_map = {}
+        for w in workers:
+            code = w.get("employee_code")
+            if code:
+                cw_map[code] = {
+                    "worker_id": w["worker_id"],
+                    "name": w.get("name", ""),
+                    "contractor_id": w.get("contractor_id", "")
+                }
+        logger.info(f"Loaded {len(cw_map)} contract worker mappings")
+        return cw_map
+    except Exception as e:
+        logger.error(f"Error loading contract worker map: {e}")
+        return {}
+
+
 def parse_punch_direction(direction: str, punch_time: str = None) -> str:
     """
     Convert API punch direction to standard format.
@@ -387,16 +415,95 @@ async def update_attendance_record(
         return False
 
 
+async def update_cw_attendance_batch(
+    worker_id: str,
+    emp_code: str,
+    contractor_id: str,
+    date: str,
+    punch_records: list
+) -> bool:
+    """
+    Update contract worker attendance with biometric punches.
+    Writes to contract_worker_attendance collection.
+    """
+    if db is None:
+        return False
+    try:
+        existing = await db.contract_worker_attendance.find_one(
+            {"worker_id": worker_id, "date": date}
+        )
+
+        if existing:
+            kept_punches = [p for p in existing.get("punches", []) if p.get("source") != "biometric_api"]
+            seen_times = set()
+            for p in punch_records:
+                if p["time"] not in seen_times:
+                    kept_punches.append(p)
+                    seen_times.add(p["time"])
+            all_punches = kept_punches
+        else:
+            all_punches = punch_records
+
+        all_punches.sort(key=lambda p: p["time"])
+
+        in_times = [p["time"] for p in all_punches if p.get("type") == "IN"]
+        out_times = [p["time"] for p in all_punches if p.get("type") == "OUT"]
+
+        first_in = min(in_times) if in_times else None
+        last_out = max(out_times) if out_times else None
+
+        total_hours = None
+        if first_in and last_out:
+            try:
+                t1 = datetime.strptime(first_in, "%H:%M:%S" if first_in.count(":") == 2 else "%H:%M")
+                t2 = datetime.strptime(last_out, "%H:%M:%S" if last_out.count(":") == 2 else "%H:%M")
+                total_hours = round((t2 - t1).seconds / 3600, 2)
+            except Exception:
+                pass
+
+        if existing:
+            await db.contract_worker_attendance.update_one(
+                {"attendance_id": existing["attendance_id"]},
+                {"$set": {
+                    "punches": all_punches,
+                    "in_time": first_in,
+                    "out_time": last_out,
+                    "hours_worked": total_hours,
+                    "status": "present",
+                    "source": "biometric_api",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+        else:
+            import uuid
+            doc = {
+                "attendance_id": f"cwa_{uuid.uuid4().hex[:12]}",
+                "worker_id": worker_id,
+                "contractor_id": contractor_id,
+                "employee_code": emp_code,
+                "date": date,
+                "status": "present",
+                "in_time": first_in,
+                "out_time": last_out,
+                "hours_worked": total_hours,
+                "overtime_hours": 0,
+                "punches": all_punches,
+                "source": "biometric_api",
+                "remarks": "Synced from biometric",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.contract_worker_attendance.insert_one(doc)
+
+        return True
+    except Exception as e:
+        logger.error(f"Error updating CW attendance for {emp_code} on {date}: {e}")
+        return False
+
+
 async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dict[str, Any]:
     """
-    Main sync function - fetches biometric data and updates attendance.
-    
-    Args:
-        from_date: Optional start date (defaults to yesterday)
-        to_date: Optional end date (defaults to today)
-    
-    Returns:
-        Sync results summary
+    Main sync function - fetches biometric data and updates attendance
+    for both regular employees AND contract workers.
     """
     if db is None:
         logger.error("Database not initialized for biometric sync")
@@ -410,11 +517,13 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
     
     logger.info(f"Starting biometric sync from {from_date} to {to_date}")
     
-    # Get employee mapping
+    # Get both employee AND contract worker mappings
     emp_map = await get_employee_map()
-    if not emp_map:
-        logger.warning("No employee mappings found")
-        return {"success": False, "error": "No employee mappings"}
+    cw_map = await get_contract_worker_map()
+    
+    if not emp_map and not cw_map:
+        logger.warning("No employee or contract worker mappings found")
+        return {"success": False, "error": "No mappings found"}
     
     # Fetch biometric data
     biometric_data = await fetch_biometric_data(from_date, to_date)
@@ -426,8 +535,10 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
     stats = {
         "total_records": len(biometric_data),
         "matched": 0,
+        "matched_cw": 0,
         "unmatched": 0,
         "updated": 0,
+        "updated_cw": 0,
         "errors": 0,
         "unmatched_codes": set()
     }
@@ -435,6 +546,7 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
     # ---- Group API records by (emp_code, date) ----
     from collections import defaultdict
     grouped: Dict[str, Dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    grouped_cw: Dict[str, Dict[str, list]] = defaultdict(lambda: defaultdict(list))
     
     for record in biometric_data:
         emp_code = record.get("EmployeeCode")
@@ -445,34 +557,38 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
             stats["errors"] += 1
             continue
         
-        emp_info = emp_map.get(emp_code)
-        if not emp_info:
-            stats["unmatched"] += 1
-            stats["unmatched_codes"].add(emp_code)
-            continue
-        
-        stats["matched"] += 1
-        
         date_str, time_str = parse_log_datetime(log_date)
         if not date_str or not time_str:
             stats["errors"] += 1
             continue
         
-        grouped[emp_code][date_str].append({
-            "time": time_str,
-            "device": device_serial,
-            "employee_id": emp_info["employee_id"]
-        })
+        # Check regular employees first, then contract workers
+        emp_info = emp_map.get(emp_code)
+        cw_info = cw_map.get(emp_code)
+        
+        if emp_info:
+            stats["matched"] += 1
+            grouped[emp_code][date_str].append({
+                "time": time_str,
+                "device": device_serial,
+                "employee_id": emp_info["employee_id"]
+            })
+        elif cw_info:
+            stats["matched_cw"] += 1
+            grouped_cw[emp_code][date_str].append({
+                "time": time_str,
+                "device": device_serial,
+                "worker_id": cw_info["worker_id"]
+            })
+        else:
+            stats["unmatched"] += 1
+            stats["unmatched_codes"].add(emp_code)
     
-    # ---- Process each employee-date group ----
+    # ---- Process regular employees ----
     for emp_code, dates in grouped.items():
         emp_info = emp_map[emp_code]
         for date_str, punches in dates.items():
-            # Sort punches by time
             punches.sort(key=lambda p: p["time"])
-            
-            # Build punch records: first = IN, last = OUT (if >1 punch)
-            # Middle punches use time-based logic
             punch_records = []
             for i, p in enumerate(punches):
                 if i == 0:
@@ -481,24 +597,51 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
                     punch_type = "OUT"
                 else:
                     punch_type = parse_punch_direction(None, p["time"])
-                
                 punch_records.append({
                     "type": punch_type,
                     "time": p["time"],
                     "source": "biometric_api",
                     "device": p["device"]
                 })
-            
-            # Write to attendance
             success = await update_attendance_batch(
                 employee_id=emp_info["employee_id"],
                 emp_code=emp_code,
                 date=date_str,
                 punch_records=punch_records
             )
-            
             if success:
                 stats["updated"] += 1
+            else:
+                stats["errors"] += 1
+    
+    # ---- Process contract workers ----
+    for emp_code, dates in grouped_cw.items():
+        cw_info = cw_map[emp_code]
+        for date_str, punches in dates.items():
+            punches.sort(key=lambda p: p["time"])
+            punch_records = []
+            for i, p in enumerate(punches):
+                if i == 0:
+                    punch_type = "IN"
+                elif i == len(punches) - 1 and len(punches) > 1:
+                    punch_type = "OUT"
+                else:
+                    punch_type = parse_punch_direction(None, p["time"])
+                punch_records.append({
+                    "type": punch_type,
+                    "time": p["time"],
+                    "source": "biometric_api",
+                    "device": p["device"]
+                })
+            success = await update_cw_attendance_batch(
+                worker_id=cw_info["worker_id"],
+                emp_code=emp_code,
+                contractor_id=cw_info.get("contractor_id", ""),
+                date=date_str,
+                punch_records=punch_records
+            )
+            if success:
+                stats["updated_cw"] += 1
             else:
                 stats["errors"] += 1
     
@@ -508,7 +651,7 @@ async def sync_biometric_data(from_date: str = None, to_date: str = None) -> Dic
     # Convert set to list for JSON serialization
     stats["unmatched_codes"] = list(stats["unmatched_codes"])
     
-    logger.info(f"Biometric sync completed: {stats['updated']} updated, {stats['unmatched']} unmatched, {stats['errors']} errors")
+    logger.info(f"Biometric sync completed: {stats['updated']} employees updated, {stats['updated_cw']} contract workers updated, {stats['unmatched']} unmatched, {stats['errors']} errors")
     
     return {
         "success": True,

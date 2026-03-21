@@ -202,6 +202,8 @@ On-the-fly normalization during payroll processing:
 - [x] Admin MIS View: Filterable templates + View MIS & KPI dialog (DONE - Mar 18, 2026)
 - [x] Multi-Frequency MIS: Daily/Weekly/Monthly/Quarterly templates per employee (DONE - Mar 18, 2026)
 - [x] MIS Compliance Redesign: Submitted/Not Submitted tabs, click-to-view modal, backend dedup fix (DONE - Mar 19, 2026)
+- [x] MIS Compliance Date Navigator: Browse compliance history for any past date (DONE - Mar 20, 2026)
+- [x] Contract Worker Attendance: Extended biometric sync to auto-process contract workers, daily/monthly attendance views on Contract Labour page (DONE - Mar 21, 2026)
 - [ ] Full E2E testing of leave approvals, CO requests, cancellations
 - [ ] Mobile app build fix (MainActivity.java + Gradle config)
 - [ ] Mobile location permissions

@@ -536,6 +536,153 @@ async def mark_contract_worker_attendance(data: dict, request: Request):
     return attendance
 
 
+@router.get("/attendance/daily-overview")
+async def contract_worker_daily_attendance(
+    request: Request,
+    date: Optional[str] = None,
+    contractor_id: Optional[str] = None
+):
+    """Get daily attendance overview for all contract workers"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    check_date = date or datetime.now(timezone.utc).date().isoformat()
+
+    # Get all active workers
+    wq = {"is_active": True}
+    if contractor_id:
+        wq["contractor_id"] = contractor_id
+    workers = await db.contract_workers.find(wq, {"_id": 0}).to_list(2000)
+
+    # Get attendance records for the date
+    aq = {"date": check_date}
+    if contractor_id:
+        aq["contractor_id"] = contractor_id
+    records = await db.contract_worker_attendance.find(aq, {"_id": 0}).to_list(2000)
+    att_map = {r["worker_id"]: r for r in records}
+
+    # Get contractor names
+    contractors = await db.contractors.find({}, {"_id": 0, "contractor_id": 1, "name": 1}).to_list(200)
+    contractor_names = {c["contractor_id"]: c["name"] for c in contractors}
+
+    result = []
+    present = 0
+    absent = 0
+    for w in workers:
+        wid = w["worker_id"]
+        att = att_map.get(wid)
+        worker_name = w.get("name") or f"{w.get('first_name', '')} {w.get('last_name', '')}".strip() or wid
+        entry = {
+            "worker_id": wid,
+            "name": worker_name,
+            "employee_code": w.get("employee_code", ""),
+            "contractor_id": w.get("contractor_id", ""),
+            "contractor_name": contractor_names.get(w.get("contractor_id", ""), ""),
+            "designation": w.get("designation", ""),
+            "status": att["status"] if att else "absent",
+            "in_time": att.get("in_time") if att else None,
+            "out_time": att.get("out_time") if att else None,
+            "hours_worked": att.get("hours_worked") if att else None,
+            "source": att.get("source", "manual") if att else None,
+        }
+        if att:
+            present += 1
+        else:
+            absent += 1
+        result.append(entry)
+
+    return {
+        "date": check_date,
+        "total_workers": len(workers),
+        "present": present,
+        "absent": absent,
+        "workers": result
+    }
+
+
+@router.get("/attendance/monthly-summary")
+async def contract_worker_monthly_summary(
+    request: Request,
+    month: Optional[str] = None,
+    contractor_id: Optional[str] = None
+):
+    """Get monthly attendance summary for contract workers.
+    month format: YYYY-MM (defaults to current month)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "hr_executive", "manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if not month:
+        month = datetime.now(timezone.utc).strftime("%Y-%m")
+
+    year, mon = month.split("-")
+    year, mon = int(year), int(mon)
+
+    # Calculate days in month
+    import calendar
+    days_in_month = calendar.monthrange(year, mon)[1]
+    from_date = f"{month}-01"
+    to_date = f"{month}-{days_in_month:02d}"
+
+    # Get all active workers
+    wq = {"is_active": True}
+    if contractor_id:
+        wq["contractor_id"] = contractor_id
+    workers = await db.contract_workers.find(wq, {"_id": 0}).to_list(2000)
+
+    # Get attendance for the month
+    aq = {"date": {"$gte": from_date, "$lte": to_date}}
+    if contractor_id:
+        aq["contractor_id"] = contractor_id
+    records = await db.contract_worker_attendance.find(aq, {"_id": 0}).to_list(10000)
+
+    # Build per-worker attendance map: worker_id -> {date -> record}
+    worker_att = {}
+    for r in records:
+        wid = r["worker_id"]
+        if wid not in worker_att:
+            worker_att[wid] = {}
+        worker_att[wid][r["date"]] = {
+            "status": r.get("status", "present"),
+            "in_time": r.get("in_time"),
+            "out_time": r.get("out_time"),
+            "hours_worked": r.get("hours_worked"),
+        }
+
+    # Get contractor names
+    contractors = await db.contractors.find({}, {"_id": 0, "contractor_id": 1, "name": 1}).to_list(200)
+    contractor_names = {c["contractor_id"]: c["name"] for c in contractors}
+
+    result = []
+    for w in workers:
+        wid = w["worker_id"]
+        days = worker_att.get(wid, {})
+        total_present = sum(1 for d in days.values() if d["status"] == "present")
+        total_hours = sum(d.get("hours_worked") or 0 for d in days.values())
+        worker_name = w.get("name") or f"{w.get('first_name', '')} {w.get('last_name', '')}".strip() or wid
+
+        result.append({
+            "worker_id": wid,
+            "name": worker_name,
+            "employee_code": w.get("employee_code", ""),
+            "contractor_id": w.get("contractor_id", ""),
+            "contractor_name": contractor_names.get(w.get("contractor_id", ""), ""),
+            "designation": w.get("designation", ""),
+            "days_present": total_present,
+            "days_absent": days_in_month - total_present,
+            "total_hours": round(total_hours, 1),
+            "daily_attendance": days,
+        })
+
+    return {
+        "month": month,
+        "days_in_month": days_in_month,
+        "total_workers": len(workers),
+        "workers": result
+    }
+
+
 # ==================== SUMMARY & REPORTS ====================
 
 @router.get("/summary")

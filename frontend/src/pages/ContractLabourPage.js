@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import {
   Building, Plus, RefreshCw, Users, IndianRupee, Calendar, Trash2, Edit, User,
   FileText, Clock, Upload, Download, Eye, Phone, MapPin, ChevronLeft, Save, X,
-  CheckCircle, XCircle, Briefcase
+  CheckCircle, XCircle, Briefcase, ChevronRight, UserCheck, UserX
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
@@ -58,6 +58,15 @@ const ContractLabourPage = () => {
   const [uploading, setUploading] = useState(false);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
+
+  // Attendance tab state
+  const [attDate, setAttDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [attDaily, setAttDaily] = useState(null);
+  const [attDailyLoading, setAttDailyLoading] = useState(false);
+  const [attMonthlyMonth, setAttMonthlyMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [attMonthly, setAttMonthly] = useState(null);
+  const [attMonthlyLoading, setAttMonthlyLoading] = useState(false);
+  const [attView, setAttView] = useState('daily');
 
   const isHR = user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive';
 
@@ -111,6 +120,28 @@ const ContractLabourPage = () => {
     } catch (error) {
       console.error('Error fetching attendance:', error);
     }
+  };
+
+  const fetchDailyAttendance = async (date) => {
+    setAttDailyLoading(true);
+    try {
+      const r = await fetch(`${API_URL}/labour/attendance/daily-overview?date=${date}`, {
+        credentials: 'include', headers: getAuthHeaders()
+      });
+      if (r.ok) setAttDaily(await r.json());
+    } catch (e) { console.error(e); }
+    finally { setAttDailyLoading(false); }
+  };
+
+  const fetchMonthlyAttendance = async (month) => {
+    setAttMonthlyLoading(true);
+    try {
+      const r = await fetch(`${API_URL}/labour/attendance/monthly-summary?month=${month}`, {
+        credentials: 'include', headers: getAuthHeaders()
+      });
+      if (r.ok) setAttMonthly(await r.json());
+    } catch (e) { console.error(e); }
+    finally { setAttMonthlyLoading(false); }
   };
 
   const fetchWorkerDocuments = async () => {
@@ -834,6 +865,10 @@ const ContractLabourPage = () => {
             <Building className="w-4 h-4" />
             Contractors ({contractors.length})
           </TabsTrigger>
+          <TabsTrigger value="attendance" className="gap-2" data-testid="main-tab-attendance" onClick={() => { if (!attDaily) fetchDailyAttendance(attDate); }}>
+            <Clock className="w-4 h-4" />
+            Attendance
+          </TabsTrigger>
         </TabsList>
 
         {/* Workers Tab */}
@@ -1056,9 +1091,201 @@ const ContractLabourPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
 
-      {/* Add/Edit Worker Dialog (for new workers) */}
+        {/* Attendance Tab */}
+        <TabsContent value="attendance">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />Contract Worker Attendance
+                </CardTitle>
+                {/* Daily / Monthly toggle */}
+                <div className="flex gap-1 border rounded-lg p-0.5">
+                  <button className={`px-3 py-1 text-xs font-medium rounded ${attView === 'daily' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-700'}`} onClick={() => { setAttView('daily'); if (!attDaily) fetchDailyAttendance(attDate); }} data-testid="att-view-daily">Daily</button>
+                  <button className={`px-3 py-1 text-xs font-medium rounded ${attView === 'monthly' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-700'}`} onClick={() => { setAttView('monthly'); if (!attMonthly) fetchMonthlyAttendance(attMonthlyMonth); }} data-testid="att-view-monthly">Monthly</button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* ===== Daily View ===== */}
+              {attView === 'daily' && (
+                <div>
+                  {/* Date navigator */}
+                  <div className="flex items-center gap-2 mb-4" data-testid="att-date-nav">
+                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => {
+                      const d = new Date(attDate + 'T00:00:00');
+                      d.setDate(d.getDate() - 1);
+                      const nd = d.toISOString().slice(0, 10);
+                      setAttDate(nd);
+                      fetchDailyAttendance(nd);
+                    }} data-testid="att-prev-day"><ChevronLeft className="w-4 h-4" /></Button>
+                    <div className="relative flex-1 max-w-[200px]">
+                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                      <input type="date" value={attDate} max={new Date().toISOString().slice(0, 10)} onChange={e => { setAttDate(e.target.value); fetchDailyAttendance(e.target.value); }}
+                        className="w-full h-8 pl-8 pr-2 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary" data-testid="att-date-picker" />
+                    </div>
+                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => {
+                      const d = new Date(attDate + 'T00:00:00');
+                      d.setDate(d.getDate() + 1);
+                      const nd = d.toISOString().slice(0, 10);
+                      if (nd <= new Date().toISOString().slice(0, 10)) { setAttDate(nd); fetchDailyAttendance(nd); }
+                    }} disabled={attDate >= new Date().toISOString().slice(0, 10)} data-testid="att-next-day"><ChevronRight className="w-4 h-4" /></Button>
+                    {attDate !== new Date().toISOString().slice(0, 10) && (
+                      <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { const t = new Date().toISOString().slice(0, 10); setAttDate(t); fetchDailyAttendance(t); }}>Today</Button>
+                    )}
+                    {attDailyLoading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
+                  </div>
+
+                  {/* Summary cards */}
+                  {attDaily && (
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="p-3 bg-slate-50 rounded-lg border text-center">
+                        <p className="text-2xl font-bold text-slate-900">{attDaily.total_workers}</p>
+                        <p className="text-xs text-slate-500">Total Workers</p>
+                      </div>
+                      <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
+                        <p className="text-2xl font-bold text-emerald-700">{attDaily.present}</p>
+                        <p className="text-xs text-slate-500">Present</p>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200 text-center">
+                        <p className="text-2xl font-bold text-red-600">{attDaily.absent}</p>
+                        <p className="text-xs text-slate-500">Absent</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Workers table */}
+                  {attDaily?.workers?.length > 0 ? (
+                    <div className="overflow-auto max-h-[500px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50">
+                            <TableHead>Worker</TableHead>
+                            <TableHead>Contractor</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>In Time</TableHead>
+                            <TableHead>Out Time</TableHead>
+                            <TableHead>Hours</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {attDaily.workers.map(w => (
+                            <TableRow key={w.worker_id} data-testid={`att-row-${w.worker_id}`}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium text-sm">{w.name}</p>
+                                  {w.employee_code && <p className="text-xs text-slate-400">{w.employee_code}</p>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm">{w.contractor_name || '-'}</TableCell>
+                              <TableCell>
+                                <Badge className={w.status === 'present' ? 'bg-emerald-100 text-emerald-700' : w.status === 'half_day' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}>
+                                  {w.status === 'present' ? <UserCheck className="w-3 h-3 mr-1" /> : <UserX className="w-3 h-3 mr-1" />}
+                                  {w.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm font-mono">{w.in_time || '-'}</TableCell>
+                              <TableCell className="text-sm font-mono">{w.out_time || '-'}</TableCell>
+                              <TableCell className="text-sm">{w.hours_worked ? `${w.hours_worked}h` : '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : attDaily ? (
+                    <div className="text-center py-8 text-sm text-slate-400">
+                      <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                      No workers found
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* ===== Monthly View ===== */}
+              {attView === 'monthly' && (
+                <div>
+                  {/* Month selector */}
+                  <div className="flex items-center gap-2 mb-4" data-testid="att-month-nav">
+                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => {
+                      const [y, m] = attMonthlyMonth.split('-').map(Number);
+                      const nd = new Date(y, m - 2, 1);
+                      const nm = `${nd.getFullYear()}-${String(nd.getMonth() + 1).padStart(2, '0')}`;
+                      setAttMonthlyMonth(nm);
+                      fetchMonthlyAttendance(nm);
+                    }} data-testid="att-prev-month"><ChevronLeft className="w-4 h-4" /></Button>
+                    <input type="month" value={attMonthlyMonth} max={new Date().toISOString().slice(0, 7)} onChange={e => { setAttMonthlyMonth(e.target.value); fetchMonthlyAttendance(e.target.value); }}
+                      className="h-8 px-3 text-sm border rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-primary" data-testid="att-month-picker" />
+                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => {
+                      const [y, m] = attMonthlyMonth.split('-').map(Number);
+                      const nd = new Date(y, m, 1);
+                      const nm = `${nd.getFullYear()}-${String(nd.getMonth() + 1).padStart(2, '0')}`;
+                      const curMonth = new Date().toISOString().slice(0, 7);
+                      if (nm <= curMonth) { setAttMonthlyMonth(nm); fetchMonthlyAttendance(nm); }
+                    }} disabled={attMonthlyMonth >= new Date().toISOString().slice(0, 7)} data-testid="att-next-month"><ChevronRight className="w-4 h-4" /></Button>
+                    {attMonthlyLoading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
+                  </div>
+
+                  {/* Monthly summary table */}
+                  {attMonthly?.workers?.length > 0 ? (
+                    <div className="overflow-auto max-h-[500px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50">
+                            <TableHead>Worker</TableHead>
+                            <TableHead>Contractor</TableHead>
+                            <TableHead className="text-center">Days Present</TableHead>
+                            <TableHead className="text-center">Days Absent</TableHead>
+                            <TableHead className="text-center">Total Hours</TableHead>
+                            <TableHead className="text-center">Attendance %</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {attMonthly.workers.map(w => {
+                            const attPct = attMonthly.days_in_month ? Math.round(w.days_present / attMonthly.days_in_month * 100) : 0;
+                            return (
+                              <TableRow key={w.worker_id} data-testid={`monthly-row-${w.worker_id}`}>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium text-sm">{w.name}</p>
+                                    {w.employee_code && <p className="text-xs text-slate-400">{w.employee_code}</p>}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm">{w.contractor_name || '-'}</TableCell>
+                                <TableCell className="text-center">
+                                  <span className="font-bold text-emerald-700">{w.days_present}</span>
+                                  <span className="text-xs text-slate-400">/{attMonthly.days_in_month}</span>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className={`font-bold ${w.days_absent > 10 ? 'text-red-600' : 'text-slate-700'}`}>{w.days_absent}</span>
+                                </TableCell>
+                                <TableCell className="text-center text-sm">{w.total_hours}h</TableCell>
+                                <TableCell className="text-center">
+                                  <div className="flex items-center gap-2 justify-center">
+                                    <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className={`h-full rounded-full ${attPct >= 80 ? 'bg-emerald-500' : attPct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${attPct}%` }} />
+                                    </div>
+                                    <span className={`text-xs font-medium ${attPct >= 80 ? 'text-emerald-600' : attPct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{attPct}%</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : attMonthly ? (
+                    <div className="text-center py-8 text-sm text-slate-400">
+                      <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                      No workers found
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       <Dialog open={showWorkerDialog && !selectedWorker} onOpenChange={setShowWorkerDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
