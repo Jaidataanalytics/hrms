@@ -52,8 +52,10 @@ import {
   Trash2,
   ArrowRightLeft,
   Printer,
-  Phone
+  Phone,
+  Pencil
 } from 'lucide-react';
+import StationeryTab from './StationeryTab';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -552,6 +554,7 @@ const AssetsPage = () => {
           <TabsTrigger value="requests" data-testid="tab-requests">My Requests</TabsTrigger>
           {isAdmin && <TabsTrigger value="inventory" data-testid="tab-inventory">Asset Inventory</TabsTrigger>}
           {isAdmin && <TabsTrigger value="assignments" data-testid="tab-assignments">Employee Summary</TabsTrigger>}
+          <TabsTrigger value="stationery" data-testid="tab-stationery"><Pencil className="w-3.5 h-3.5 mr-1" />Stationery</TabsTrigger>
         </TabsList>
 
         {/* Asset Inventory - Admin Only */}
@@ -869,9 +872,11 @@ const AssetsPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
 
-      {/* Asset Details Modal */}
+        <TabsContent value="stationery">
+          <StationeryTab authHeaders={getAuthHeaders()} isAdmin={isAdmin} userId={user?.employee_id} />
+        </TabsContent>
+      </Tabs>
       <Dialog open={!!selectedAsset} onOpenChange={() => setSelectedAsset(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

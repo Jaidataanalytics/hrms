@@ -4528,6 +4528,7 @@ from routes.calendar import router as calendar_router
 from routes.meetings import router as meetings_router
 from routes.events import router as events_router
 from routes.org_chart import router as org_chart_router
+from routes.stationery import router as stationery_router
 from routes.notifications import router as notifications_router
 from routes.push_notifications import router as push_router
 from services.biometric_sync import set_db as set_biometric_sync_db
@@ -4561,6 +4562,7 @@ api_router.include_router(meetings_router)
 api_router.include_router(notifications_router)
 api_router.include_router(events_router)
 api_router.include_router(org_chart_router)
+api_router.include_router(stationery_router)
 api_router.include_router(push_router)
 
 # CORS Configuration - Starlette native middleware with regex for reliable preflight handling
