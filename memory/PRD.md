@@ -204,6 +204,7 @@ On-the-fly normalization during payroll processing:
 - [x] MIS Compliance Redesign: Submitted/Not Submitted tabs, click-to-view modal, backend dedup fix (DONE - Mar 19, 2026)
 - [x] MIS Compliance Date Navigator: Browse compliance history for any past date (DONE - Mar 20, 2026)
 - [x] Contract Worker Attendance: Extended biometric sync to auto-process contract workers, daily/monthly attendance views on Contract Labour page (DONE - Mar 21, 2026)
+- [x] Stationery Inventory Management: Full CRUD, purchase stock-in, issue to employees, return flow, employee requests with admin approve/reject, transaction history (DONE - Mar 21, 2026)
 - [ ] Full E2E testing of leave approvals, CO requests, cancellations
 - [ ] Mobile app build fix (MainActivity.java + Gradle config)
 - [ ] Mobile location permissions
