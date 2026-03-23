@@ -43,6 +43,7 @@ const StationeryTab = ({ authHeaders, isAdmin, userId }) => {
   const [showIssue, setShowIssue] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
+  const [empSearchQ, setEmpSearchQ] = useState('');
 
   // Forms
   const emptyItemForm = { name: '', category: 'Pens', unit: 'pieces', purchase_price: '', opening_stock: '', min_stock_level: '5' };
@@ -508,7 +509,7 @@ const StationeryTab = ({ authHeaders, isAdmin, userId }) => {
       </Dialog>
 
       {/* ======= ISSUE DIALOG ======= */}
-      <Dialog open={showIssue} onOpenChange={setShowIssue}>
+      <Dialog open={showIssue} onOpenChange={(o) => { setShowIssue(o); if (!o) setEmpSearchQ(''); }}>
         <DialogContent className="sm:max-w-md" data-testid="stn-issue-dialog">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><ArrowDownToLine className="w-5 h-5 text-amber-600" />Issue Item</DialogTitle></DialogHeader>
           <div className="space-y-3">
@@ -521,10 +522,21 @@ const StationeryTab = ({ authHeaders, isAdmin, userId }) => {
             </div>
             <div>
               <Label>Employee *</Label>
-              <Select value={issueForm.employee_id} onValueChange={v => setIssueForm({ ...issueForm, employee_id: v })}>
-                <SelectTrigger data-testid="stn-issue-employee"><SelectValue placeholder="Select employee" /></SelectTrigger>
-                <SelectContent>{employees.map(e => <SelectItem key={e.employee_id} value={e.employee_id}>{e.name} ({e.department})</SelectItem>)}</SelectContent>
-              </Select>
+              <Input placeholder="Search employee..." value={empSearchQ} onChange={e => setEmpSearchQ(e.target.value)} className="mb-1" data-testid="stn-issue-emp-search" />
+              <div className="max-h-[150px] overflow-y-auto border rounded-md">
+                {employees.filter(e => {
+                  if (!empSearchQ) return true;
+                  const q = empSearchQ.toLowerCase();
+                  return e.name?.toLowerCase().includes(q) || e.department?.toLowerCase().includes(q);
+                }).map(e => (
+                  <div key={e.employee_id} className={`px-3 py-1.5 text-sm cursor-pointer hover:bg-slate-50 border-b last:border-0 ${issueForm.employee_id === e.employee_id ? 'bg-primary/10 font-medium' : ''}`}
+                    onClick={() => setIssueForm({ ...issueForm, employee_id: e.employee_id })}>
+                    <span>{e.name}</span>
+                    <span className="text-xs text-slate-400 ml-2">{e.department}</span>
+                  </div>
+                ))}
+              </div>
+              {issueForm.employee_id && <p className="text-xs text-emerald-600 mt-1">Selected: {employees.find(e => e.employee_id === issueForm.employee_id)?.name}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Quantity *</Label><Input type="number" value={issueForm.qty} onChange={e => setIssueForm({ ...issueForm, qty: e.target.value })} data-testid="stn-issue-qty" /></div>

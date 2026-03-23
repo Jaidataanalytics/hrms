@@ -79,6 +79,7 @@ const AssetsPage = () => {
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeCode, setSelectedEmployeeCode] = useState('');
+  const [empSearch, setEmpSearch] = useState('');
 
   const [assetForm, setAssetForm] = useState({
     name: '', asset_tag: '', category: 'laptop', brand: '', model: '',
@@ -1034,7 +1035,7 @@ const AssetsPage = () => {
       </Dialog>
 
       {/* Reassign Asset Dialog */}
-      <Dialog open={reassignAssetOpen} onOpenChange={setReassignAssetOpen}>
+      <Dialog open={reassignAssetOpen} onOpenChange={(o) => { setReassignAssetOpen(o); if (!o) setEmpSearch(''); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -1052,19 +1053,42 @@ const AssetsPage = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Select Employee</Label>
-              <Select value={selectedEmployeeCode} onValueChange={setSelectedEmployeeCode}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an employee..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.emp_code} value={emp.emp_code}>
-                      {emp.emp_code} - {emp.name}
-                    </SelectItem>
+              <Label>Search & Select Employee</Label>
+              <Input
+                placeholder="Type to search employees..."
+                value={empSearch}
+                onChange={(e) => setEmpSearch(e.target.value)}
+                data-testid="asset-emp-search"
+              />
+              <div className="max-h-[200px] overflow-y-auto border rounded-md">
+                {employees
+                  .filter(emp => {
+                    if (!empSearch) return true;
+                    const q = empSearch.toLowerCase();
+                    return emp.name?.toLowerCase().includes(q) || emp.emp_code?.toLowerCase().includes(q);
+                  })
+                  .map(emp => (
+                    <div
+                      key={emp.emp_code}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-50 border-b last:border-0 flex items-center justify-between ${selectedEmployeeCode === emp.emp_code ? 'bg-primary/10 font-medium' : ''}`}
+                      onClick={() => setSelectedEmployeeCode(emp.emp_code)}
+                      data-testid={`emp-option-${emp.emp_code}`}
+                    >
+                      <span>{emp.name}</span>
+                      <span className="text-xs text-slate-400">{emp.emp_code}</span>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                {employees.filter(emp => {
+                  if (!empSearch) return true;
+                  const q = empSearch.toLowerCase();
+                  return emp.name?.toLowerCase().includes(q) || emp.emp_code?.toLowerCase().includes(q);
+                }).length === 0 && (
+                  <div className="px-3 py-4 text-sm text-slate-400 text-center">No employees found</div>
+                )}
+              </div>
+              {selectedEmployeeCode && (
+                <p className="text-xs text-emerald-600">Selected: {employees.find(e => e.emp_code === selectedEmployeeCode)?.name} ({selectedEmployeeCode})</p>
+              )}
             </div>
           </div>
           <DialogFooter>

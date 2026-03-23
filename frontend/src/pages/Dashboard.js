@@ -40,6 +40,7 @@ import { getAuthHeaders } from '../utils/api';
 import CelebrationBanner from '../components/CelebrationBanner';
 import CelebrationModal from '../components/CelebrationModal';
 import WidgetCustomizer, { CustomizeButton, getWidgetPrefs, isWidgetEnabled } from '../components/WidgetCustomizer';
+import ThoughtOfTheDay from '../components/ThoughtOfTheDay';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -299,6 +300,9 @@ const Dashboard = () => {
 
   return (
     <div className={`space-y-6 ${celebrationTheme ? `celebration-theme celebration-theme-${celebrationTheme}` : ''}`} data-testid="dashboard-page">
+      {/* Thought of the Day - shows once per day on first visit */}
+      <ThoughtOfTheDay authHeaders={getAuthHeaders()} />
+
       {/* Celebration Modal - shows once per day */}
       {celebrationModal && (
         <CelebrationModal

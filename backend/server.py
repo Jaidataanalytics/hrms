@@ -31,15 +31,7 @@ JWT_EXPIRY_HOURS = 168  # 7 days for better UX
 # Create the main app
 app = FastAPI(title="Sharda HR API", version="1.0.0")
 
-# CORS Configuration
-cors_origins = os.environ.get("CORS_ORIGINS", "*").split(",")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[origin.strip() for origin in cors_origins],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS Configuration - handled below with specific origins
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -4564,6 +4556,50 @@ api_router.include_router(events_router)
 api_router.include_router(org_chart_router)
 api_router.include_router(stationery_router)
 api_router.include_router(push_router)
+
+# ==================== THOUGHT OF THE DAY ====================
+DAILY_THOUGHTS = [
+    "Small steps every day lead to big changes.",
+    "Your hard work today builds a better tomorrow.",
+    "Be kind to yourself — you are doing your best.",
+    "A good team makes hard work feel easy.",
+    "Every problem has a solution — just keep looking.",
+    "Your effort matters more than you think.",
+    "Start with what you can do, not what you cannot.",
+    "A smile can change someone's whole day.",
+    "Focus on progress, not perfection.",
+    "You are stronger than any challenge you face.",
+    "Good things take time — be patient with yourself.",
+    "Help others and happiness will find you.",
+    "Today is a new chance to do something great.",
+    "Believe in yourself — you have come this far.",
+    "One step at a time is still moving forward.",
+    "Your work has value — never forget that.",
+    "Stay calm, stay focused, stay positive.",
+    "Learning something new makes you better every day.",
+    "The best way to start is to just begin.",
+    "Together we can do more than we can alone.",
+    "Difficult times build strong people.",
+    "A little effort every day goes a long way.",
+    "Your attitude decides your direction.",
+    "Work hard in silence — let results speak.",
+    "Every day is a chance to grow.",
+    "Do your best — that is always enough.",
+    "Success comes from not giving up.",
+    "Take a deep breath — you have got this.",
+    "Respect your time and others will too.",
+    "Happiness is found in doing meaningful work.",
+    "Keep going — the best is yet to come.",
+]
+
+@api_router.get("/thought-of-the-day")
+async def thought_of_the_day(request: Request):
+    """Return a daily motivational thought — same thought for everyone on the same day"""
+    import hashlib
+    today = str(datetime.now(timezone.utc).date())
+    idx = int(hashlib.md5(today.encode()).hexdigest(), 16) % len(DAILY_THOUGHTS)
+    return {"thought": DAILY_THOUGHTS[idx], "date": today}
+
 
 # CORS Configuration - Starlette native middleware with regex for reliable preflight handling
 app.add_middleware(
