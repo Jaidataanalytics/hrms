@@ -4557,48 +4557,144 @@ api_router.include_router(org_chart_router)
 api_router.include_router(stationery_router)
 api_router.include_router(push_router)
 
-# ==================== THOUGHT OF THE DAY ====================
-DAILY_THOUGHTS = [
-    "Small steps every day lead to big changes.",
-    "Your hard work today builds a better tomorrow.",
-    "Be kind to yourself — you are doing your best.",
-    "A good team makes hard work feel easy.",
-    "Every problem has a solution — just keep looking.",
-    "Your effort matters more than you think.",
-    "Start with what you can do, not what you cannot.",
-    "A smile can change someone's whole day.",
-    "Focus on progress, not perfection.",
-    "You are stronger than any challenge you face.",
-    "Good things take time — be patient with yourself.",
-    "Help others and happiness will find you.",
-    "Today is a new chance to do something great.",
-    "Believe in yourself — you have come this far.",
-    "One step at a time is still moving forward.",
-    "Your work has value — never forget that.",
-    "Stay calm, stay focused, stay positive.",
-    "Learning something new makes you better every day.",
-    "The best way to start is to just begin.",
-    "Together we can do more than we can alone.",
-    "Difficult times build strong people.",
-    "A little effort every day goes a long way.",
-    "Your attitude decides your direction.",
-    "Work hard in silence — let results speak.",
-    "Every day is a chance to grow.",
-    "Do your best — that is always enough.",
-    "Success comes from not giving up.",
-    "Take a deep breath — you have got this.",
-    "Respect your time and others will too.",
-    "Happiness is found in doing meaningful work.",
-    "Keep going — the best is yet to come.",
-]
+# ==================== THOUGHT OF THE DAY (LLM-Generated) ====================
 
 @api_router.get("/thought-of-the-day")
 async def thought_of_the_day(request: Request):
-    """Return a daily motivational thought — same thought for everyone on the same day"""
-    import hashlib
+    """Return a daily motivational thought — generated fresh each day via LLM, context-aware"""
     today = str(datetime.now(timezone.utc).date())
-    idx = int(hashlib.md5(today.encode()).hexdigest(), 16) % len(DAILY_THOUGHTS)
-    return {"thought": DAILY_THOUGHTS[idx], "date": today}
+
+    # Check cache first
+    cached = await db.daily_thoughts.find_one({"date": today}, {"_id": 0})
+    if cached:
+        return {"thought": cached["thought"], "date": today, "context": cached.get("context", "")}
+
+    # Generate a new thought for today
+    thought_text = await generate_daily_thought(today)
+
+    return {"thought": thought_text, "date": today}
+
+
+async def generate_daily_thought(date_str: str) -> str:
+    """Generate a fresh, context-aware thought using LLM"""
+    import calendar
+    from datetime import date as dt_date
+
+    d = dt_date.fromisoformat(date_str)
+    day_name = calendar.day_name[d.weekday()]
+    month_name = calendar.month_name[d.month]
+    day_num = d.day
+
+    # Build context about the day
+    context_parts = [f"Today is {day_name}, {day_num} {month_name} {d.year}."]
+
+    # Day-of-week context
+    if d.weekday() == 0:
+        context_parts.append("It is the start of a new work week (Monday).")
+    elif d.weekday() == 4:
+        context_parts.append("It is Friday — the last working day of the week.")
+    elif d.weekday() == 2:
+        context_parts.append("It is mid-week (Wednesday).")
+
+    # Month start/end context
+    if day_num == 1:
+        context_parts.append(f"It is the first day of {month_name} — a fresh new month.")
+    elif day_num <= 3:
+        context_parts.append(f"It is early {month_name} — the month has just begun.")
+    last_day = calendar.monthrange(d.year, d.month)[1]
+    if day_num == last_day:
+        context_parts.append(f"It is the last day of {month_name}.")
+
+    # Notable international/Indian days (common ones)
+    notable_days = {
+        (1, 1): "New Year's Day",
+        (1, 15): "Indian Army Day",
+        (1, 26): "India's Republic Day",
+        (2, 14): "Valentine's Day",
+        (2, 28): "National Science Day (India)",
+        (3, 8): "International Women's Day",
+        (3, 20): "International Day of Happiness",
+        (3, 21): "World Poetry Day",
+        (3, 22): "World Water Day",
+        (4, 7): "World Health Day",
+        (4, 22): "Earth Day",
+        (5, 1): "International Workers' Day / May Day",
+        (5, 3): "World Press Freedom Day",
+        (5, 12): "International Nurses Day",
+        (6, 5): "World Environment Day",
+        (6, 21): "International Yoga Day",
+        (7, 11): "World Population Day",
+        (7, 28): "World Nature Conservation Day",
+        (8, 12): "International Youth Day",
+        (8, 15): "India's Independence Day",
+        (8, 19): "World Humanitarian Day",
+        (9, 5): "Teachers' Day (India)",
+        (9, 8): "International Literacy Day",
+        (9, 21): "International Day of Peace",
+        (9, 27): "World Tourism Day",
+        (10, 2): "Gandhi Jayanti / International Day of Non-Violence",
+        (10, 5): "World Teachers' Day",
+        (10, 10): "World Mental Health Day",
+        (10, 16): "World Food Day",
+        (10, 24): "United Nations Day",
+        (11, 14): "Children's Day (India)",
+        (11, 19): "World Toilet Day",
+        (11, 26): "Constitution Day (India)",
+        (12, 1): "World AIDS Day",
+        (12, 3): "International Day of Persons with Disabilities",
+        (12, 10): "Human Rights Day",
+        (12, 25): "Christmas Day",
+    }
+    key = (d.month, d.day)
+    if key in notable_days:
+        context_parts.append(f"Today is also {notable_days[key]}.")
+
+    context = " ".join(context_parts)
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        if not api_key:
+            return "Every day is a new opportunity to do something meaningful."
+
+        system_prompt = """You generate ONE short daily thought for employees of an Indian company.
+
+Rules:
+- Maximum 15 words. One sentence only.
+- Use very simple, plain English that anyone can understand (many employees may not be fluent in English)
+- Make it reflective and meaningful — something that makes people pause and think for a moment
+- If the day has special significance, relate the thought to it naturally (don't mention the day name directly)
+- Do NOT use quotes from famous people. Create original thoughts.
+- Do NOT use fancy/difficult words
+- The thought should feel warm, human, and genuine — not corporate or preachy
+- Return ONLY the thought text, nothing else. No quotes around it."""
+
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"thought_{date_str}",
+            system_message=system_prompt
+        ).with_model("openai", "gpt-4o-mini")
+
+        response = await chat.send_message(
+            UserMessage(text=f"{context}\n\nGenerate one thought for today:")
+        )
+
+        thought = response.strip().strip('"').strip("'").strip()
+
+        # Cache it
+        await db.daily_thoughts.update_one(
+            {"date": date_str},
+            {"$set": {"date": date_str, "thought": thought, "context": context, "created_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True
+        )
+
+        return thought
+
+    except Exception as e:
+        logger.error(f"Error generating daily thought: {e}")
+        # Fallback
+        return "Every small effort you make today matters more than you know."
 
 
 # CORS Configuration - Starlette native middleware with regex for reliable preflight handling
