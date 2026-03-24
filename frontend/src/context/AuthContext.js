@@ -81,7 +81,10 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
-        headers: getAuthHeaders(),
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
       });
       
       if (response.ok) {
@@ -98,7 +101,8 @@ export const AuthProvider = ({ children }) => {
         navigate('/login');
       }
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      // Network error — don't log out, just retry next cycle (mobile may have intermittent connectivity)
+      console.warn('Token refresh network error (will retry):', error.message);
     } finally {
       isRefreshing.current = false;
     }
@@ -175,9 +179,15 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Auth check error:', error);
-      setUser(null);
-      if (!isPublicPath) {
-        navigate('/login');
+      // On network error, don't force logout if we have a stored token (mobile connectivity issues)
+      const storedToken = localStorage.getItem('access_token');
+      if (!storedToken) {
+        setUser(null);
+        if (!isPublicPath) {
+          navigate('/login');
+        }
+      } else {
+        console.warn('Network error during auth check — keeping session (stored token exists)');
       }
     } finally {
       setLoading(false);

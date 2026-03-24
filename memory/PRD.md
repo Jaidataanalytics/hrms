@@ -209,6 +209,7 @@ On-the-fly normalization during payroll processing:
 - [x] Searchable employee dropdown: Asset assignment + Stationery Issue dialogs now have search-filtered employee lists (DONE - Mar 23, 2026)
 - [x] Daily Thought of the Day: Motivational quote modal on first dashboard visit each day, auto-dismisses after 6 seconds (DONE - Mar 23, 2026)
 - [x] Upgraded Thought of the Day to LLM-generated: GPT-4o-mini generates context-aware daily thoughts, relates to day significance (holidays, week start/end, notable days), cached in MongoDB (DONE - Mar 23, 2026)
+- [x] Mobile App Login Fix: Changed SameSite=Lax to SameSite=None;Secure on all auth cookies for cross-origin WebView support, added mobile origins to CORS, added network error resilience to prevent unnecessary logouts, enabled CapacitorCookies plugin (DONE - Mar 24, 2026)
 - [ ] Full E2E testing of leave approvals, CO requests, cancellations
 - [ ] Mobile app build fix (MainActivity.java + Gradle config)
 - [ ] Mobile location permissions

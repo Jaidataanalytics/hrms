@@ -497,8 +497,9 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     # Set cookie - detect if running over HTTPS
     is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     
-    # Use 'lax' for same-site requests, 'none' only needed for cross-site
-    samesite_setting = "lax"
+    # Use 'none' for cross-site cookie delivery (required for mobile WebView + different API domain)
+    # 'none' requires secure=True
+    samesite_setting = "none" if is_secure else "lax"
     
     response.set_cookie(
         key="session_token",
@@ -625,13 +626,13 @@ async def process_google_session(session_data: SessionData, response: Response):
         }
         await db.user_sessions.insert_one(session_doc)
         
-        # Set cookie - use samesite=lax for better compatibility
+        # Set cookie - use samesite=none for cross-origin mobile WebView support
         response.set_cookie(
             key="session_token",
             value=session_token,
             httponly=True,
             secure=True,
-            samesite="lax",
+            samesite="none",
             path="/",
             max_age=7*24*60*60
         )
@@ -699,6 +700,7 @@ async def refresh_token(request: Request, response: Response):
         
         # Detect if running over HTTPS
         is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+        samesite_setting = "none" if is_secure else "lax"
         
         # Set new access token cookie
         response.set_cookie(
@@ -706,7 +708,7 @@ async def refresh_token(request: Request, response: Response):
             value=token,
             httponly=True,
             secure=is_secure,
-            samesite="lax",
+            samesite=samesite_setting,
             path="/",
             max_age=7*24*60*60
         )
@@ -717,7 +719,7 @@ async def refresh_token(request: Request, response: Response):
             value=session_token,
             httponly=True,
             secure=is_secure,
-            samesite="lax",
+            samesite=samesite_setting,
             path="/",
             max_age=7*24*60*60
         )
@@ -4702,6 +4704,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost",
+        "https://localhost",
+        "capacitor://localhost",
         "https://employee-mis-tools.preview.emergentagent.com",
         "https://bulk-import-helper.emergent.host",
         "https://sharda-hr-system.emergent.host",
@@ -4712,6 +4717,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Cookie", "X-Session-ID"],
+    expose_headers=["Set-Cookie"],
     max_age=86400,
 )
 
