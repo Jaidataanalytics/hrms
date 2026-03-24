@@ -18,8 +18,8 @@ import {
 const API = process.env.REACT_APP_BACKEND_URL + '/api/stationery';
 
 const StationeryTab = ({ authHeaders, isAdmin, userId }) => {
-  const hdrs = { credentials: 'include', headers: { ...authHeaders, 'Content-Type': 'application/json' } };
-  const hdrsGet = { credentials: 'include', headers: authHeaders };
+  const hdrs = { headers: { ...authHeaders, 'Content-Type': 'application/json' } };
+  const hdrsGet = { headers: authHeaders };
 
   // Data
   const [items, setItems] = useState([]);

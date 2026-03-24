@@ -31,7 +31,10 @@ JWT_EXPIRY_HOURS = 168  # 7 days for better UX
 # Create the main app
 app = FastAPI(title="Sharda HR API", version="1.0.0")
 
-# CORS Configuration - handled below with specific origins
+# CORS Configuration — The Kubernetes ingress handles CORS headers (access-control-allow-origin: *)
+# Application-level CORS middleware is NOT used because the ingress overrides all CORS headers.
+# Frontend API calls should NOT use credentials: 'include' for cross-origin requests,
+# and instead rely on Authorization: Bearer token headers.
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -4698,28 +4701,6 @@ Rules:
         # Fallback
         return "Every small effort you make today matters more than you know."
 
-
-# CORS Configuration - Starlette native middleware with regex for reliable preflight handling
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost",
-        "https://localhost",
-        "capacitor://localhost",
-        "https://employee-mis-tools.preview.emergentagent.com",
-        "https://bulk-import-helper.emergent.host",
-        "https://sharda-hr-system.emergent.host",
-        "https://shardahrms.com",
-        "https://www.shardahrms.com",
-    ],
-    allow_origin_regex=r"https://.*\.(emergentagent\.com|emergent\.host|emergentapp\.com)$",
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Cookie", "X-Session-ID"],
-    expose_headers=["Set-Cookie"],
-    max_age=86400,
-)
 
 # ==================== TOUR ATTENDANCE AUTO-MARK ====================
 
