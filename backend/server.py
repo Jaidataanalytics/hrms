@@ -1,8 +1,8 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import HTTPBearer
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -31,18 +31,56 @@ JWT_EXPIRY_HOURS = 168  # 7 days for better UX
 # Create the main app
 app = FastAPI(title="Sharda HR API", version="1.0.0")
 
-# CORS Configuration — Must be at the application level to support all deployment environments.
-# The preview environment has K8s ingress CORS, but production (emergent.host) does NOT.
-# Frontend uses Authorization: Bearer token headers (no credentials: 'include').
+# --- BULLETPROOF CORS MIDDLEWARE ---
+# Custom middleware that adds CORS headers to EVERY response (including errors).
+# This ensures CORS works on ALL deployment environments (preview, production, mobile).
+ALLOWED_ORIGINS = set()
 cors_origins_str = os.environ.get("CORS_ORIGINS", "")
-cors_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins if cors_origins else ["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+for o in cors_origins_str.split(","):
+    o = o.strip()
+    if o:
+        ALLOWED_ORIGINS.add(o)
+
+class CORSEverythingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin", "")
+
+        # Determine if origin is allowed (allow all if none configured)
+        if not ALLOWED_ORIGINS or origin in ALLOWED_ORIGINS:
+            allowed_origin = origin or "*"
+        else:
+            allowed_origin = "*"
+
+        # Handle preflight OPTIONS requests immediately
+        if request.method == "OPTIONS":
+            return Response(
+                status_code=204,
+                headers={
+                    "Access-Control-Allow-Origin": allowed_origin,
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+                    "Access-Control-Max-Age": "86400",
+                },
+            )
+
+        # Process the actual request
+        try:
+            response = await call_next(request)
+        except Exception:
+            # Even on unhandled errors, return CORS headers
+            response = JSONResponse(
+                status_code=500,
+                content={"detail": "Internal Server Error"},
+            )
+
+        # Add CORS headers to every response
+        response.headers["Access-Control-Allow-Origin"] = allowed_origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+
+        return response
+
+app.add_middleware(CORSEverythingMiddleware)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
