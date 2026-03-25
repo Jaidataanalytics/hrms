@@ -71,7 +71,7 @@ const AnnouncementsPage = () => {
       if (filterCategory !== 'all') {
         url += `?category=${filterCategory}`;
       }
-      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(url, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setAnnouncements(data);
@@ -94,7 +94,7 @@ const AnnouncementsPage = () => {
       const response = await fetch(`${API_URL}/announcements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(form)
       });
 
@@ -125,7 +125,7 @@ const AnnouncementsPage = () => {
     try {
       const response = await fetch(`${API_URL}/announcements/${annId}/acknowledge`, {
         method: 'PUT',
-        credentials: 'include'
+        
       });
 
       if (response.ok) {

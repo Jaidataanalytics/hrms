@@ -22,7 +22,7 @@ const ManagerTab = ({ authHeaders }) => {
   const [verifyForm, setVerifyForm] = useState({ status: 'verified', manager_remarks: '' });
   const [verifyingEntryId, setVerifyingEntryId] = useState(null);
 
-  const hdrs = { credentials: 'include', headers: authHeaders };
+  const hdrs = { headers: authHeaders };
 
   const fetchTeamData = useCallback(async () => {
     setLoading(true);
@@ -48,7 +48,7 @@ const ManagerTab = ({ authHeaders }) => {
   const submitVerification = async () => {
     try {
       const r = await fetch(`${API}/mis-entries/${verifyingEntryId}/verify`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
+        method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders }, 
         body: JSON.stringify(verifyForm)
       });
       if (r.ok) {

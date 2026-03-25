@@ -137,7 +137,7 @@ const InsurancePage = () => {
       }
       
       const response = await fetch(url, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
 
@@ -158,7 +158,7 @@ const InsurancePage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/business-insurance`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
 
@@ -186,7 +186,7 @@ const InsurancePage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/insurance`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
@@ -212,7 +212,7 @@ const InsurancePage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/insurance/${editingRecord.insurance_id}`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify(editingRecord)
       });
@@ -240,7 +240,7 @@ const InsurancePage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/insurance/${insuranceId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: authHeaders
       });
 
@@ -260,7 +260,7 @@ const InsurancePage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/import/templates/insurance`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
 
@@ -297,7 +297,7 @@ const InsurancePage = () => {
 
       const response = await fetch(`${API_URL}/import/insurance`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: { 'Authorization': authHeaders.Authorization },
         body: formData
       });
@@ -329,7 +329,7 @@ const InsurancePage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/business-insurance`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify(businessFormData)
       });
@@ -355,7 +355,7 @@ const InsurancePage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/business-insurance/${editingBusinessRecord.business_insurance_id}`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify(editingBusinessRecord)
       });
@@ -383,7 +383,7 @@ const InsurancePage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/business-insurance/${recordId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: authHeaders
       });
 
@@ -403,7 +403,7 @@ const InsurancePage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/import/templates/business-insurance`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
 
@@ -440,7 +440,7 @@ const InsurancePage = () => {
 
       const response = await fetch(`${API_URL}/import/business-insurance`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: { 'Authorization': authHeaders.Authorization },
         body: formData
       });

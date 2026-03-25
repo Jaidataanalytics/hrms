@@ -51,9 +51,9 @@ const EventsManagementPage = () => {
     try {
       const headers = getAuthHeaders();
       const [eventsRes, empRes, upcomingRes] = await Promise.all([
-        fetch(`${API_URL}/events`, { headers, credentials: 'include' }),
-        fetch(`${API_URL}/employees`, { headers, credentials: 'include' }),
-        fetch(`${API_URL}/events/upcoming?days=30`, { headers, credentials: 'include' }),
+        fetch(`${API_URL}/events`, { headers,  }),
+        fetch(`${API_URL}/employees`, { headers,  }),
+        fetch(`${API_URL}/events/upcoming?days=30`, { headers,  }),
       ]);
       if (eventsRes.ok) setEvents(await eventsRes.json());
       if (empRes.ok) setEmployees(await empRes.json());
@@ -76,7 +76,7 @@ const EventsManagementPage = () => {
       const res = await fetch(`${API_URL}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(form),
       });
       if (res.ok) {
@@ -94,7 +94,7 @@ const EventsManagementPage = () => {
   const handleDeleteEvent = async (eventId) => {
     try {
       const res = await fetch(`${API_URL}/events/${eventId}`, {
-        method: 'DELETE', headers: getAuthHeaders(), credentials: 'include',
+        method: 'DELETE', headers: getAuthHeaders(), 
       });
       if (res.ok) { toast.success('Event deleted'); fetchData(); }
     } catch { toast.error('Failed to delete event'); }
@@ -108,7 +108,7 @@ const EventsManagementPage = () => {
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch(`${API_URL}/events/bulk-upload`, {
-        method: 'POST', headers: getAuthHeaders(), credentials: 'include', body: formData,
+        method: 'POST', headers: getAuthHeaders(), body: formData,
       });
       if (res.ok) {
         const data = await res.json();

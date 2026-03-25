@@ -35,7 +35,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(
         `${API_URL}/employees/search?q=${encodeURIComponent(query)}&limit=10`,
-        { credentials: 'include', headers: authHeaders }
+        { headers: authHeaders }
       );
 
       if (response.ok) {

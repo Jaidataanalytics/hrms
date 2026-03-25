@@ -29,11 +29,11 @@ const ReportsPage = () => {
     setLoading(true);
     try {
       const [hcRes, attrRes, prRes, attRes, lvRes] = await Promise.all([
-        fetch(`${API_URL}/reports/headcount`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/reports/attrition?year=${selectedYear}`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/reports/payroll-cost?year=${selectedYear}`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/reports/attendance`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/reports/leave?year=${selectedYear}`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(`${API_URL}/reports/headcount`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/attrition?year=${selectedYear}`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/payroll-cost?year=${selectedYear}`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/attendance`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/reports/leave?year=${selectedYear}`, { headers: getAuthHeaders() })
       ]);
       if (hcRes.ok) setHeadcount(await hcRes.json());
       if (attrRes.ok) setAttrition(await attrRes.json());

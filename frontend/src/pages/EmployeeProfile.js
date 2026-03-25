@@ -103,10 +103,10 @@ const EmployeeProfile = () => {
     try {
       const authHeaders = getAuthHeaders();
       const [empRes, deptRes, desigRes, allEmpRes] = await Promise.all([
-        fetch(`${API_URL}/employees/${id}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/departments`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/designations`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/employees/${id}`, { headers: authHeaders }),
+        fetch(`${API_URL}/departments`, { headers: authHeaders }),
+        fetch(`${API_URL}/designations`, { headers: authHeaders }),
+        fetch(`${API_URL}/employees`, { headers: authHeaders })
       ]);
 
       if (empRes.ok) {
@@ -128,7 +128,7 @@ const EmployeeProfile = () => {
       }
       
       // Fetch document types
-      const docTypesRes = await fetch(`${API_URL}/document-types`, { credentials: 'include', headers: authHeaders });
+      const docTypesRes = await fetch(`${API_URL}/document-types`, { headers: authHeaders });
       if (docTypesRes.ok) setDocumentTypes(await docTypesRes.json());
     } catch (error) {
       console.error('Error fetching employee:', error);
@@ -147,7 +147,7 @@ const EmployeeProfile = () => {
       const identifier = employee.employee_id || employee.emp_code;
       let response = await fetch(
         `${API_URL}/attendance?employee_id=${identifier}&month=${selectedMonth}&year=${selectedYear}`,
-        { credentials: 'include', headers: authHeaders }
+        { headers: authHeaders }
       );
       
       if (response.ok) {
@@ -156,7 +156,7 @@ const EmployeeProfile = () => {
         if (data.length === 0 && employee.emp_code && employee.emp_code !== identifier) {
           response = await fetch(
             `${API_URL}/attendance?employee_id=${employee.emp_code}&month=${selectedMonth}&year=${selectedYear}`,
-            { credentials: 'include', headers: authHeaders }
+            { headers: authHeaders }
           );
           if (response.ok) data = await response.json();
         }
@@ -175,7 +175,7 @@ const EmployeeProfile = () => {
       
       // First try the employee_assets endpoint (old format)
       let response = await fetch(`${API_URL}/employee-assets/${empCode || employeeId}`, { 
-        credentials: 'include', 
+        
         headers: authHeaders 
       });
       
@@ -186,7 +186,7 @@ const EmployeeProfile = () => {
       
       // Also fetch from the new assets collection
       const assetsResponse = await fetch(`${API_URL}/assets?search=${empCode}`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
       
@@ -212,7 +212,7 @@ const EmployeeProfile = () => {
     try {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/documents?employee_id=${employeeId}`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
       if (response.ok) {
@@ -244,7 +244,7 @@ const EmployeeProfile = () => {
       const response = await fetch(`${API_URL}/documents/upload`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include',
+        
         body: formData
       });
 
@@ -271,7 +271,7 @@ const EmployeeProfile = () => {
       const response = await fetch(`${API_URL}/documents/${docId}`, {
         method: 'DELETE',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        credentials: 'include'
+        
       });
       
       if (response.ok) {
@@ -344,7 +344,7 @@ const EmployeeProfile = () => {
       const response = await fetch(`${API_URL}/employees/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(editForm)
       });
 

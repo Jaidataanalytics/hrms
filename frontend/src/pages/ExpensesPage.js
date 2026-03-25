@@ -73,7 +73,7 @@ const ExpensesPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch(`${API_URL}/employees`, { credentials: 'include', headers: getAuthHeaders() });
+      const res = await fetch(`${API_URL}/employees`, { headers: getAuthHeaders() });
       if (res.ok) setEmployees(await res.json());
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -88,8 +88,8 @@ const ExpensesPage = () => {
       if (filterEmployee !== 'all') url += `employee_id=${filterEmployee}&`;
 
       const [expensesRes, categoriesRes] = await Promise.all([
-        fetch(url, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/expense-categories`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(url, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/expense-categories`, { headers: getAuthHeaders() })
       ]);
 
       if (expensesRes.ok) setExpenses(await expensesRes.json());
@@ -120,7 +120,7 @@ const ExpensesPage = () => {
       const response = await fetch(`${API_URL}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           ...form,
           amount: parseFloat(form.amount),
@@ -149,7 +149,7 @@ const ExpensesPage = () => {
       const response = await fetch(`${API_URL}/expenses/${claimId}/approve`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({})
       });
 
@@ -170,7 +170,7 @@ const ExpensesPage = () => {
       const response = await fetch(`${API_URL}/expenses/${claimId}/reject`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ reason })
       });
 
@@ -496,7 +496,7 @@ const ExpensesPage = () => {
                           onClick={async (e) => {
                             e.stopPropagation();
                             try {
-                              const res = await fetch(`${API_URL}/expenses/${expense.claim_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(), credentials: 'include' });
+                              const res = await fetch(`${API_URL}/expenses/${expense.claim_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(),  });
                               if (res.ok) { toast.success('Expense claim cancelled'); fetchData(); }
                               else { const err = await res.json(); toast.error(err.detail || 'Failed'); }
                             } catch { toast.error('Failed to cancel'); }

@@ -73,14 +73,14 @@ const Dashboard = () => {
     try {
       const authHeaders = getAuthHeaders();
       const [statsRes, empDashRes, leaveTypesRes, sopsRes, assetsRes, toursRes, expensesRes, tourStatusRes] = await Promise.all([
-        fetch(`${API_URL}/dashboard/stats`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/dashboard/employee`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/sop/my-sops`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/employee-assets/my-assets`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/tours/my-tours`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/expenses/my-expenses`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/travel/my-active-tour`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/dashboard/stats`, { headers: authHeaders }),
+        fetch(`${API_URL}/dashboard/employee`, { headers: authHeaders }),
+        fetch(`${API_URL}/leave-types`, { headers: authHeaders }),
+        fetch(`${API_URL}/sop/my-sops`, { headers: authHeaders }),
+        fetch(`${API_URL}/employee-assets/my-assets`, { headers: authHeaders }),
+        fetch(`${API_URL}/tours/my-tours`, { headers: authHeaders }),
+        fetch(`${API_URL}/expenses/my-expenses`, { headers: authHeaders }),
+        fetch(`${API_URL}/travel/my-active-tour`, { headers: authHeaders })
       ]);
 
       if (statsRes.ok) {
@@ -126,7 +126,7 @@ const Dashboard = () => {
       // HR: Check for tour employees without check-in
       if (user?.role === 'super_admin' || user?.role === 'hr_admin' || user?.role === 'hr_executive') {
         try {
-          const tacRes = await fetch(`${API_URL}/travel/tour-attendance-check`, { credentials: 'include', headers: authHeaders });
+          const tacRes = await fetch(`${API_URL}/travel/tour-attendance-check`, { headers: authHeaders });
           if (tacRes.ok) setTourAttendanceCheck(await tacRes.json());
         } catch {}
       }
@@ -140,7 +140,7 @@ const Dashboard = () => {
   const fetchWidgetData = async () => {
     try {
       const res = await fetch(`${API_URL}/dashboard/widget-data`, {
-        credentials: 'include', headers: getAuthHeaders(),
+        headers: getAuthHeaders(),
       });
       if (res.ok) setWidgetData(await res.json());
     } catch (e) {
@@ -154,7 +154,7 @@ const Dashboard = () => {
       const response = await fetch(`${API_URL}/attendance/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           punch_type: punchType,
           source: 'manual',
@@ -185,7 +185,7 @@ const Dashboard = () => {
       const response = await fetch(`${API_URL}/travel/remote-check-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           punch_type: punchType,
           latitude: position.coords.latitude,
@@ -217,7 +217,7 @@ const Dashboard = () => {
       const res = await fetch(`${API_URL}/travel/mark-tour-attendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ employee_id: employeeId, date: today, status }),
       });
       if (res.ok) {

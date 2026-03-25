@@ -106,10 +106,10 @@ const LeavePage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const [typesRes, balanceRes, requestsRes, rulesRes] = await Promise.all([
-        fetch(`${API_URL}/leave-types`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave/balance`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave/my-requests`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave/accrual-rules`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/leave-types`, { headers: authHeaders }),
+        fetch(`${API_URL}/leave/balance`, { headers: authHeaders }),
+        fetch(`${API_URL}/leave/my-requests`, { headers: authHeaders }),
+        fetch(`${API_URL}/leave/accrual-rules`, { headers: authHeaders })
       ]);
 
       if (typesRes.ok) setLeaveTypes(await typesRes.json());
@@ -119,7 +119,7 @@ const LeavePage = () => {
 
       // Fetch pending approvals for all users (managers see their reportees' requests)
       try {
-        const approvalsRes = await fetch(`${API_URL}/leave/pending-approvals`, { credentials: 'include', headers: authHeaders });
+        const approvalsRes = await fetch(`${API_URL}/leave/pending-approvals`, { headers: authHeaders });
         if (approvalsRes.ok) {
           const approvals = await approvalsRes.json();
           setPendingApprovals(approvals);
@@ -131,21 +131,21 @@ const LeavePage = () => {
       
       // Fetch HR management data (all balances)
       if (isHR) {
-        const allBalancesRes = await fetch(`${API_URL}/leave/balances/all`, { credentials: 'include', headers: authHeaders });
+        const allBalancesRes = await fetch(`${API_URL}/leave/balances/all`, { headers: authHeaders });
         if (allBalancesRes.ok) setAllBalances(await allBalancesRes.json());
       }
 
       // Fetch CO requests
-      const coRes = await fetch(`${API_URL}/co-requests`, { credentials: 'include', headers: authHeaders });
+      const coRes = await fetch(`${API_URL}/co-requests`, { headers: authHeaders });
       if (coRes.ok) setCoRequests(await coRes.json());
 
       // Fetch WFH requests
-      const wfhRes = await fetch(`${API_URL}/wfh/my-requests`, { credentials: 'include', headers: authHeaders });
+      const wfhRes = await fetch(`${API_URL}/wfh/my-requests`, { headers: authHeaders });
       if (wfhRes.ok) setWfhRequests(await wfhRes.json());
 
       // Fetch WFH pending approvals
       try {
-        const wfhApprovalsRes = await fetch(`${API_URL}/wfh/pending-approvals`, { credentials: 'include', headers: authHeaders });
+        const wfhApprovalsRes = await fetch(`${API_URL}/wfh/pending-approvals`, { headers: authHeaders });
         if (wfhApprovalsRes.ok) {
           const wfhApps = await wfhApprovalsRes.json();
           setWfhApprovals(wfhApps);
@@ -161,7 +161,7 @@ const LeavePage = () => {
   const handleCancelLeave = async (leaveId) => {
     try {
       const res = await fetch(`${API_URL}/leave/${leaveId}/cancel`, {
-        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+        method: 'PUT', headers: getAuthHeaders(), 
       });
       if (res.ok) { toast.success('Leave request cancelled'); fetchData(); }
       else { const e = await res.json(); toast.error(e.detail || 'Failed to cancel'); }
@@ -174,7 +174,7 @@ const LeavePage = () => {
     try {
       const res = await fetch(`${API_URL}/co-requests`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include', body: JSON.stringify({ worked_dates: dates, reason: coForm.reason }),
+        body: JSON.stringify({ worked_dates: dates, reason: coForm.reason }),
       });
       if (res.ok) { toast.success('CO request submitted'); setShowCoDialog(false); setCoForm({ worked_dates: '', reason: '' }); fetchData(); }
       else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
@@ -184,7 +184,7 @@ const LeavePage = () => {
   const handleApproveCO = async (coId) => {
     try {
       const res = await fetch(`${API_URL}/co-requests/${coId}/approve`, {
-        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+        method: 'PUT', headers: getAuthHeaders(), 
       });
       if (res.ok) { const d = await res.json(); toast.success(d.message); fetchData(); }
     } catch { toast.error('Failed'); }
@@ -194,7 +194,7 @@ const LeavePage = () => {
     try {
       await fetch(`${API_URL}/co-requests/${coId}/reject`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include', body: JSON.stringify({ reason: 'Rejected' }),
+        body: JSON.stringify({ reason: 'Rejected' }),
       });
       toast.success('CO rejected'); fetchData();
     } catch { toast.error('Failed'); }
@@ -210,7 +210,7 @@ const LeavePage = () => {
       const res = await fetch(`${API_URL}/wfh/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           from_date: format(wfhForm.from_date, 'yyyy-MM-dd'),
           to_date: format(wfhForm.to_date, 'yyyy-MM-dd'),
@@ -233,7 +233,7 @@ const LeavePage = () => {
   const handleCancelWfh = async (wfhId) => {
     try {
       const res = await fetch(`${API_URL}/wfh/${wfhId}/cancel`, {
-        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+        method: 'PUT', headers: getAuthHeaders(), 
       });
       if (res.ok) { toast.success('WFH request cancelled'); fetchData(); }
       else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
@@ -243,7 +243,7 @@ const LeavePage = () => {
   const handleApproveWfh = async (wfhId) => {
     try {
       const res = await fetch(`${API_URL}/wfh/${wfhId}/approve`, {
-        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+        method: 'PUT', headers: getAuthHeaders(), 
       });
       if (res.ok) { const d = await res.json(); toast.success(d.message); fetchData(); }
       else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
@@ -255,7 +255,7 @@ const LeavePage = () => {
     if (reason === null) return;
     try {
       const res = await fetch(`${API_URL}/wfh/${wfhId}/reject?rejection_reason=${encodeURIComponent(reason)}`, {
-        method: 'PUT', headers: getAuthHeaders(), credentials: 'include',
+        method: 'PUT', headers: getAuthHeaders(), 
       });
       if (res.ok) { toast.success('WFH request rejected'); fetchData(); }
       else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
@@ -273,7 +273,7 @@ const LeavePage = () => {
       const response = await fetch(`${API_URL}/leave/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           ...leaveForm,
           from_date: format(leaveForm.from_date, 'yyyy-MM-dd'),
@@ -308,7 +308,7 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/${leaveId}/approve`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -331,7 +331,7 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/${leaveId}/reject?rejection_reason=${encodeURIComponent(reason)}`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -369,7 +369,7 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/balances/${editingBalance.employee_id}`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(editingBalance)
       });
@@ -401,7 +401,7 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/accrual-rules/${code}`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(ruleData)
       });
@@ -428,7 +428,7 @@ const LeavePage = () => {
     try {
       const response = await fetch(`${API_URL}/leave/run-accrual`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -778,7 +778,7 @@ const LeavePage = () => {
                     <div className="flex items-center gap-2">
                       {co.status === 'pending' && co.employee_id === user?.employee_id && (
                         <Button size="sm" variant="ghost" className="text-red-500" onClick={() => {
-                          fetch(`${API_URL}/co-requests/${co.co_request_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(), credentials: 'include' }).then(() => { toast.success('Cancelled'); fetchData(); });
+                          fetch(`${API_URL}/co-requests/${co.co_request_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(),  }).then(() => { toast.success('Cancelled'); fetchData(); });
                         }}>Cancel</Button>
                       )}
                       {co.status === 'pending' && (isManager || isHR) && co.employee_id !== user?.employee_id && (

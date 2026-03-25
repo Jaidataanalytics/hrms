@@ -93,7 +93,7 @@ const BulkImportPage = () => {
       
       const authHeaders = getAuthHeaders();
       const response = await fetch(url, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
 
@@ -187,7 +187,7 @@ const BulkImportPage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/import/${type}`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: {
           'Authorization': authHeaders.Authorization
         },
@@ -256,7 +256,7 @@ const BulkImportPage = () => {
       }
       
       const response = await fetch(url, {
-        credentials: 'include'
+        
       });
 
       if (response.ok) {

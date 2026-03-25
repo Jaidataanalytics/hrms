@@ -86,7 +86,7 @@ const ContractLabourPage = () => {
   const fetchContractors = async () => {
     try {
       const response = await fetch(`${API_URL}/labour/contractors`, {
-        credentials: 'include', headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       if (response.ok) setContractors(await response.json());
     } catch (error) {
@@ -98,7 +98,7 @@ const ContractLabourPage = () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/labour/workers`, {
-        credentials: 'include', headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       if (response.ok) setWorkers(await response.json());
     } catch (error) {
@@ -114,7 +114,7 @@ const ContractLabourPage = () => {
       const [year, month] = attendanceMonth.split('-');
       const response = await fetch(
         `${API_URL}/labour/attendance?worker_id=${selectedWorker.worker_id}&month=${month}&year=${year}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) setWorkerAttendance(await response.json());
     } catch (error) {
@@ -126,7 +126,7 @@ const ContractLabourPage = () => {
     setAttDailyLoading(true);
     try {
       const r = await fetch(`${API_URL}/labour/attendance/daily-overview?date=${date}`, {
-        credentials: 'include', headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       if (r.ok) setAttDaily(await r.json());
     } catch (e) { console.error(e); }
@@ -137,7 +137,7 @@ const ContractLabourPage = () => {
     setAttMonthlyLoading(true);
     try {
       const r = await fetch(`${API_URL}/labour/attendance/monthly-summary?month=${month}`, {
-        credentials: 'include', headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       if (r.ok) setAttMonthly(await r.json());
     } catch (e) { console.error(e); }
@@ -149,7 +149,7 @@ const ContractLabourPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/labour/workers/${selectedWorker.worker_id}/documents`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         setWorkerDocuments(await response.json());
@@ -197,7 +197,7 @@ const ContractLabourPage = () => {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(contractorForm)
       });
 
@@ -233,7 +233,7 @@ const ContractLabourPage = () => {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(workerForm)
       });
 
@@ -265,7 +265,7 @@ const ContractLabourPage = () => {
       const response = await fetch(`${API_URL}/labour/attendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           worker_id: selectedWorker.worker_id,
           date,
@@ -302,7 +302,7 @@ const ContractLabourPage = () => {
       const response = await fetch(`${API_URL}/labour/workers/${selectedWorker.worker_id}/documents`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include',
+        
         body: formData
       });
 
@@ -329,7 +329,7 @@ const ContractLabourPage = () => {
   const handleDownloadTemplate = async () => {
     try {
       const response = await fetch(`${API_URL}/labour/workers/template/download`, {
-        credentials: 'include', headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       if (response.ok) {
         const blob = await response.blob();
@@ -351,7 +351,7 @@ const ContractLabourPage = () => {
   const handleExportWorkers = async () => {
     try {
       const response = await fetch(`${API_URL}/labour/workers/export`, {
-        credentials: 'include', headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       if (response.ok) {
         const blob = await response.blob();
@@ -383,7 +383,7 @@ const ContractLabourPage = () => {
       const response = await fetch(`${API_URL}/labour/workers/bulk-upload`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include',
+        
         body: formData
       });
 

@@ -161,13 +161,13 @@ const PayrollPage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const [runsRes, payslipsRes, rulesRes, leaveRulesRes, customRulesRes, leavePolicyRes, employeesRes] = await Promise.all([
-        isHR ? fetch(`${API_URL}/payroll/runs`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
-        fetch(`${API_URL}/payroll/my-payslips`, { credentials: 'include', headers: authHeaders }),
-        isHR ? fetch(`${API_URL}/payroll/rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
-        isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
-        isHR ? fetch(`${API_URL}/payroll/custom-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
-        isHR ? fetch(`${API_URL}/payroll/leave-policy-rules`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
-        isHR ? fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/runs`, { headers: authHeaders }) : Promise.resolve({ ok: false }),
+        fetch(`${API_URL}/payroll/my-payslips`, { headers: authHeaders }),
+        isHR ? fetch(`${API_URL}/payroll/rules`, { headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/leave-type-rules`, { headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/custom-rules`, { headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/payroll/leave-policy-rules`, { headers: authHeaders }) : Promise.resolve({ ok: false }),
+        isHR ? fetch(`${API_URL}/employees`, { headers: authHeaders }) : Promise.resolve({ ok: false }),
       ]);
 
       if (runsRes.ok) setPayrollRuns(await runsRes.json());
@@ -191,7 +191,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/sewa-advances`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         setSewaAdvances(await response.json());
@@ -205,7 +205,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/one-time-deductions?month=${selectedMonth}&year=${selectedYear}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         setOneTimeDeductions(await response.json());
@@ -224,7 +224,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/sewa-advances`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           ...sewaAdvanceForm,
           start_month: selectedMonth,
@@ -251,7 +251,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/sewa-advances/${advanceId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('SEWA advance cancelled');
@@ -271,7 +271,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/one-time-deductions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           ...oneTimeDeductionForm,
           month: selectedMonth,
@@ -298,7 +298,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/one-time-deductions/${deductionId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Deduction removed');
@@ -329,7 +329,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/payslips/${editingPayslip.payslip_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           recalculate: true,
           attendance: payslipEditForm.attendance
@@ -355,7 +355,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/all-employees-pay?month=${selectedMonth}&year=${selectedYear}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         setAllEmployeesPay(await response.json());
@@ -373,7 +373,7 @@ const PayrollPage = () => {
       
       const response = await fetch(
         `${API_URL}/payroll/all-salary-structures?${params}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -394,7 +394,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/employee/${emp.employee_id}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const salary = await response.json();
@@ -458,7 +458,7 @@ const PayrollPage = () => {
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-          credentials: 'include',
+          
           body: JSON.stringify(payload)
         }
       );
@@ -488,7 +488,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/salary-change-requests?status=pending`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -506,7 +506,7 @@ const PayrollPage = () => {
         {
           method: 'PUT',
           headers: getAuthHeaders(),
-          credentials: 'include'
+          
         }
       );
       
@@ -531,7 +531,7 @@ const PayrollPage = () => {
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-          credentials: 'include',
+          
           body: JSON.stringify({ reason })
         }
       );
@@ -552,7 +552,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/employee/${employeeId}/salary-history`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -568,7 +568,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/employee-salary-details/${employeeId}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -584,7 +584,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/employee-breakdown/${employeeId}?month=${selectedMonth}&year=${selectedYear}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -607,7 +607,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs?month=${selectedMonth}&year=${selectedYear}`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -628,7 +628,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs/${payrollId}/process`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -652,7 +652,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs/${payrollId}/lock`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -675,7 +675,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/runs/${payrollId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -697,7 +697,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(
         `${API_URL}/payroll/runs/${payrollId}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -841,7 +841,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/rules/${section}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify(payrollRules[section])
       });
 
@@ -861,7 +861,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/leave-type-rules`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify(leaveTypeRules)
       });
 
@@ -880,7 +880,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/leave-policy-rules`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(leavePolicyRules)
       });
 
@@ -903,7 +903,7 @@ const PayrollPage = () => {
       const response = await fetch(`${API_URL}/payroll/custom-rules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify(customRuleForm)
       });
       if (response.ok) {
@@ -927,7 +927,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/custom-rules/${ruleId}/toggle`, {
         method: 'PUT',
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Rule toggled');
@@ -943,7 +943,7 @@ const PayrollPage = () => {
     try {
       const response = await fetch(`${API_URL}/payroll/custom-rules/${ruleId}`, {
         method: 'DELETE',
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Rule deleted');

@@ -43,7 +43,7 @@ const PerformancePage = () => {
 
   const fetchAll = useCallback(async () => {
     try {
-      const hdrs = { credentials: 'include', headers: authHeaders };
+      const hdrs = { headers: authHeaders };
 
       // Fetch employees list
       const eR = await fetch(`${API_URL}/employees`, hdrs);

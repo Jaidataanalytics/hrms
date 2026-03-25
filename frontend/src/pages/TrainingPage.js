@@ -49,9 +49,9 @@ const TrainingPage = () => {
     try {
       const headers = getAuthHeaders();
       const [programsRes, myRes, empRes] = await Promise.all([
-        fetch(`${API_URL}/training/programs`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/training/my-training`, { credentials: 'include', headers }),
-        isHR ? fetch(`${API_URL}/employees?limit=500`, { credentials: 'include', headers }) : Promise.resolve(null)
+        fetch(`${API_URL}/training/programs`, { headers }),
+        fetch(`${API_URL}/training/my-training`, { headers }),
+        isHR ? fetch(`${API_URL}/employees?limit=500`, { headers }) : Promise.resolve(null)
       ]);
       if (programsRes.ok) setPrograms(await programsRes.json());
       if (myRes.ok) setMyTraining(await myRes.json());
@@ -68,7 +68,7 @@ const TrainingPage = () => {
       const response = await fetch(`${API_URL}/training/programs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(programForm)
       });
       if (response.ok) {
@@ -90,7 +90,7 @@ const TrainingPage = () => {
       const response = await fetch(`${API_URL}/training/programs/${selectedProgram.program_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(programForm)
       });
       if (response.ok) {
@@ -111,7 +111,7 @@ const TrainingPage = () => {
     try {
       const response = await fetch(`${API_URL}/training/programs/${deleteDialog.program.program_id}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
@@ -145,7 +145,7 @@ const TrainingPage = () => {
     setSelectedProgram(prog);
     try {
       const res = await fetch(`${API_URL}/training/programs/${prog.program_id}`, {
-        credentials: 'include', headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -163,7 +163,7 @@ const TrainingPage = () => {
       const response = await fetch(`${API_URL}/training/enrollments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ program_id: selectedProgram.program_id, employee_id: enrollEmployeeId })
       });
       if (response.ok) {
@@ -186,7 +186,7 @@ const TrainingPage = () => {
     try {
       const response = await fetch(`${API_URL}/training/enrollments/${removeEnrollDialog.enrollment.enrollment_id}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
@@ -207,7 +207,7 @@ const TrainingPage = () => {
       const response = await fetch(`${API_URL}/training/enrollments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ program_id: programId, employee_id: user.employee_id })
       });
       if (response.ok) {
@@ -226,7 +226,7 @@ const TrainingPage = () => {
       const response = await fetch(`${API_URL}/training/certifications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(certForm)
       });
       if (response.ok) {

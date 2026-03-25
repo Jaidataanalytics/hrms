@@ -118,7 +118,7 @@ const SOPPage = () => {
     try {
       if (!isHR) {
         // Employees see only SOPs they're linked to
-        const response = await fetch(`${API_URL}/sop/my-sops`, { credentials: 'include', headers: getAuthHeaders() });
+        const response = await fetch(`${API_URL}/sop/my-sops`, { headers: getAuthHeaders() });
         if (response.ok) {
           const data = await response.json();
           const allMySops = [...(data.main_responsible || []), ...(data.also_involved || [])];
@@ -133,7 +133,7 @@ const SOPPage = () => {
         if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
         if (groupBy && groupBy !== 'none') url += `group_by=${groupBy}`;
         
-        const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
+        const response = await fetch(url, { headers: getAuthHeaders() });
         if (response.ok) {
           const data = await response.json();
           if (data.grouped) {
@@ -164,7 +164,7 @@ const SOPPage = () => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch(`${API_URL}/departments`, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/departments`, { headers: getAuthHeaders() });
       if (response.ok) setDepartments(await response.json());
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -173,7 +173,7 @@ const SOPPage = () => {
 
   const fetchDesignations = async () => {
     try {
-      const response = await fetch(`${API_URL}/designations`, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/designations`, { headers: getAuthHeaders() });
       if (response.ok) setDesignations(await response.json());
     } catch (error) {
       console.error('Error fetching designations:', error);
@@ -182,7 +182,7 @@ const SOPPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch(`${API_URL}/employees`, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/employees`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setEmployees(data.employees || data || []);
@@ -208,7 +208,7 @@ const SOPPage = () => {
       const response = await fetch(`${API_URL}/sop/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include',
+        
         body: formData
       });
 
@@ -252,7 +252,7 @@ const SOPPage = () => {
       const response = await fetch(`${API_URL}/sop/${selectedSOP.sop_id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        credentials: 'include',
+        
         body: formData
       });
 
@@ -276,7 +276,7 @@ const SOPPage = () => {
       const response = await fetch(`${API_URL}/sop/${sopId}/publish`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
@@ -300,7 +300,7 @@ const SOPPage = () => {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
@@ -324,7 +324,7 @@ const SOPPage = () => {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
@@ -345,7 +345,7 @@ const SOPPage = () => {
     // Fetch full SOP details
     try {
       const response = await fetch(`${API_URL}/sop/${sop.sop_id}`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {

@@ -115,13 +115,13 @@ const MyCalendarPage = () => {
       const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
       
       const [attRes, leaveRes, holidayRes, taskRes, meetingRes, empRes, eventsRes] = await Promise.all([
-        fetch(`${API_URL}/attendance?month=${currentMonth + 1}&year=${currentYear}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave/my-leaves?year=${currentYear}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/holidays?year=${currentYear}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/calendar/tasks?month=${monthStr}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/calendar/meetings?month=${monthStr}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/events`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/attendance?month=${currentMonth + 1}&year=${currentYear}`, { headers: authHeaders }),
+        fetch(`${API_URL}/leave/my-leaves?year=${currentYear}`, { headers: authHeaders }),
+        fetch(`${API_URL}/holidays?year=${currentYear}`, { headers: authHeaders }),
+        fetch(`${API_URL}/calendar/tasks?month=${monthStr}`, { headers: authHeaders }),
+        fetch(`${API_URL}/calendar/meetings?month=${monthStr}`, { headers: authHeaders }),
+        fetch(`${API_URL}/employees`, { headers: authHeaders }),
+        fetch(`${API_URL}/events`, { headers: authHeaders })
       ]);
 
       if (attRes.ok) setAttendance(await attRes.json());
@@ -296,7 +296,7 @@ const MyCalendarPage = () => {
       const response = await fetch(url, {
         method: editingTask ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify(taskForm)
       });
 
@@ -321,7 +321,7 @@ const MyCalendarPage = () => {
       const response = await fetch(`${API_URL}/calendar/tasks/${task.task_id}/toggle`, {
         method: 'PUT',
         headers: { ...authHeaders },
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
@@ -338,7 +338,7 @@ const MyCalendarPage = () => {
       const response = await fetch(`${API_URL}/calendar/tasks/${taskId}`, {
         method: 'DELETE',
         headers: { ...authHeaders },
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
@@ -365,7 +365,7 @@ const MyCalendarPage = () => {
       const response = await fetch(url, {
         method: editingMeeting ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify(meetingForm)
       });
 
@@ -390,7 +390,7 @@ const MyCalendarPage = () => {
       const response = await fetch(`${API_URL}/calendar/meetings/${meetingId}`, {
         method: 'DELETE',
         headers: { ...authHeaders },
-        credentials: 'include'
+        
       });
 
       if (response.ok) {

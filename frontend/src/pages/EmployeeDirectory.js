@@ -154,11 +154,11 @@ const EmployeeDirectory = () => {
       const authHeaders = getAuthHeaders();
       const [empRes, deptRes] = await Promise.all([
         fetch(url, { 
-          credentials: 'include',
+          
           headers: authHeaders
         }),
         fetch(`${API_URL}/departments`, { 
-          credentials: 'include',
+          
           headers: authHeaders
         })
       ]);
@@ -188,7 +188,7 @@ const EmployeeDirectory = () => {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
-        credentials: 'include',
+        
         body: JSON.stringify(newEmployee)
       });
 
@@ -222,7 +222,7 @@ const EmployeeDirectory = () => {
       const url = `${API_URL}/employees/${deleteDialog.employee.employee_id}${deleteDialog.permanent ? '?permanent=true' : ''}`;
       const response = await fetch(url, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: getAuthHeaders(),
       });
 
@@ -244,7 +244,7 @@ const EmployeeDirectory = () => {
     try {
       const response = await fetch(`${API_URL}/employees/${employee.employee_id}/activate`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: getAuthHeaders(),
       });
 

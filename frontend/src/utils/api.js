@@ -24,7 +24,7 @@ export const apiFetch = async (url, options = {}) => {
   
   const response = await fetch(url, {
     ...options,
-    credentials: 'include',
+    
     headers: {
       ...authHeaders,
       ...options.headers,
@@ -46,7 +46,7 @@ export const authFetch = async (url, options = {}) => {
   
   return fetch(url, {
     ...options,
-    credentials: 'include',
+    
     headers: {
       ...authHeaders,
       ...options.headers,

@@ -105,9 +105,9 @@ const APIManagerPage = () => {
       const headers = getAuthHeaders();
       
       const [statusRes, unmatchedRes, employeesRes] = await Promise.all([
-        fetch(`${API_URL}/biometric/sync/status`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/biometric/sync/unmatched-codes`, { credentials: 'include', headers }),
-        fetch(`${API_URL}/employees`, { credentials: 'include', headers })
+        fetch(`${API_URL}/biometric/sync/status`, { headers }),
+        fetch(`${API_URL}/biometric/sync/unmatched-codes`, { headers }),
+        fetch(`${API_URL}/employees`, { headers })
       ]);
 
       if (statusRes.ok) {
@@ -139,7 +139,7 @@ const APIManagerPage = () => {
   const loadMappings = async () => {
     try {
       const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/employees`, { credentials: 'include', headers });
+      const response = await fetch(`${API_URL}/employees`, { headers });
       if (response.ok) {
         const data = await response.json();
         // Create mapping list from employees with biometric codes
@@ -189,7 +189,7 @@ const APIManagerPage = () => {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
-        credentials: 'include',
+        
         body: JSON.stringify(body)
       });
 
@@ -216,7 +216,7 @@ const APIManagerPage = () => {
       const response = await fetch(`${API_URL}/biometric/sync/recalculate-late`, {
         method: 'POST',
         headers,
-        credentials: 'include'
+        
       });
 
       if (response.ok) {

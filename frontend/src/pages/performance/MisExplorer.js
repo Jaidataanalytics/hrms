@@ -40,7 +40,7 @@ const MisExplorer = ({ employees, authHeaders }) => {
   const [viewEntry, setViewEntry] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const hdrs = { credentials: 'include', headers: authHeaders };
+  const hdrs = { headers: authHeaders };
 
   const empName = (id) => {
     const e = employees.find(x => x.employee_id === id);

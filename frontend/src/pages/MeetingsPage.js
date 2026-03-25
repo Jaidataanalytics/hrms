@@ -165,8 +165,8 @@ const MeetingsPage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const [meetingsRes, employeesRes] = await Promise.all([
-        fetch(`${API_URL}/meetings/list`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/meetings/list`, { headers: authHeaders }),
+        fetch(`${API_URL}/employees`, { headers: authHeaders })
       ]);
 
       if (meetingsRes.ok) setMeetings(await meetingsRes.json());
@@ -175,7 +175,7 @@ const MeetingsPage = () => {
       // Fetch analytics for HR
       if (isHR) {
         const analyticsRes = await fetch(`${API_URL}/meetings/analytics/overview`, { 
-          credentials: 'include', headers: authHeaders 
+          headers: authHeaders 
         });
         if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
       }
@@ -206,7 +206,7 @@ const MeetingsPage = () => {
       const response = await fetch(url, {
         method: editingMeeting ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify(meetingForm)
       });
 
@@ -232,7 +232,7 @@ const MeetingsPage = () => {
       const response = await fetch(`${API_URL}/meetings/${selectedMeeting.meeting_id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify({ content: newNote })
       });
 
@@ -257,7 +257,7 @@ const MeetingsPage = () => {
       const response = await fetch(`${API_URL}/meetings/${selectedMeeting.meeting_id}/followups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify(newFollowUp)
       });
 
@@ -281,7 +281,7 @@ const MeetingsPage = () => {
       await fetch(`${API_URL}/meetings/${selectedMeeting.meeting_id}/followups/${followupId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify({ status: currentStatus === 'completed' ? 'pending' : 'completed' })
       });
       await fetchMeetingDetails(selectedMeeting.meeting_id);
@@ -298,7 +298,7 @@ const MeetingsPage = () => {
       const response = await fetch(`${API_URL}/meetings/${selectedMeeting.meeting_id}/schedule-followup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify({
           meeting_date: meetingForm.meeting_date,
           start_time: meetingForm.start_time,
@@ -330,7 +330,7 @@ const MeetingsPage = () => {
       const response = await fetch(`${API_URL}/meetings/${meetingId}`, {
         method: 'DELETE',
         headers: authHeaders,
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
@@ -349,7 +349,7 @@ const MeetingsPage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/meetings/${meetingId}`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
       if (response.ok) {

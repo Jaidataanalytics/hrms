@@ -19,7 +19,7 @@ const InsightsTab = ({ period, authHeaders }) => {
   const fetchInsights = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${API}/insights?period=${period}`, { credentials: 'include', headers: authHeaders });
+      const r = await fetch(`${API}/insights?period=${period}`, { headers: authHeaders });
       if (r.ok) setData(await r.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

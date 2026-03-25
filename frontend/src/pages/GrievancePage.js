@@ -66,7 +66,7 @@ const GrievancePage = () => {
     try {
       let url = `${API_URL}/grievances?`;
       if (filterStatus !== 'all') url += `status=${filterStatus}`;
-      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(url, { headers: getAuthHeaders() });
       if (response.ok) setTickets(await response.json());
     } catch (error) {
       console.error('Error:', error);
@@ -85,7 +85,7 @@ const GrievancePage = () => {
       const response = await fetch(`${API_URL}/grievances`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(form)
       });
 

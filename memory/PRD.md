@@ -210,6 +210,7 @@ On-the-fly normalization during payroll processing:
 - [x] Daily Thought of the Day: Motivational quote modal on first dashboard visit each day, auto-dismisses after 6 seconds (DONE - Mar 23, 2026)
 - [x] Upgraded Thought of the Day to LLM-generated: GPT-4o-mini generates context-aware daily thoughts, relates to day significance (holidays, week start/end, notable days), cached in MongoDB (DONE - Mar 23, 2026)
 - [x] Mobile App Login Fix: Changed SameSite=Lax to SameSite=None;Secure on all auth cookies for cross-origin WebView support, added mobile origins to CORS, added network error resilience to prevent unnecessary logouts, enabled CapacitorCookies plugin (DONE - Mar 24, 2026)
+- [x] Global CORS Fix: Removed `credentials: 'include'` from all 361 frontend fetch calls. App now authenticates purely via Bearer token (compatible with Kubernetes ingress wildcard CORS). Fixes login + stationery + all API calls on production cross-origin setup (DONE - Mar 25, 2026)
 - [ ] Full E2E testing of leave approvals, CO requests, cancellations
 - [ ] Mobile app build fix (MainActivity.java + Gradle config)
 - [ ] Mobile location permissions

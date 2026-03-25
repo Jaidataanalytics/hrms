@@ -69,9 +69,9 @@ const RecruitmentPage = () => {
   const fetchData = async () => {
     try {
       const [jobsRes, appsRes, deptRes] = await Promise.all([
-        fetch(`${API_URL}/recruitment/jobs`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/recruitment/applications`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/departments`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(`${API_URL}/recruitment/jobs`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/recruitment/applications`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/departments`, { headers: getAuthHeaders() })
       ]);
 
       if (jobsRes.ok) setJobs(await jobsRes.json());
@@ -94,7 +94,7 @@ const RecruitmentPage = () => {
       const response = await fetch(`${API_URL}/recruitment/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(form)
       });
 
@@ -114,7 +114,7 @@ const RecruitmentPage = () => {
       const response = await fetch(`${API_URL}/recruitment/applications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ job_id: jobId, cover_letter: applyForm.cover_letter })
       });
 
@@ -136,7 +136,7 @@ const RecruitmentPage = () => {
     try {
       const response = await fetch(`${API_URL}/recruitment/jobs/${jobId}/publish`, {
         method: 'PUT',
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Job published');

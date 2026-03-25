@@ -30,7 +30,7 @@ const EvaluationsTab = ({ user, evaluations, employees, isHR, authHeaders, onRef
   const createEval = async () => {
     try {
       const r = await fetch(`${API}/evaluations`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, 
         body: JSON.stringify(evalForm)
       });
       if (r.ok) { toast.success('Evaluation created'); setShowDialog(false); setEvalForm({ cycle: 'quarterly' }); onRefresh(); }
@@ -42,7 +42,7 @@ const EvaluationsTab = ({ user, evaluations, employees, isHR, authHeaders, onRef
     if (!editingEval) return;
     try {
       const r = await fetch(`${API}/evaluations/${editingEval.evaluation_id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
+        method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders }, 
         body: JSON.stringify({ self_rating: selfForm.self_rating, self_comments: selfForm.self_comments, status: 'self_assessed' })
       });
       if (r.ok) { toast.success('Self-assessment submitted'); setShowSelfAssessDialog(false); onRefresh(); }
@@ -56,7 +56,7 @@ const EvaluationsTab = ({ user, evaluations, employees, isHR, authHeaders, onRef
       if (field === 'manager_rating') body.status = 'manager_reviewed';
       if (field === 'hr_rating') body.status = 'completed';
       const r = await fetch(`${API}/evaluations/${evalId}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
+        method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders }, 
         body: JSON.stringify(body)
       });
       if (r.ok) { toast.success('Rating updated'); onRefresh(); }

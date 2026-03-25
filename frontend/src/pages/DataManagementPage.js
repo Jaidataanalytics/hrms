@@ -93,7 +93,7 @@ const DataManagementPage = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/data-management/stats`, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/data-management/stats`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -108,8 +108,8 @@ const DataManagementPage = () => {
   const fetchFilterOptions = async () => {
     try {
       const [deptRes, empRes] = await Promise.all([
-        fetch(`${API_URL}/data-management/departments`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/data-management/employees-list`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(`${API_URL}/data-management/departments`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/data-management/employees-list`, { headers: getAuthHeaders() })
       ]);
       
       if (deptRes.ok) setDepartments(await deptRes.json());
@@ -153,7 +153,7 @@ const DataManagementPage = () => {
       const response = await fetch(`${API_URL}/data-management/bulk-delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           data_type: currentDataType,
           delete_type: deleteType,
@@ -189,7 +189,7 @@ const DataManagementPage = () => {
       const response = await fetch(`${API_URL}/data-management/delete-all-type`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           data_type: currentDataType,
           delete_type: deleteType
@@ -224,7 +224,7 @@ const DataManagementPage = () => {
       const response = await fetch(`${API_URL}/data-management/delete-everything`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           confirmation_text: deleteEverythingText,
           delete_type: 'hard'
@@ -253,7 +253,7 @@ const DataManagementPage = () => {
       const response = await fetch(`${API_URL}/data-management/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ data_type: dataType })
       });
 

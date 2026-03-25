@@ -87,7 +87,7 @@ const FrequencyMisForm = ({ template, user, authHeaders, isHR }) => {
     (async () => {
       try {
         const r = await fetch(`${API}/mis-entries?employee_id=${user.employee_id}&date=${effectiveDate}&template_id=${template.template_id}`, {
-          credentials: 'include', headers: authHeaders
+          headers: authHeaders
         });
         if (r.ok) {
           const entries = await r.json();
@@ -107,7 +107,7 @@ const FrequencyMisForm = ({ template, user, authHeaders, isHR }) => {
       try {
         const period = freq === 'daily' ? 'monthly' : freq === 'weekly' ? 'quarterly' : 'annual';
         const r = await fetch(`${API}/mis-entries?employee_id=${user.employee_id}&period=${period}&template_id=${template.template_id}`, {
-          credentials: 'include', headers: authHeaders
+          headers: authHeaders
         });
         if (r.ok) setHistory(await r.json());
       } catch (err) { console.error(err); }
@@ -121,7 +121,7 @@ const FrequencyMisForm = ({ template, user, authHeaders, isHR }) => {
       const r = await fetch(`${API}/mis-entries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify({
           template_id: template.template_id,
           department_id: template.department_id,

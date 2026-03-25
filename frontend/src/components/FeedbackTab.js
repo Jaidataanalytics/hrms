@@ -53,8 +53,8 @@ const FeedbackTab = () => {
     setLoading(true);
     try {
       const [cyclesRes, empRes] = await Promise.all([
-        fetch(`${API_URL}/helpdesk/feedback-cycles`, { headers: getAuthHeaders(), credentials: 'include' }),
-        fetch(`${API_URL}/employees`, { headers: getAuthHeaders(), credentials: 'include' }),
+        fetch(`${API_URL}/helpdesk/feedback-cycles`, { headers: getAuthHeaders(),  }),
+        fetch(`${API_URL}/employees`, { headers: getAuthHeaders(),  }),
       ]);
       if (cyclesRes.ok) setCycles(await cyclesRes.json());
       if (empRes.ok) setEmployees(await empRes.json());
@@ -69,7 +69,7 @@ const FeedbackTab = () => {
     try {
       const res = await fetch(`${API_URL}/helpdesk/feedback-cycles`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include', body: JSON.stringify(form),
+        body: JSON.stringify(form),
       });
       if (res.ok) { toast.success('Feedback cycle created'); setShowCreate(false); fetchCycles(); }
     } catch { toast.error('Failed to create'); }
@@ -79,7 +79,7 @@ const FeedbackTab = () => {
     try {
       await fetch(`${API_URL}/helpdesk/feedback-cycles/${cycleId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include', body: JSON.stringify({ status }),
+        body: JSON.stringify({ status }),
       });
       toast.success(`Cycle ${status}`);
       fetchCycles();
@@ -89,7 +89,7 @@ const FeedbackTab = () => {
   const deleteCycle = async (cycleId) => {
     try {
       await fetch(`${API_URL}/helpdesk/feedback-cycles/${cycleId}`, {
-        method: 'DELETE', headers: getAuthHeaders(), credentials: 'include',
+        method: 'DELETE', headers: getAuthHeaders(), 
       });
       toast.success('Cycle deleted');
       fetchCycles();
@@ -103,7 +103,7 @@ const FeedbackTab = () => {
     try {
       const res = await fetch(`${API_URL}/helpdesk/feedback-cycles/${selectedCycle.cycle_id}/assign`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include', body: JSON.stringify(assignForm),
+        body: JSON.stringify(assignForm),
       });
       if (res.ok) {
         const data = await res.json();
@@ -117,7 +117,7 @@ const FeedbackTab = () => {
   const fetchMyAssignments = async (cycleId) => {
     try {
       const res = await fetch(`${API_URL}/helpdesk/feedback-cycles/${cycleId}/my-assignments`, {
-        headers: getAuthHeaders(), credentials: 'include',
+        headers: getAuthHeaders(), 
       });
       if (res.ok) setMyAssignments(await res.json());
     } catch { toast.error('Failed to fetch'); }
@@ -126,7 +126,7 @@ const FeedbackTab = () => {
   const fetchAnalytics = async (cycleId) => {
     try {
       const res = await fetch(`${API_URL}/helpdesk/feedback-cycles/${cycleId}/analytics`, {
-        headers: getAuthHeaders(), credentials: 'include',
+        headers: getAuthHeaders(), 
       });
       if (res.ok) setAnalytics(await res.json());
     } catch { toast.error('Failed to fetch analytics'); }
@@ -141,7 +141,7 @@ const FeedbackTab = () => {
     try {
       const res = await fetch(`${API_URL}/helpdesk/feedback-cycles/${myAssignments.cycle.cycle_id}/submit`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ assignment_id: currentAssignment.assignment_id, answers }),
       });
       if (res.ok) {

@@ -84,13 +84,13 @@ const Employee360Page = () => {
       
       // Fetch all employee data in parallel
       const [empRes, salRes, leaveBalRes, leaveReqRes, insRes, assetRes, payslipRes] = await Promise.all([
-        fetch(`${API_URL}/employees/${employeeId}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/payroll/employee/${employeeId}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave/balances?employee_id=${employeeId}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/leave/requests?employee_id=${employeeId}&limit=20`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/insurance?employee_id=${employeeId}`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/employee-assets/${employeeId}`, { credentials: 'include', headers: authHeaders }).catch(() => ({ ok: false })),
-        fetch(`${API_URL}/payroll/payslips?employee_id=${employeeId}&limit=12`, { credentials: 'include', headers: authHeaders }),
+        fetch(`${API_URL}/employees/${employeeId}`, { headers: authHeaders }),
+        fetch(`${API_URL}/payroll/employee/${employeeId}`, { headers: authHeaders }),
+        fetch(`${API_URL}/leave/balances?employee_id=${employeeId}`, { headers: authHeaders }),
+        fetch(`${API_URL}/leave/requests?employee_id=${employeeId}&limit=20`, { headers: authHeaders }),
+        fetch(`${API_URL}/insurance?employee_id=${employeeId}`, { headers: authHeaders }),
+        fetch(`${API_URL}/employee-assets/${employeeId}`, { headers: authHeaders }).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/payroll/payslips?employee_id=${employeeId}&limit=12`, { headers: authHeaders }),
       ]);
 
       if (empRes.ok) setEmployee(await empRes.json());
@@ -119,7 +119,7 @@ const Employee360Page = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(
         `${API_URL}/attendance?employee_id=${employeeId}&month=${selectedMonth}&year=${selectedYear}`,
-        { credentials: 'include', headers: authHeaders }
+        { headers: authHeaders }
       );
       
       if (response.ok) {

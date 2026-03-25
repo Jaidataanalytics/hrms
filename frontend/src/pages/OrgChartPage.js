@@ -110,7 +110,7 @@ const OrgChartPage = () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/org-chart`, {
-        headers: getAuthHeaders(), credentials: 'include',
+        headers: getAuthHeaders(), 
       });
       if (res.ok) {
         const data = await res.json();

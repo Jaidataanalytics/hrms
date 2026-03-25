@@ -35,7 +35,7 @@ const TravelPage = () => {
     try {
       let url = `${API_URL}/travel/requests?`;
       if (filterStatus !== 'all') url += `status=${filterStatus}`;
-      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(url, { headers: getAuthHeaders() });
       if (response.ok) setRequests(await response.json());
     } catch (error) {
       console.error('Error:', error);
@@ -53,7 +53,7 @@ const TravelPage = () => {
       const response = await fetch(`${API_URL}/travel/requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(form)
       });
       if (response.ok) {
@@ -74,7 +74,7 @@ const TravelPage = () => {
       const response = await fetch(`${API_URL}/travel/requests/${requestId}/approve`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ approved_budget: selectedRequest?.estimated_budget })
       });
       if (response.ok) {
@@ -92,7 +92,7 @@ const TravelPage = () => {
       const response = await fetch(`${API_URL}/travel/requests/${requestId}/reject`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ reason })
       });
       if (response.ok) {

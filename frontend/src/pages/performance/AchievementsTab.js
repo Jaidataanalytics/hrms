@@ -25,7 +25,7 @@ const AchievementsTab = ({ authHeaders, isManager, isHR }) => {
   const [endorseRemarks, setEndorseRemarks] = useState('');
 
   const fetchData = useCallback(async () => {
-    const hdrs = { credentials: 'include', headers: authHeaders };
+    const hdrs = { headers: authHeaders };
     try {
       const [achRes, pendRes] = await Promise.all([
         fetch(`${API}/achievements`, hdrs),
@@ -44,7 +44,7 @@ const AchievementsTab = ({ authHeaders, isManager, isHR }) => {
     try {
       const res = await fetch(`${API}/achievements`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include', body: JSON.stringify(form)
+        body: JSON.stringify(form)
       });
       if (res.ok) {
         toast.success('Achievement submitted for endorsement');
@@ -60,7 +60,7 @@ const AchievementsTab = ({ authHeaders, isManager, isHR }) => {
     try {
       const res = await fetch(`${API}/achievements/${achievementId}/endorse`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include', body: JSON.stringify({ remarks: endorseRemarks })
+        body: JSON.stringify({ remarks: endorseRemarks })
       });
       if (res.ok) { toast.success('Achievement endorsed'); setEndorseDialog(null); setEndorseRemarks(''); fetchData(); }
       else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
@@ -73,7 +73,7 @@ const AchievementsTab = ({ authHeaders, isManager, isHR }) => {
     try {
       const res = await fetch(`${API}/achievements/${achievementId}/reject`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include', body: JSON.stringify({ reason })
+        body: JSON.stringify({ reason })
       });
       if (res.ok) { toast.success('Achievement not endorsed'); fetchData(); }
       else { const e = await res.json(); toast.error(e.detail || 'Failed'); }

@@ -161,7 +161,7 @@ const HelpdeskPage = () => {
     try {
       let url = `${API_URL}/grievances?`;
       if (filterStatus !== 'all') url += `status=${filterStatus}`;
-      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(url, { headers: getAuthHeaders() });
       if (response.ok) setTickets(await response.json());
     } catch (error) {
       console.error('Error:', error);
@@ -177,7 +177,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/grievances`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(ticketForm)
       });
       if (response.ok) {
@@ -196,7 +196,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/grievances/${ticketId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ status })
       });
       if (response.ok) {
@@ -214,7 +214,7 @@ const HelpdeskPage = () => {
   const fetchSuggestions = async () => {
     try {
       const response = await fetch(`${API_URL}/helpdesk/suggestions`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) setSuggestions(await response.json());
@@ -232,7 +232,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(suggestionForm)
       });
       if (response.ok) {
@@ -255,7 +255,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/suggestions/${selectedSuggestion.suggestion_id}/respond`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ response: suggestionResponse, status: 'acknowledged' })
       });
       if (response.ok) {
@@ -274,7 +274,7 @@ const HelpdeskPage = () => {
   const fetchSurveys = async () => {
     try {
       const response = await fetch(`${API_URL}/helpdesk/surveys`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) setSurveys(await response.json());
@@ -286,10 +286,10 @@ const HelpdeskPage = () => {
   const fetchSurveyHelpers = async () => {
     try {
       const [templatesRes, deptRes, locRes, empRes] = await Promise.all([
-        fetch(`${API_URL}/helpdesk/survey-templates`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/helpdesk/departments`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/helpdesk/locations`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/helpdesk/employees-for-selection`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(`${API_URL}/helpdesk/survey-templates`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/helpdesk/departments`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/helpdesk/locations`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/helpdesk/employees-for-selection`, { headers: getAuthHeaders() })
       ]);
       
       if (templatesRes.ok) setSurveyTemplates(await templatesRes.json());
@@ -310,7 +310,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/surveys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ ...surveyForm, status: 'draft' })
       });
       if (response.ok) {
@@ -329,7 +329,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/surveys/${surveyId}/activate`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Survey activated and notifications sent');
@@ -345,7 +345,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/surveys/${surveyId}/close`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Survey closed');
@@ -362,7 +362,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/surveys/${surveyId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Survey deleted');
@@ -378,7 +378,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/surveys/${surveyId}/duplicate`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (response.ok) {
         toast.success('Survey duplicated');
@@ -392,7 +392,7 @@ const HelpdeskPage = () => {
   const fetchSurveyAnalytics = async (surveyId) => {
     try {
       const response = await fetch(`${API_URL}/helpdesk/surveys/${surveyId}/analytics`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
@@ -430,7 +430,7 @@ const HelpdeskPage = () => {
       const response = await fetch(`${API_URL}/helpdesk/surveys/${respondingSurvey.survey_id}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ answers: answersArray })
       });
       if (response.ok) {

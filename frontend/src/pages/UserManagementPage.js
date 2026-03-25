@@ -104,9 +104,9 @@ const UserManagementPage = () => {
       if (filterStatus !== 'all') url += `status=${filterStatus}&`;
       
       const [usersRes, rolesRes, empRes] = await Promise.all([
-        fetch(url, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/users/roles/list`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/employees?limit=500`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(url, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/users/roles/list`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/employees?limit=500`, { headers: getAuthHeaders() })
       ]);
 
       if (usersRes.ok) {
@@ -132,7 +132,7 @@ const UserManagementPage = () => {
       const response = await fetch(`${API_URL}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           ...form,
           employee_id: form.employee_id || undefined
@@ -163,7 +163,7 @@ const UserManagementPage = () => {
       const response = await fetch(`${API_URL}/users/${showEditUser.user_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           name: form.name,
           email: form.email,
@@ -194,7 +194,7 @@ const UserManagementPage = () => {
       const response = await fetch(`${API_URL}/users/${showResetPassword.user_id}/reset-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ new_password: newPassword })
       });
 
@@ -215,7 +215,7 @@ const UserManagementPage = () => {
     try {
       const response = await fetch(`${API_URL}/users/${showDeleteConfirm.user_id}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 
@@ -237,7 +237,7 @@ const UserManagementPage = () => {
       const endpoint = activate ? 'activate' : 'deactivate';
       const response = await fetch(`${API_URL}/users/${targetUser.user_id}/${endpoint}`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
 

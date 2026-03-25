@@ -83,9 +83,9 @@ const MasterSetupPage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const [deptRes, desigRes, locRes] = await Promise.all([
-        fetch(`${API_URL}/departments`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/designations`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/locations`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/departments`, { headers: authHeaders }),
+        fetch(`${API_URL}/designations`, { headers: authHeaders }),
+        fetch(`${API_URL}/locations`, { headers: authHeaders })
       ]);
 
       if (deptRes.ok) setDepartments(await deptRes.json());
@@ -166,7 +166,7 @@ const MasterSetupPage = () => {
       const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(payload)
       });
 

@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
@@ -160,7 +160,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await fetch(`${API_URL}/auth/me`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders(),
       });
 
@@ -221,7 +221,7 @@ export const AuthProvider = ({ children }) => {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      
       body: JSON.stringify({ email, password }),
     });
 
@@ -248,7 +248,7 @@ export const AuthProvider = ({ children }) => {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      
       body: JSON.stringify({ name, email, password }),
     });
 
@@ -275,7 +275,7 @@ export const AuthProvider = ({ children }) => {
     const response = await fetch(`${API_URL}/auth/google-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      
       body: JSON.stringify({ session_id: sessionId }),
     });
 
@@ -304,7 +304,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
-        credentials: 'include',
+        
       });
     } catch (error) {
       console.error('Logout error:', error);

@@ -95,7 +95,7 @@ const AssetsPage = () => {
 
   const fetchAssetDetails = async (assetId) => {
     try {
-      const response = await fetch(`${API_URL}/assets/${assetId}`, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/assets/${assetId}`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setSelectedAsset(data);
@@ -109,7 +109,7 @@ const AssetsPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch(`${API_URL}/assets/employees/list`, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/assets/employees/list`, { headers: getAuthHeaders() });
       if (response.ok) {
         setEmployees(await response.json());
       }
@@ -126,8 +126,8 @@ const AssetsPage = () => {
   const fetchData = async () => {
     try {
       const promises = [
-        fetch(`${API_URL}/my-assets`, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/asset-requests`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(`${API_URL}/my-assets`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/asset-requests`, { headers: getAuthHeaders() })
       ];
 
       if (isAdmin) {
@@ -136,12 +136,12 @@ const AssetsPage = () => {
         if (filterType !== 'all') url += `asset_type=${filterType}&`;
         if (filterStatus !== 'all') url += `status=${filterStatus}&`;
         if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
-        promises.push(fetch(url, { credentials: 'include', headers: getAuthHeaders() }));
+        promises.push(fetch(url, { headers: getAuthHeaders() }));
         
         // Fetch employee asset assignments
         let empAssetsUrl = `${API_URL}/assets/employee-assignments?`;
         if (searchTerm) empAssetsUrl += `search=${encodeURIComponent(searchTerm)}&`;
-        promises.push(fetch(empAssetsUrl, { credentials: 'include', headers: getAuthHeaders() }));
+        promises.push(fetch(empAssetsUrl, { headers: getAuthHeaders() }));
       }
 
       const responses = await Promise.all(promises);
@@ -176,7 +176,7 @@ const AssetsPage = () => {
       const response = await fetch(`${API_URL}/assets/${selectedAssetForEdit.asset_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           description: selectedAssetForEdit.description,
           asset_tag: selectedAssetForEdit.asset_tag,
@@ -202,7 +202,7 @@ const AssetsPage = () => {
     try {
       const response = await fetch(`${API_URL}/assets/${assetId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       
@@ -223,7 +223,7 @@ const AssetsPage = () => {
     try {
       const response = await fetch(`${API_URL}/assets/${assetId}/unassign`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       
@@ -255,7 +255,7 @@ const AssetsPage = () => {
       const response = await fetch(`${API_URL}/assets/${selectedAssetForEdit.asset_id}/reassign`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           emp_code: selectedEmployeeCode,
           employee_name: selectedEmp?.name || selectedEmployeeCode
@@ -280,7 +280,7 @@ const AssetsPage = () => {
     try {
       const response = await fetch(`${API_URL}/assets/employee-assignments/${empCode}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       
@@ -305,7 +305,7 @@ const AssetsPage = () => {
       const response = await fetch(`${API_URL}/assets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify(assetForm)
       });
 
@@ -336,7 +336,7 @@ const AssetsPage = () => {
       const response = await fetch(`${API_URL}/asset-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify(requestForm)
       });
 

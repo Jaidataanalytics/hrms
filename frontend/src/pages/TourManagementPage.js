@@ -67,7 +67,7 @@ const TourManagementPage = () => {
     try {
       let url = `${API_URL}/travel/requests?`;
       if (filterStatus !== 'all') url += `status=${filterStatus}`;
-      const response = await fetch(url, { credentials: 'include', headers: getAuthHeaders() });
+      const response = await fetch(url, { headers: getAuthHeaders() });
       if (response.ok) setRequests(await response.json());
     } catch (error) {
       console.error('Error:', error);
@@ -79,7 +79,7 @@ const TourManagementPage = () => {
   const fetchMyTourStatus = async () => {
     try {
       const response = await fetch(`${API_URL}/travel/my-active-tour`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
@@ -94,18 +94,18 @@ const TourManagementPage = () => {
   const fetchFieldEmployees = async () => {
     try {
       const response = await fetch(`${API_URL}/travel/field-employees`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
         setFieldEmployees(await response.json());
       }
       // Also fetch overrides
-      const overrideRes = await fetch(`${API_URL}/travel/remote-checkin-overrides`, { credentials: 'include', headers: getAuthHeaders() });
+      const overrideRes = await fetch(`${API_URL}/travel/remote-checkin-overrides`, { headers: getAuthHeaders() });
       if (overrideRes.ok) setOverrides(await overrideRes.json());
       // Fetch all today's remote check-ins
       const today = new Date().toISOString().split('T')[0];
-      const allCheckinsRes = await fetch(`${API_URL}/travel/remote-check-ins?date=${today}`, { credentials: 'include', headers: getAuthHeaders() });
+      const allCheckinsRes = await fetch(`${API_URL}/travel/remote-check-ins?date=${today}`, { headers: getAuthHeaders() });
       if (allCheckinsRes.ok) setAllTodayCheckins(await allCheckinsRes.json());
     } catch (error) {
       console.error('Error fetching field employees:', error);
@@ -115,7 +115,7 @@ const TourManagementPage = () => {
   const fetchEmployees = async () => {
     try {
       const response = await fetch(`${API_URL}/employees`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
@@ -181,7 +181,7 @@ const TourManagementPage = () => {
       const response = await fetch(`${API_URL}/travel/remote-check-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({
           punch_type: punchType,
           latitude: location.latitude,
@@ -225,7 +225,7 @@ const TourManagementPage = () => {
       const response = await fetch(`${API_URL}/travel/requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify(form)
       });
       if (response.ok) {
@@ -255,7 +255,7 @@ const TourManagementPage = () => {
       const response = await fetch(`${API_URL}/travel/requests/${requestId}/approve`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ approved_budget: selectedRequest?.estimated_budget })
       });
       if (response.ok) {
@@ -276,7 +276,7 @@ const TourManagementPage = () => {
       const response = await fetch(`${API_URL}/travel/requests/${requestId}/reject`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ reason })
       });
       if (response.ok) {
@@ -294,7 +294,7 @@ const TourManagementPage = () => {
       const response = await fetch(`${API_URL}/travel/field-employees/${employeeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        credentials: 'include',
+        
         body: JSON.stringify({ is_field_employee: isField })
       });
       if (response.ok) {
@@ -404,7 +404,7 @@ const TourManagementPage = () => {
                             <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" data-testid={`cancel-tour-${req.request_id}`}
                               onClick={async () => {
                                 try {
-                                  const res = await fetch(`${API_URL}/travel/requests/${req.request_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(), credentials: 'include' });
+                                  const res = await fetch(`${API_URL}/travel/requests/${req.request_id}/cancel`, { method: 'PUT', headers: getAuthHeaders(),  });
                                   if (res.ok) { toast.success('Tour request cancelled'); fetchData(); }
                                   else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
                                 } catch { toast.error('Failed to cancel'); }
@@ -794,7 +794,7 @@ const TourManagementPage = () => {
                           <p className="text-xs text-slate-400">{ov.reason} (by {ov.created_by_name})</p>
                         </div>
                         <Button size="sm" variant="ghost" className="text-red-500" onClick={async () => {
-                          await fetch(`${API_URL}/travel/remote-checkin-overrides/${ov.override_id}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
+                          await fetch(`${API_URL}/travel/remote-checkin-overrides/${ov.override_id}`, { method: 'DELETE', headers: getAuthHeaders(),  });
                           toast.success('Override removed'); fetchFieldEmployees();
                         }}>Remove</Button>
                       </div>
@@ -859,7 +859,7 @@ const TourManagementPage = () => {
                 department_id: overrideForm.type === 'department' ? overrideForm.department_id : null,
                 reason: overrideForm.reason,
               };
-              const res = await fetch(`${API_URL}/travel/remote-checkin-override`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, credentials: 'include', body: JSON.stringify(payload) });
+              const res = await fetch(`${API_URL}/travel/remote-checkin-override`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(payload) });
               if (res.ok) { toast.success('Override created'); setShowOverrideDialog(false); setOverrideForm({ date: '', type: 'employee', employee_ids: '', department_id: '', reason: '' }); fetchFieldEmployees(); }
               else { const e = await res.json(); toast.error(e.detail || 'Failed'); }
             }} data-testid="create-override-btn">Create Override</Button>

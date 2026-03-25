@@ -18,7 +18,7 @@ const ThoughtOfTheDay = ({ authHeaders }) => {
 
       try {
         const r = await fetch(`${API}/thought-of-the-day`, {
-          credentials: 'include',
+          
           headers: authHeaders,
         });
         if (r.ok) {

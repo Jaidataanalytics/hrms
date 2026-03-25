@@ -188,7 +188,7 @@ const AttendancePage = () => {
   const fetchDepartments = async () => {
     try {
       const response = await fetch(`${API_URL}/departments`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
@@ -221,7 +221,7 @@ const AttendancePage = () => {
 
       const response = await fetch(
         `${API_URL}/attendance/grid?${params}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
 
       if (response.ok) {
@@ -281,7 +281,7 @@ const AttendancePage = () => {
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            credentials: 'include',
+            
             body: JSON.stringify(gridEditForm)
           }
         );
@@ -292,7 +292,7 @@ const AttendancePage = () => {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            credentials: 'include',
+            
             body: JSON.stringify({
               employee_id: gridEditingCell.employee_id,
               date: gridEditingCell.date,
@@ -393,7 +393,7 @@ const AttendancePage = () => {
       
       const response = await fetch(
         `${API_URL}/attendance/calendar-data?${params}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       
       if (response.ok) {
@@ -415,7 +415,7 @@ const AttendancePage = () => {
   const fetchEmployees = async () => {
     try {
       const response = await fetch(`${API_URL}/employees`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       if (response.ok) {
@@ -443,7 +443,7 @@ const AttendancePage = () => {
       
       const response = await fetch(
         `${API_URL}/attendance/summary?${params}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       
       if (response.ok) {
@@ -471,7 +471,7 @@ const AttendancePage = () => {
       
       const response = await fetch(
         `${API_URL}/attendance/my-summary?${params}`,
-        { credentials: 'include', headers: getAuthHeaders() }
+        { headers: getAuthHeaders() }
       );
       
       if (response.ok) {

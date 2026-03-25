@@ -79,8 +79,8 @@ const DocumentsPage = () => {
       if (filterType !== 'all') url += `type=${filterType}`;
 
       const [docsRes, typesRes] = await Promise.all([
-        fetch(url, { credentials: 'include', headers: getAuthHeaders() }),
-        fetch(`${API_URL}/document-types`, { credentials: 'include', headers: getAuthHeaders() })
+        fetch(url, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/document-types`, { headers: getAuthHeaders() })
       ]);
 
       if (docsRes.ok) setDocuments(await docsRes.json());
@@ -111,7 +111,7 @@ const DocumentsPage = () => {
       const response = await fetch(`${API_URL}/documents/upload`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include',
+        
         body: formData
       });
 
@@ -138,7 +138,7 @@ const DocumentsPage = () => {
       const response = await fetch(`${API_URL}/documents/${documentId}`, {
         method: 'DELETE',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
@@ -155,7 +155,7 @@ const DocumentsPage = () => {
   const handleDownload = async (documentId, fileName) => {
     try {
       const response = await fetch(`${API_URL}/documents/${documentId}/download`, {
-        credentials: 'include',
+        
         headers: getAuthHeaders()
       });
       
@@ -182,7 +182,7 @@ const DocumentsPage = () => {
       const response = await fetch(`${API_URL}/documents/${documentId}/verify`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify({})
       });
 

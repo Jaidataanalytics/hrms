@@ -44,7 +44,7 @@ const LoginPage = () => {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify({ email, password }),
       });
 
@@ -100,7 +100,7 @@ const LoginPage = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         },
-        credentials: 'include',
+        
         body: JSON.stringify({ new_password: newPassword }),
       });
 

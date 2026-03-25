@@ -25,11 +25,11 @@ const NotificationBell = () => {
       const authHeaders = getAuthHeaders();
       const [notifRes, countRes] = await Promise.all([
         fetch(`${API_URL}/notifications/list?limit=20`, { 
-          credentials: 'include', 
+          
           headers: authHeaders 
         }),
         fetch(`${API_URL}/notifications/unread-count`, { 
-          credentials: 'include', 
+          
           headers: authHeaders 
         })
       ]);
@@ -65,7 +65,7 @@ const NotificationBell = () => {
       const authHeaders = getAuthHeaders();
       await fetch(`${API_URL}/notifications/${notificationId}/read`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: authHeaders
       });
       fetchNotifications();
@@ -80,7 +80,7 @@ const NotificationBell = () => {
       const authHeaders = getAuthHeaders();
       await fetch(`${API_URL}/notifications/mark-all-read`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: authHeaders
       });
       fetchNotifications();
@@ -97,7 +97,7 @@ const NotificationBell = () => {
       const authHeaders = getAuthHeaders();
       await fetch(`${API_URL}/notifications/clear-all`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: authHeaders
       });
       fetchNotifications();

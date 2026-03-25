@@ -56,7 +56,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
   const [kpiForm, setKpiForm] = useState({});
   const [kraForm, setKraForm] = useState({});
 
-  const hdrs = { credentials: 'include', headers: authHeaders };
+  const hdrs = { headers: authHeaders };
 
   const fetchCompliance = useCallback(async (date) => {
     setComplianceLoading(true);
@@ -89,7 +89,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
   const seedData = async () => {
     setSeeding(true);
     try {
-      const r = await fetch(`${API}/seed-data`, { method: 'POST', headers: authHeaders, credentials: 'include' });
+      const r = await fetch(`${API}/seed-data`, { method: 'POST', headers: authHeaders,  });
       if (r.ok) { const d = await r.json(); toast.success(d.message); fetchAdminData(); }
       else toast.error('Failed to seed data');
     } catch { toast.error('Error seeding data'); }
@@ -132,7 +132,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
         fields: (templateForm.fields || []).filter(f => f.label),
       };
       const r = await fetch(`${API}/mis-templates`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, 
         body: JSON.stringify(payload)
       });
       if (r.ok) { toast.success('MIS template created'); setShowTemplateDialog(false); setTemplateForm({ fields: [], frequency: 'daily' }); fetchAdminData(); }
@@ -142,7 +142,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
 
   const deleteTemplate = async (templateId) => {
     try {
-      const r = await fetch(`${API}/mis-templates/${templateId}`, { method: 'DELETE', headers: authHeaders, credentials: 'include' });
+      const r = await fetch(`${API}/mis-templates/${templateId}`, { method: 'DELETE', headers: authHeaders,  });
       if (r.ok) { toast.success('Template removed'); fetchAdminData(); }
     } catch { toast.error('Error'); }
   };
@@ -150,7 +150,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
   const createKpi = async () => {
     try {
       const r = await fetch(`${API}/kpi-definitions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, 
         body: JSON.stringify(kpiForm)
       });
       if (r.ok) { toast.success('KPI created'); setShowKpiDialog(false); setKpiForm({}); fetchAdminData(); }
@@ -159,7 +159,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
 
   const deleteKpi = async (kpiId) => {
     try {
-      const r = await fetch(`${API}/kpi-definitions/${kpiId}`, { method: 'DELETE', headers: authHeaders, credentials: 'include' });
+      const r = await fetch(`${API}/kpi-definitions/${kpiId}`, { method: 'DELETE', headers: authHeaders,  });
       if (r.ok) { toast.success('KPI removed'); fetchAdminData(); }
     } catch { toast.error('Error'); }
   };
@@ -167,7 +167,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
   const createKra = async () => {
     try {
       const r = await fetch(`${API}/kra-definitions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders }, 
         body: JSON.stringify(kraForm)
       });
       if (r.ok) { toast.success('KRA created'); setShowKraDialog(false); setKraForm({}); fetchAdminData(); }
@@ -176,7 +176,7 @@ const AdminTab = ({ employees, authHeaders, period }) => {
 
   const deleteKra = async (kraId) => {
     try {
-      const r = await fetch(`${API}/kra-definitions/${kraId}`, { method: 'DELETE', headers: authHeaders, credentials: 'include' });
+      const r = await fetch(`${API}/kra-definitions/${kraId}`, { method: 'DELETE', headers: authHeaders,  });
       if (r.ok) { toast.success('KRA removed'); fetchAdminData(); }
     } catch { toast.error('Error'); }
   };

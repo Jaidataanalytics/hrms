@@ -22,7 +22,7 @@ const SurveyAnalyticsDashboard = ({ surveyId, isOpen, onClose }) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/helpdesk/surveys/${surveyId}/analytics/detailed`, {
-        headers: getAuthHeaders(), credentials: 'include',
+        headers: getAuthHeaders(), 
       });
       if (res.ok) setData(await res.json());
       else toast.error('Failed to load analytics');

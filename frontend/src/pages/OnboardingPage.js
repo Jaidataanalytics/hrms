@@ -177,11 +177,11 @@ const OnboardingPage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const [empRes, deptRes, desigRes, onbRes, exitRes] = await Promise.all([
-        fetch(`${API_URL}/employees`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/departments`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/designations`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/onboarding/records`, { credentials: 'include', headers: authHeaders }),
-        fetch(`${API_URL}/onboarding/exit-requests`, { credentials: 'include', headers: authHeaders })
+        fetch(`${API_URL}/employees`, { headers: authHeaders }),
+        fetch(`${API_URL}/departments`, { headers: authHeaders }),
+        fetch(`${API_URL}/designations`, { headers: authHeaders }),
+        fetch(`${API_URL}/onboarding/records`, { headers: authHeaders }),
+        fetch(`${API_URL}/onboarding/exit-requests`, { headers: authHeaders })
       ]);
 
       if (empRes.ok) setEmployees(await empRes.json());
@@ -207,7 +207,7 @@ const OnboardingPage = () => {
       const response = await fetch(`${API_URL}/onboarding/records`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify(newOnboardingForm)
       });
 
@@ -231,7 +231,7 @@ const OnboardingPage = () => {
       const response = await fetch(`${API_URL}/onboarding/records/${recordId}/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify({ completed, completed_at: completed ? new Date().toISOString() : null })
       });
 
@@ -250,7 +250,7 @@ const OnboardingPage = () => {
       const response = await fetch(`${API_URL}/onboarding/records/${recordId}/stage`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify({ stage: newStage })
       });
 
@@ -274,7 +274,7 @@ const OnboardingPage = () => {
       const response = await fetch(`${API_URL}/onboarding/exit-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        credentials: 'include',
+        
         body: JSON.stringify(exitForm)
       });
 

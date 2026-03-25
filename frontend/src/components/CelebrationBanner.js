@@ -100,7 +100,7 @@ const CelebrationBanner = ({ onThemeDetected, onMyEvent }) => {
     try {
       const res = await fetch(`${API_URL}/events/today`, {
         headers: getAuthHeaders(),
-        credentials: 'include',
+        
       });
       if (res.ok) {
         const data = await res.json();

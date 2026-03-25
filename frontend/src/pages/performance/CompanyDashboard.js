@@ -17,7 +17,7 @@ const EXECS = [
 const CompanyDashboard = ({ period, authHeaders }) => {
   const [dashboard, setDashboard] = useState(null);
   const [crossV, setCrossV] = useState(null);
-  const hdrs = { credentials: 'include', headers: authHeaders };
+  const hdrs = { headers: authHeaders };
 
   useEffect(() => {
     (async () => {

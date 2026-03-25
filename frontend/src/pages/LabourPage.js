@@ -104,7 +104,7 @@ const LabourPage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/labour/contractors`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
       if (response.ok) {
@@ -126,7 +126,7 @@ const LabourPage = () => {
     try {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/labour/monthly-records?contractor_id=${contractorId}`, {
-        credentials: 'include',
+        
         headers: authHeaders
       });
       if (response.ok) {
@@ -149,7 +149,7 @@ const LabourPage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/labour/contractors`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify(contractorForm)
       });
@@ -180,7 +180,7 @@ const LabourPage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/labour/monthly-records`, {
         method: 'POST',
-        credentials: 'include',
+        
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contractor_id: selectedContractor,
@@ -211,7 +211,7 @@ const LabourPage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/labour/monthly-records/${editingRecord.record_id}`, {
         method: 'PUT',
-        credentials: 'include',
+        
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           labour_count: parseInt(editingRecord.labour_count),
@@ -240,7 +240,7 @@ const LabourPage = () => {
       const authHeaders = getAuthHeaders();
       const response = await fetch(`${API_URL}/labour/monthly-records/${recordId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
         headers: authHeaders
       });
 

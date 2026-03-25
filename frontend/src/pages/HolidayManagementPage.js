@@ -76,7 +76,7 @@ const HolidayManagementPage = () => {
     try {
       const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/holidays?year=${selectedYear}`, {
-        credentials: 'include',
+        
         headers
       });
       
@@ -104,7 +104,7 @@ const HolidayManagementPage = () => {
       const response = await fetch(`${API_URL}/holidays`, {
         method: 'POST',
         headers,
-        credentials: 'include',
+        
         body: JSON.stringify(formData)
       });
 
@@ -136,7 +136,7 @@ const HolidayManagementPage = () => {
       const response = await fetch(`${API_URL}/holidays/${editingHoliday.holiday_id}`, {
         method: 'PUT',
         headers,
-        credentials: 'include',
+        
         body: JSON.stringify(formData)
       });
 
@@ -167,7 +167,7 @@ const HolidayManagementPage = () => {
       const response = await fetch(`${API_URL}/holidays/${holidayId}`, {
         method: 'DELETE',
         headers,
-        credentials: 'include'
+        
       });
 
       if (response.ok) {
