@@ -1,21 +1,40 @@
 {
-	"appId": "com.sharda.hrms",
-	"appName": "Sharda HRMS",
+	"appId": "com.shardahr.app",
+	"appName": "Sharda HR",
 	"webDir": "build",
 	"server": {
-		"androidScheme": "https"
+		"url": "https://shardahrms.com",
+		"cleartext": false,
+		"allowNavigation": [
+			"shardahrms.com",
+			"*.shardahrms.com",
+			"sharda-hr-system.emergent.host",
+			"*.emergent.host"
+		]
 	},
 	"plugins": {
-		"StatusBar": {
-			"style": "DARK",
-			"backgroundColor": "#0a0f1a"
+		"PushNotifications": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
 		},
 		"SplashScreen": {
-			"launchShowDuration": 2000,
 			"launchAutoHide": true,
-			"backgroundColor": "#0a0f1a",
-			"androidSplashResourceName": "splash",
+			"launchShowDuration": 2000,
+			"backgroundColor": "#0a0a14",
 			"showSpinner": false
+		},
+		"StatusBar": {
+			"style": "DARK",
+			"backgroundColor": "#0a0a14"
+		},
+		"CapacitorCookies": {
+			"enabled": false
+		},
+		"CapacitorHttp": {
+			"enabled": false
 		}
 	}
 }
