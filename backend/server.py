@@ -31,10 +31,18 @@ JWT_EXPIRY_HOURS = 168  # 7 days for better UX
 # Create the main app
 app = FastAPI(title="Sharda HR API", version="1.0.0")
 
-# CORS Configuration — The Kubernetes ingress handles CORS headers (access-control-allow-origin: *)
-# Application-level CORS middleware is NOT used because the ingress overrides all CORS headers.
-# Frontend API calls should NOT use credentials: 'include' for cross-origin requests,
-# and instead rely on Authorization: Bearer token headers.
+# CORS Configuration — Must be at the application level to support all deployment environments.
+# The preview environment has K8s ingress CORS, but production (emergent.host) does NOT.
+# Frontend uses Authorization: Bearer token headers (no credentials: 'include').
+cors_origins_str = os.environ.get("CORS_ORIGINS", "")
+cors_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins if cors_origins else ["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
