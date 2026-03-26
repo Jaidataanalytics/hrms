@@ -40,33 +40,16 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      // First, check if password change is required by calling login API directly
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
+      // Single login call via AuthContext - avoids double fetch / body-already-read errors
+      const data = await login(email, password);
       
-      if (!response.ok) {
-        throw new Error(data?.detail || 'Login failed');
-      }
-      
-      // Check if user must change password BEFORE setting user in context
+      // Check if user must change password
       if (data?.must_change_password) {
-        // Store token temporarily for password change
-        if (data?.access_token) {
-          localStorage.setItem('access_token', data.access_token);
-        }
         setShowChangePassword(true);
         toast.info('Please change your password to continue');
-        return; // Don't proceed to dashboard
+        return;
       }
       
-      // No password change needed - proceed with normal login
-      await login(email, password);
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {

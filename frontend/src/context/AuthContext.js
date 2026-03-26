@@ -18,10 +18,12 @@ export const useAuth = () => {
   return context;
 };
 
-// Safe JSON parse helper
+// Safe JSON parse helper - uses clone() to avoid "body stream already read" errors
+// from fetch wrappers (e.g., emergent-main.js analytics interceptor)
 const safeParseJson = async (response) => {
   try {
-    const text = await response.text();
+    const cloned = response.clone();
+    const text = await cloned.text();
     if (!text) return null;
     return JSON.parse(text);
   } catch {
