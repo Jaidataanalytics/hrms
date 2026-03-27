@@ -3,7 +3,6 @@
   "appName": "Sharda HR",
   "webDir": "build",
   "server": {
-    "url": "https://shardahrms.com",
     "cleartext": false,
     "allowNavigation": [
       "shardahrms.com",
