@@ -365,7 +365,7 @@ async def get_employees_for_assignment(request: Request, search: Optional[str] =
     employees = await db.employees.find(
         query, 
         {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1}
-    ).limit(50).to_list(50)
+    ).sort("emp_code", 1).to_list(500)
     
     return [
         {
