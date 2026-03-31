@@ -52,6 +52,14 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 - **IP Blocking**: 15min block on rate limit exceed, 1hr block on 20 cumulative failed logins
 - **Request Size Limit**: 50MB max request body
 - **Endpoint Protection Audit**: All endpoints verified to require JWT auth (except biometric webhooks for device compat)
+- **Strong Password Policy**: Min 8 chars, uppercase + lowercase + number + special char required, common password blocklist (includes company-specific terms)
+- **Account-Level Lockout**: Account locked for 30 min after 5 failed login attempts (stored in MongoDB, separate from IP-level rate limiting)
+- **JWT Token Expiry**: Reduced from 7 days to 24 hours
+- **Token Invalidation on Password Change**: All sessions invalidated when password is changed, forcing re-login
+- **Security Audit Logging**: All login attempts (success/fail), password changes, account locks/unlocks logged to `security_audit_log` collection with IP and user-agent
+- **Weak Password Migration**: All existing users without `password_changed_at` flagged with `must_change_password=True` on app startup
+- **Frontend Password Requirements UI**: Real-time checklist showing all password rules, eye toggle for visibility, disabled submit until all requirements met
+- **Admin Security Dashboard**: `/api/security-audit-logs`, `/api/security-audit-logs/summary`, `/api/security/unlock-account`, `/api/security/password-policy` endpoints
 
 ## Deferred Code Quality Items (Next Session)
 - **React Hook Dependencies**: 85 instances — needs case-by-case analysis to avoid infinite re-render loops
@@ -84,7 +92,7 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 - `contract_worker_attendance`
 
 ## Credentials
-- Admin: admin@shardahr.com / password
-- HR: hr@shardahr.com / password
+- Admin: admin@shardahr.com / Sharda@2026!
+- HR: hr@shardahr.com / password (must change on next login)
 - Production Backend: https://sharda-hr-system.emergent.host
 - Production Frontend: https://shardahrms.com
