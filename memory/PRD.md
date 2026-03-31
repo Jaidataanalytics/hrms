@@ -30,6 +30,8 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 - **Login Fix**: Single login call (eliminated double fetch)
 - **SEWA Advance Bulk Upload**: Template download + bulk upload with validation (March 31, 2026)
 - **Asset Employee List Fix**: Removed 50-employee limit, now returns all employees
+- **Sidebar Navigation Grouping**: Organized 17+ flat items into labeled sections (People, Time & Attendance, Compensation, Workplace, Administration) with role-based visibility (March 31, 2026)
+- **Org Chart Redesign**: Modern animated tree with depth-colored nodes, department badges, report counts, expand/collapse, search, and click-to-reveal employee details (March 31, 2026)
 - **Code Quality Fixes** (March 31, 2026):
   - Replaced eval() with AST-safe evaluation in performance.py
   - Moved hardcoded secrets to .env (biometric API key, default password)
