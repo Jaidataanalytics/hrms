@@ -539,7 +539,7 @@ const TourManagementPage = () => {
                 {myTourStatus?.todays_checkins?.length > 0 ? (
                   <div className="space-y-3">
                     {myTourStatus.todays_checkins.map((checkin, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div key={`place-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           {checkin.punch_type === 'IN' ? (
                             <LogIn className="w-5 h-5 text-emerald-600" />
@@ -1010,7 +1010,7 @@ const TourManagementPage = () => {
                   <Label className="text-slate-500">Remote Check-ins</Label>
                   <div className="mt-2 space-y-2">
                     {selectedRequest.remote_checkins.map((c, i) => (
-                      <div key={i} className="p-2 bg-slate-50 rounded text-sm">
+                      <div key={`expense-${i}`} className="p-2 bg-slate-50 rounded text-sm">
                         <span className="font-medium">{c.punch_type}</span> at {c.time} on {c.date}
                       </div>
                     ))}

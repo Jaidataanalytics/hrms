@@ -92,7 +92,7 @@ const InsightsTab = ({ period, authHeaders }) => {
           <CardContent>
             <div className="space-y-2">
               {red_flags.map((rf, i) => (
-                <div key={i} className={`p-3 rounded-lg border ${severityStyle(rf.severity)}`} data-testid={`red-flag-${i}`}>
+                <div key={`rf-${i}`} className={`p-3 rounded-lg border ${severityStyle(rf.severity)}`} data-testid={`red-flag-${i}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {rf.severity === 'high' ? <XCircle className="w-4 h-4 text-red-500 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />}
@@ -211,7 +211,7 @@ const InsightsTab = ({ period, authHeaders }) => {
                 </div>
                 <div className="space-y-2">
                   {exec.kras.map((kra, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm">
+                    <div key={`insight-${i}`} className="flex items-start gap-2 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-700 text-xs">{kra.name} <span className="text-slate-400 font-normal">W:{kra.weight}x</span></p>

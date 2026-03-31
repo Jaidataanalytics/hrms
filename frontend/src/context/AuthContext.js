@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
     // Only refresh if there was recent activity (within last 30 mins)
     const timeSinceActivity = Date.now() - lastActivityRef.current;
     if (timeSinceActivity > 30 * 60 * 1000) {
-      console.log('No recent activity, skipping token refresh');
+      // Token refresh skipped - no recent activity
       return;
     }
     
@@ -93,11 +93,11 @@ export const AuthProvider = ({ children }) => {
         const data = await safeParseJson(response);
         if (data?.access_token) {
           localStorage.setItem('access_token', data.access_token);
-          console.log('Token refreshed successfully');
+          // Token refreshed
         }
       } else if (response.status === 401) {
         // Session expired, redirect to login
-        console.log('Session expired during refresh');
+        // Session expired
         setUser(null);
         localStorage.removeItem('access_token');
         navigate('/login');

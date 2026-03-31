@@ -4,6 +4,7 @@ Fetches attendance data from external biometric API and syncs to database.
 Runs every 3 hours via APScheduler.
 """
 
+import os
 import httpx
 import logging
 from datetime import datetime, timezone, timedelta
@@ -14,8 +15,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 logger = logging.getLogger(__name__)
 
 # Biometric API Configuration
-BIOMETRIC_API_URL = "http://115.245.227.203:81/api/v2/WebAPI/GetDeviceLogs"
-BIOMETRIC_API_KEY = "180817012620"
+BIOMETRIC_API_URL = os.environ.get("BIOMETRIC_API_URL", "http://115.245.227.203:81/api/v2/WebAPI/GetDeviceLogs")
+BIOMETRIC_API_KEY = os.environ.get("BIOMETRIC_API_KEY", "")
 
 # Database reference
 db: Optional[AsyncIOMotorDatabase] = None

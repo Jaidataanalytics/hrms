@@ -29,6 +29,14 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 - **Global Fetch Patch**: Proxy-based fix for "body stream already read" errors
 - **Login Fix**: Single login call (eliminated double fetch)
 - **SEWA Advance Bulk Upload**: Template download + bulk upload with validation (March 31, 2026)
+- **Asset Employee List Fix**: Removed 50-employee limit, now returns all employees
+- **Code Quality Fixes** (March 31, 2026):
+  - Replaced eval() with AST-safe evaluation in performance.py
+  - Moved hardcoded secrets to .env (biometric API key, default password)
+  - Fixed circular import (push_notifications.py no longer imports from server.py)
+  - Removed hardcoded credentials from SettingsPage.js
+  - Fixed index-as-key anti-pattern in 5 components
+  - Cleaned up console.log statements from production code
 
 ## Key Technical Decisions
 1. **Pure Bearer Token Auth**: No `credentials: 'include'` anywhere. All auth via `Authorization: Bearer <token>` header.
@@ -36,7 +44,14 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 3. **Global Fetch Patch**: `index.js` patches `window.fetch` with Proxy to prevent body-already-read errors from platform interceptors.
 4. **APK Bundled Assets**: Removed `server.url` from capacitor.config.json. APK bundles frontend code locally, doesn't depend on production deployment.
 
-## Pending Issues
+## Deferred Code Quality Items (Next Session)
+- **React Hook Dependencies**: 85 instances — needs case-by-case analysis to avoid infinite re-render loops
+- **Component Splitting**: AttendancePage (1614 lines), ContractLabourPage (1386 lines), AssetsPage (1043 lines), Dashboard (923 lines)
+- **Function Complexity**: 331 flagged functions (bulk_import.py, biometric.py most critical)
+- **Nested Ternaries**: 295 instances across frontend
+- **useMemo Optimization**: 81 instances of expensive computations without memoization
+- **Unused Imports**: 66+ files
+- **Type Hint Coverage**: Currently 33.5% in Python backend
 - **P2**: Mobile APK build process (user building locally, guided step-by-step)
 - **P2**: Frontend Routing Bug on `/payroll` page (intermittent)
 - **P3**: Frontend ESLint Warnings

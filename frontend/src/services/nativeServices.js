@@ -29,7 +29,7 @@ export const initPushNotifications = async (onTokenReceived, onNotificationRecei
     await PushNotifications.register();
 
     PushNotifications.addListener('registration', (token) => {
-      console.log('FCM Token:', token.value);
+      // FCM token obtained
       if (onTokenReceived) onTokenReceived(token.value);
     });
 
@@ -38,17 +38,17 @@ export const initPushNotifications = async (onTokenReceived, onNotificationRecei
     });
 
     PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('Push received:', notification);
+      // Push notification received
       if (onNotificationReceived) onNotificationReceived(notification);
     });
 
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('Push action:', action);
+      // Push action performed
       const link = action.notification?.data?.link;
       if (link) window.location.href = link;
     });
   } catch (err) {
-    console.log('Push notifications not available:', err.message);
+    // Push notifications not available on this platform
   }
 };
 

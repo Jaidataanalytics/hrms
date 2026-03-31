@@ -1195,6 +1195,7 @@ async def auto_calculate_kpis(employee_id: str, request: Request, period: str = 
         if formula:
             # Parse and evaluate the formula safely
             try:
+                import ast
                 # Replace field references with actual values
                 expr = formula
                 # Handle avg() function
@@ -1209,17 +1210,26 @@ async def auto_calculate_kpis(employee_id: str, request: Request, period: str = 
                     sub_expr = parts[1].strip()
                     for key in sorted(field_sums.keys(), key=len, reverse=True):
                         sub_expr = sub_expr.replace(key, str(field_sums.get(key, 0)))
-                    sub_expr = sub_expr.replace("max(", "max(").replace("min(", "min(")
-                    result = eval(sub_expr, {"__builtins__": {"max": max, "min": min}})
+                    # Safe evaluation: parse as AST and only allow safe math nodes
+                    try:
+                        tree = ast.parse(sub_expr, mode='eval')
+                        for node in ast.walk(tree):
+                            if isinstance(node, ast.Call):
+                                if isinstance(node.func, ast.Name) and node.func.id in ('max', 'min'):
+                                    continue
+                                raise ValueError("Unsafe function call")
+                        result = eval(compile(tree, '<formula>', 'eval'), {"__builtins__": {}, "max": max, "min": min})
+                    except (ValueError, SyntaxError):
+                        result = 0
                     calculated_value = min(cap, result)
                 else:
                     # Standard formula: replace field names with sums
                     for key in sorted(field_sums.keys(), key=len, reverse=True):
                         expr = expr.replace(key, str(field_sums.get(key, 0)))
-                    # Safety: only allow math operations
+                    # Safety: only allow math operations (digits, operators, parens, spaces)
                     allowed = set("0123456789.+-*/() ")
                     if all(c in allowed for c in expr):
-                        calculated_value = eval(expr)
+                        calculated_value = ast.literal_eval(str(eval(compile(ast.parse(expr, mode='eval'), '<formula>', 'eval'), {"__builtins__": {}})))
                     else:
                         calculated_value = None
             except Exception:

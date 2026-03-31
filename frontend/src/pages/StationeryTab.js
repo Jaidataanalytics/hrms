@@ -409,7 +409,7 @@ const StationeryTab = ({ authHeaders, isAdmin, userId }) => {
                         <TableCell>
                           <div className="space-y-0.5">
                             {req.items?.map((i, idx) => (
-                              <span key={idx} className="text-xs">{i.item_name} x{i.qty}{idx < req.items.length - 1 ? ', ' : ''}</span>
+                              <span key={`item-${idx}`} className="text-xs">{i.item_name} x{i.qty}{idx < req.items.length - 1 ? ', ' : ''}</span>
                             ))}
                           </div>
                         </TableCell>
@@ -585,7 +585,7 @@ const StationeryTab = ({ authHeaders, isAdmin, userId }) => {
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="w-5 h-5 text-primary" />Request Stationery</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {requestForm.items.map((ri, idx) => (
-              <div key={idx} className="flex gap-2 items-end">
+              <div key={`req-item-${idx}`} className="flex gap-2 items-end">
                 <div className="flex-1">
                   <Label className={idx > 0 ? 'sr-only' : ''}>Item</Label>
                   <Select value={ri.item_id} onValueChange={v => { const updated = [...requestForm.items]; updated[idx].item_id = v; setRequestForm({ ...requestForm, items: updated }); }}>

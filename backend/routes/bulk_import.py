@@ -665,7 +665,7 @@ async def import_employees(request: Request, file: UploadFile = File(...)):
     
     imported = 0
     errors = []
-    default_password = "Welcome@123"
+    default_password = os.environ.get("DEFAULT_USER_PASSWORD", "Welcome@123")
     
     # Import bcrypt for password hashing
     import bcrypt

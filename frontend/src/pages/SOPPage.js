@@ -35,7 +35,7 @@ const ProcessFlowChart = ({ steps }) => {
       </Label>
       <div className="relative">
         {steps.map((step, index) => (
-          <div key={index} className="flex items-start gap-3 mb-4">
+          <div key={`step-${index}`} className="flex items-start gap-3 mb-4">
             {/* Step number circle */}
             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">
               {step.step_number || index + 1}
@@ -704,7 +704,7 @@ const SOPPage = () => {
               <span className="text-slate-500 text-sm">Responsible Persons/Roles:</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {selectedSOP.responsible_persons.map((person, i) => (
-                  <Badge key={i} variant="outline" className="text-xs">{person}</Badge>
+                  <Badge key={`person-${person}-${i}`} variant="outline" className="text-xs">{person}</Badge>
                 ))}
               </div>
             </div>
@@ -715,7 +715,7 @@ const SOPPage = () => {
               <span className="text-slate-500 text-sm">Stakeholders:</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {selectedSOP.stakeholders.map((s, i) => (
-                  <Badge key={i} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">{s}</Badge>
+                  <Badge key={`sys-${s}-${i}`} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">{s}</Badge>
                 ))}
               </div>
             </div>
@@ -726,7 +726,7 @@ const SOPPage = () => {
               <span className="text-slate-500 text-sm">Key Activities:</span>
               <ul className="text-sm list-disc list-inside mt-1 bg-white p-2 rounded border">
                 {selectedSOP.key_activities.slice(0, 10).map((activity, i) => (
-                  <li key={i}>{activity}</li>
+                  <li key={`act-${i}`}>{activity}</li>
                 ))}
               </ul>
             </div>
@@ -737,7 +737,7 @@ const SOPPage = () => {
               <span className="text-slate-500 text-sm">Reports:</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {selectedSOP.reports.map((report, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">{report}</Badge>
+                  <Badge key={`rep-${report}-${i}`} variant="secondary" className="text-xs">{report}</Badge>
                 ))}
               </div>
             </div>
@@ -932,7 +932,7 @@ const SOPPage = () => {
                         {sop.responsible_persons?.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-[180px]">
                             {sop.responsible_persons.slice(0, 2).map((person, i) => (
-                              <Badge key={i} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                              <Badge key={`amber-${i}`} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
                                 {person.length > 15 ? person.slice(0, 15) + '...' : person}
                               </Badge>
                             ))}
@@ -948,7 +948,7 @@ const SOPPage = () => {
                         {sop.stakeholders?.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-[180px]">
                             {sop.stakeholders.slice(0, 2).map((s, i) => (
-                              <Badge key={i} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                              <Badge key={`purple-${i}`} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                                 {s.length > 12 ? s.slice(0, 12) + '...' : s}
                               </Badge>
                             ))}

@@ -19,8 +19,27 @@ FIREBASE_SERVER_KEY = os.environ.get('FIREBASE_SERVER_KEY', '')
 
 
 async def get_current_user(request: Request) -> dict:
-    from server import get_current_user as auth_get_user
-    return await auth_get_user(request)
+    """Get current user - lazy import to avoid circular dependency with server.py"""
+    import jwt as pyjwt
+    token = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = pyjwt.decode(token, os.environ.get("JWT_SECRET", ""), algorithms=["HS256"])
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password": 0, "password_hash": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except pyjwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 @router.post("/register-token")

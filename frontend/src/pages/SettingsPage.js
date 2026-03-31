@@ -35,8 +35,8 @@ const SettingsPage = () => {
   const [syncResults, setSyncResults] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [syncCredentials, setSyncCredentials] = useState({
-    email: 'admin@shardamotor.com',
-    password: 'admin123'
+    email: '',
+    password: ''
   });
 
   // Load sync status on mount (for admin)

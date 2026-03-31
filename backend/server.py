@@ -881,7 +881,7 @@ async def create_employee(emp_data: EmployeeCreate, request: Request):
     await db.employees.insert_one(doc)
     
     # Auto-create user account with default password
-    default_password = "Welcome@123"
+    default_password = os.environ.get("DEFAULT_USER_PASSWORD", "Welcome@123")
     existing_user = await db.users.find_one({"email": emp_data.email})
     if not existing_user:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
