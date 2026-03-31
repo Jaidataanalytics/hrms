@@ -2171,6 +2171,209 @@ async def create_sewa_advance(data: dict, request: Request):
     return advance
 
 
+@router.get("/sewa-advances/template/download")
+async def download_sewa_template(request: Request):
+    """Download Excel template for bulk SEWA advance upload, pre-filled with employee codes"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    import xlsxwriter
+
+    employees = await db.employees.find(
+        {"is_active": {"$ne": False}},
+        {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1}
+    ).sort("emp_code", 1).to_list(1000)
+
+    active_advances = await db.sewa_advances.find(
+        {"is_active": True}, {"_id": 0, "employee_id": 1}
+    ).to_list(1000)
+    active_emp_ids = {a["employee_id"] for a in active_advances}
+
+    output = io.BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+
+    header_fmt = workbook.add_format({
+        'bold': True, 'bg_color': '#1e3a5f', 'font_color': 'white',
+        'border': 1, 'text_wrap': True, 'valign': 'vcenter'
+    })
+    locked_fmt = workbook.add_format({'locked': True, 'bg_color': '#f0f0f0', 'border': 1})
+    unlocked_fmt = workbook.add_format({'locked': False, 'border': 1, 'num_format': '#,##0'})
+    text_fmt = workbook.add_format({'locked': False, 'border': 1})
+    note_fmt = workbook.add_format({'italic': True, 'font_color': '#666666', 'text_wrap': True})
+    active_warn_fmt = workbook.add_format({'bg_color': '#fff3cd', 'border': 1, 'font_color': '#856404'})
+
+    ws = workbook.add_worksheet("SEWA Advances")
+    ws.protect()
+
+    headers = [
+        "Employee Code", "Employee Name", "Employee ID",
+        "Total Advance Amount", "Monthly Deduction", "Amount Paid Till Now",
+        "Start Month (1-12)", "Start Year", "Reason"
+    ]
+    col_widths = [15, 25, 15, 20, 18, 20, 18, 12, 25]
+    for i, (h, w) in enumerate(zip(headers, col_widths)):
+        ws.write(0, i, h, header_fmt)
+        ws.set_column(i, i, w)
+
+    for row_idx, emp in enumerate(employees, 1):
+        has_active = emp["employee_id"] in active_emp_ids
+        emp_fmt = active_warn_fmt if has_active else locked_fmt
+        ws.write(row_idx, 0, emp.get("emp_code", ""), emp_fmt)
+        name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+        ws.write(row_idx, 1, name, emp_fmt)
+        ws.write(row_idx, 2, emp["employee_id"], emp_fmt)
+        ws.write(row_idx, 3, "", unlocked_fmt)
+        ws.write(row_idx, 4, "", unlocked_fmt)
+        ws.write(row_idx, 5, 0, unlocked_fmt)
+        ws.write(row_idx, 6, datetime.now().month, unlocked_fmt)
+        ws.write(row_idx, 7, datetime.now().year, unlocked_fmt)
+        ws.write(row_idx, 8, "SEWA Advance" if not has_active else "HAS ACTIVE ADVANCE", text_fmt)
+
+    ins = workbook.add_worksheet("Instructions")
+    ins.set_column(0, 0, 80)
+    instructions = [
+        "SEWA Advance Bulk Upload - Instructions",
+        "",
+        "1. Fill in the 'SEWA Advances' sheet with advance data for each employee.",
+        "2. Employee Code, Employee Name, and Employee ID columns are pre-filled and locked.",
+        "3. Only fill rows for employees who need a SEWA advance.",
+        "4. Leave 'Total Advance Amount' blank or 0 for employees who don't need an advance.",
+        "",
+        "Column Details:",
+        "  - Total Advance Amount: Total amount of the advance given to the employee (required)",
+        "  - Monthly Deduction: Amount to deduct from salary each month (required)",
+        "  - Amount Paid Till Now: Amount already recovered (default: 0 for new advances)",
+        "  - Start Month: Month when deduction should start (1=Jan, 12=Dec)",
+        "  - Start Year: Year when deduction should start",
+        "  - Reason: Purpose of the advance",
+        "",
+        "Notes:",
+        "  - Yellow highlighted rows already have an active SEWA advance.",
+        "  - Uploading a new advance for these employees will REPLACE the existing one.",
+        "  - Duration is auto-calculated: (Total - Paid) / Monthly Deduction",
+    ]
+    for i, line in enumerate(instructions):
+        ins.write(i, 0, line, note_fmt if i > 0 else header_fmt)
+
+    workbook.close()
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=sewa_advance_template.xlsx"}
+    )
+
+
+@router.post("/sewa-advances/bulk-upload")
+async def bulk_upload_sewa_advances(request: Request, file: UploadFile = File(...)):
+    """Bulk upload SEWA advances from Excel template"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin", "finance"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    import openpyxl
+
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid Excel file")
+
+    ws = wb.active or wb.worksheets[0]
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+
+    all_employees = await db.employees.find(
+        {}, {"_id": 0, "employee_id": 1, "emp_code": 1, "first_name": 1, "last_name": 1}
+    ).to_list(2000)
+    emp_by_code = {(e.get("emp_code") or "").strip().upper(): e for e in all_employees if e.get("emp_code")}
+    emp_by_id = {e["employee_id"]: e for e in all_employees}
+
+    active_advances = await db.sewa_advances.find(
+        {"is_active": True}, {"_id": 0, "employee_id": 1, "advance_id": 1}
+    ).to_list(1000)
+    active_map = {a["employee_id"]: a["advance_id"] for a in active_advances}
+
+    results = {"created": 0, "replaced": 0, "skipped": 0, "errors": []}
+    created_advances = []
+
+    for row_num, row in enumerate(rows, 2):
+        if not row or len(row) < 4:
+            continue
+
+        emp_code = str(row[0] or "").strip().upper()
+        employee_id = str(row[2] or "").strip() if len(row) > 2 else ""
+        total_amount = float(row[3] or 0) if row[3] else 0
+        monthly_amount = float(row[4] or 0) if len(row) > 4 and row[4] else 0
+        paid_till_now = float(row[5] or 0) if len(row) > 5 and row[5] else 0
+        start_month = int(row[6] or datetime.now().month) if len(row) > 6 and row[6] else datetime.now().month
+        start_year = int(row[7] or datetime.now().year) if len(row) > 7 and row[7] else datetime.now().year
+        reason = str(row[8] or "SEWA Advance") if len(row) > 8 and row[8] else "SEWA Advance"
+
+        if total_amount <= 0:
+            continue
+
+        emp = emp_by_id.get(employee_id) or emp_by_code.get(emp_code)
+        if not emp:
+            results["errors"].append(f"Row {row_num}: Employee not found (code: {emp_code})")
+            continue
+
+        eid = emp["employee_id"]
+
+        if monthly_amount <= 0:
+            results["errors"].append(f"Row {row_num}: Monthly deduction must be > 0 for {emp_code}")
+            continue
+
+        if paid_till_now > total_amount:
+            results["errors"].append(f"Row {row_num}: Paid amount ({paid_till_now}) exceeds total ({total_amount}) for {emp_code}")
+            continue
+
+        remaining = total_amount - paid_till_now
+
+        if eid in active_map:
+            await db.sewa_advances.update_one(
+                {"advance_id": active_map[eid]},
+                {"$set": {
+                    "is_active": False,
+                    "status": "replaced",
+                    "replaced_at": datetime.now(timezone.utc).isoformat(),
+                    "replaced_by": user.get("user_id")
+                }}
+            )
+            results["replaced"] += 1
+
+        emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+        advance = {
+            "advance_id": f"sewa_{uuid.uuid4().hex[:12]}",
+            "employee_id": eid,
+            "emp_code": emp.get("emp_code", ""),
+            "employee_name": emp_name,
+            "total_amount": total_amount,
+            "monthly_amount": monthly_amount,
+            "duration_months": int(remaining / monthly_amount) if monthly_amount > 0 else 0,
+            "total_paid": paid_till_now,
+            "remaining_amount": remaining,
+            "start_month": start_month,
+            "start_year": start_year,
+            "reason": reason,
+            "status": "completed" if remaining <= 0 else "active",
+            "is_active": remaining > 0,
+            "created_by": user.get("user_id"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source": "bulk_upload"
+        }
+
+        await db.sewa_advances.insert_one(advance)
+        advance.pop("_id", None)
+        created_advances.append(advance)
+        results["created"] += 1
+
+    results["total_processed"] = results["created"] + results["skipped"]
+    results["advances"] = created_advances
+    return results
+
+
 @router.put("/sewa-advances/{advance_id}")
 async def update_sewa_advance(advance_id: str, data: dict, request: Request):
     """Update a SEWA advance"""

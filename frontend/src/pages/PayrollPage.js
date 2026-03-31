@@ -51,7 +51,8 @@ import {
   ChevronUp,
   Plus,
   Trash2,
-  Search
+  Search,
+  Upload
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
 
@@ -127,6 +128,10 @@ const PayrollPage = () => {
   const [sewaAdvanceForm, setSewaAdvanceForm] = useState({
     employee_id: '', total_amount: 0, monthly_amount: 0, duration_months: 0, reason: ''
   });
+  const [showSewaBulkUpload, setShowSewaBulkUpload] = useState(false);
+  const [sewaBulkFile, setSewaBulkFile] = useState(null);
+  const [sewaBulkUploading, setSewaBulkUploading] = useState(false);
+  const [sewaBulkResult, setSewaBulkResult] = useState(null);
   const [employees, setEmployees] = useState([]);
   
   // One-time Deductions state
@@ -259,6 +264,52 @@ const PayrollPage = () => {
       }
     } catch (error) {
       toast.error('Failed to cancel SEWA advance');
+    }
+  };
+
+  const handleDownloadSewaTemplate = async () => {
+    try {
+      const response = await fetch(`${API_URL}/payroll/sewa-advances/template/download`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sewa_advance_template.xlsx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Template downloaded');
+    } catch (error) {
+      toast.error('Failed to download template');
+    }
+  };
+
+  const handleSewaBulkUpload = async () => {
+    if (!sewaBulkFile) {
+      toast.error('Please select a file');
+      return;
+    }
+    setSewaBulkUploading(true);
+    setSewaBulkResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', sewaBulkFile);
+      const response = await fetch(`${API_URL}/payroll/sewa-advances/bulk-upload`, {
+        method: 'POST',
+        headers: { 'Authorization': getAuthHeaders()['Authorization'] },
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Upload failed');
+      setSewaBulkResult(data);
+      toast.success(`Created ${data.created} SEWA advances${data.replaced ? `, replaced ${data.replaced}` : ''}`);
+      fetchSewaAdvances();
+    } catch (error) {
+      toast.error(error.message || 'Bulk upload failed');
+    } finally {
+      setSewaBulkUploading(false);
     }
   };
 
@@ -1437,7 +1488,7 @@ const PayrollPage = () => {
           <TabsContent value="sewa-advances">
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center flex-wrap gap-3">
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <CreditCard className="w-5 h-5 text-primary" />
@@ -1445,9 +1496,17 @@ const PayrollPage = () => {
                     </CardTitle>
                     <CardDescription>Manage employee SEWA advances with automatic monthly deductions</CardDescription>
                   </div>
+                  <div className="flex gap-2 flex-wrap">
                   <Button onClick={() => setShowAddSewaAdvance(true)} data-testid="add-sewa-advance-btn">
                     <Plus className="w-4 h-4 mr-1" /> Add SEWA Advance
                   </Button>
+                  <Button variant="outline" onClick={handleDownloadSewaTemplate} data-testid="download-sewa-template-btn">
+                    <Download className="w-4 h-4 mr-1" /> Download Template
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowSewaBulkUpload(true); setSewaBulkFile(null); setSewaBulkResult(null); }} data-testid="bulk-upload-sewa-btn">
+                    <Upload className="w-4 h-4 mr-1" /> Bulk Upload
+                  </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -3371,6 +3430,65 @@ const PayrollPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddSewaAdvance(false)}>Cancel</Button>
             <Button onClick={handleAddSewaAdvance}>Create SEWA Advance</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Upload SEWA Advances Dialog */}
+      <Dialog open={showSewaBulkUpload} onOpenChange={setShowSewaBulkUpload}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk Upload SEWA Advances</DialogTitle>
+            <DialogDescription>Upload the filled Excel template to create SEWA advances for multiple employees</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Excel File</Label>
+              <Input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => { setSewaBulkFile(e.target.files[0]); setSewaBulkResult(null); }}
+                data-testid="sewa-bulk-file-input"
+              />
+              <p className="text-xs text-slate-500">Use the template downloaded from "Download Template" button</p>
+            </div>
+
+            {sewaBulkResult && (
+              <div className="rounded-lg border p-4 space-y-2">
+                <p className="font-medium text-sm">Upload Results:</p>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="bg-green-50 p-2 rounded text-center">
+                    <p className="text-green-700 font-bold">{sewaBulkResult.created}</p>
+                    <p className="text-green-600 text-xs">Created</p>
+                  </div>
+                  <div className="bg-amber-50 p-2 rounded text-center">
+                    <p className="text-amber-700 font-bold">{sewaBulkResult.replaced}</p>
+                    <p className="text-amber-600 text-xs">Replaced</p>
+                  </div>
+                  <div className="bg-red-50 p-2 rounded text-center">
+                    <p className="text-red-700 font-bold">{sewaBulkResult.errors?.length || 0}</p>
+                    <p className="text-red-600 text-xs">Errors</p>
+                  </div>
+                </div>
+                {sewaBulkResult.errors?.length > 0 && (
+                  <div className="mt-2 max-h-32 overflow-y-auto text-xs text-red-600 bg-red-50 p-2 rounded">
+                    {sewaBulkResult.errors.map((err, i) => (
+                      <p key={i}>{err}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSewaBulkUpload(false)}>
+              {sewaBulkResult ? 'Close' : 'Cancel'}
+            </Button>
+            {!sewaBulkResult && (
+              <Button onClick={handleSewaBulkUpload} disabled={!sewaBulkFile || sewaBulkUploading} data-testid="sewa-bulk-upload-submit">
+                {sewaBulkUploading ? <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Uploading...</> : <><Upload className="w-4 h-4 mr-1" /> Upload</>}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
