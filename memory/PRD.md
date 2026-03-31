@@ -46,6 +46,13 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 3. **Global Fetch Patch**: `index.js` patches `window.fetch` with Proxy to prevent body-already-read errors from platform interceptors.
 4. **APK Bundled Assets**: Removed `server.url` from capacitor.config.json. APK bundles frontend code locally, doesn't depend on production deployment.
 
+### Security Hardening (March 31, 2026)
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy, Cache-Control on all API responses
+- **Rate Limiting**: 60 req/min general, 5 login attempts/5min, 10 data-mgmt req/min
+- **IP Blocking**: 15min block on rate limit exceed, 1hr block on 20 cumulative failed logins
+- **Request Size Limit**: 50MB max request body
+- **Endpoint Protection Audit**: All endpoints verified to require JWT auth (except biometric webhooks for device compat)
+
 ## Deferred Code Quality Items (Next Session)
 - **React Hook Dependencies**: 85 instances — needs case-by-case analysis to avoid infinite re-render loops
 - **Component Splitting**: AttendancePage (1614 lines), ContractLabourPage (1386 lines), AssetsPage (1043 lines), Dashboard (923 lines)
