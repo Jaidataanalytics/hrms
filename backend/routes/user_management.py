@@ -100,6 +100,12 @@ async def create_user(data: dict, request: Request):
     if not data.get("email") or not data.get("password") or not data.get("name"):
         raise HTTPException(status_code=400, detail="Email, password and name are required")
     
+    # Validate password strength
+    from server import validate_password_strength
+    is_valid, error_msg = validate_password_strength(data.get("password"))
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
     user = {
         "user_id": f"user_{uuid.uuid4().hex[:12]}",
         "email": data.get("email"),
@@ -259,8 +265,14 @@ async def reset_password(user_id: str, data: dict, request: Request):
         raise HTTPException(status_code=403, detail="Not authorized")
     
     new_password = data.get("new_password")
-    if not new_password or len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not new_password:
+        raise HTTPException(status_code=400, detail="Password is required")
+    
+    # Validate password strength
+    from server import validate_password_strength
+    is_valid, error_msg = validate_password_strength(new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Get existing user
     existing = await db.users.find_one({"user_id": user_id})
@@ -283,7 +295,10 @@ async def reset_password(user_id: str, data: dict, request: Request):
         }}
     )
     
-    return {"message": "Password reset successfully"}
+    # Invalidate all sessions for this user (force re-login)
+    await db.user_sessions.delete_many({"user_id": user_id})
+    
+    return {"message": "Password reset successfully. User must change password on next login."}
 
 
 # ==================== CHANGE OWN PASSWORD ====================
@@ -299,8 +314,11 @@ async def change_own_password(data: dict, request: Request):
     if not current_password or not new_password:
         raise HTTPException(status_code=400, detail="Current and new password required")
     
-    if len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    # Validate password strength
+    from server import validate_password_strength
+    is_valid, error_msg = validate_password_strength(new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Get user with password
     user = await db.users.find_one({"user_id": current_user["user_id"]})
@@ -321,7 +339,10 @@ async def change_own_password(data: dict, request: Request):
         }}
     )
     
-    return {"message": "Password changed successfully"}
+    # Invalidate all existing sessions
+    await db.user_sessions.delete_many({"user_id": current_user["user_id"]})
+    
+    return {"message": "Password changed successfully. Please login with your new password."}
 
 
 # ==================== GET ROLES ====================

@@ -26,7 +26,7 @@ db = client[os.environ['DB_NAME']]
 # JWT Configuration
 JWT_SECRET = os.environ.get('JWT_SECRET', 'sharda-hr-prod-jwt-secret-2026')
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRY_HOURS = 168  # 7 days for better UX
+JWT_EXPIRY_HOURS = 24  # 24 hours for security
 
 # Create the main app
 app = FastAPI(title="Sharda HR API", version="1.0.0")
@@ -450,6 +450,46 @@ class Notification(BaseModel):
 
 # ==================== HELPER FUNCTIONS ====================
 
+# Common weak passwords blocklist
+COMMON_PASSWORDS = {
+    "password", "password1", "password123", "123456", "12345678", "123456789",
+    "1234567890", "qwerty", "abc123", "letmein", "admin", "welcome",
+    "monkey", "dragon", "master", "login", "princess", "football",
+    "shadow", "sunshine", "trustno1", "iloveyou", "batman", "access",
+    "hello", "charlie", "donald", "password1!", "qwerty123", "admin123",
+    "sharda", "shardahr", "sharda123", "shardagroup", "hrms", "hrms123",
+}
+
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    """Validate password meets security requirements. Returns (is_valid, error_message)."""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter"
+    if not any(c.islower() for c in password):
+        return False, "Password must contain at least one lowercase letter"
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one number"
+    if not any(c in "!@#$%^&*()_+-=[]{}|;:',.<>?/`~" for c in password):
+        return False, "Password must contain at least one special character (!@#$%^&*...)"
+    if password.lower() in COMMON_PASSWORDS:
+        return False, "This password is too common. Please choose a stronger password"
+    return True, ""
+
+def check_password_meets_policy(password: str) -> bool:
+    """Quick check if a password meets the policy (for migration checks)."""
+    if len(password) < 8:
+        return False
+    if not any(c.isupper() for c in password):
+        return False
+    if not any(c.islower() for c in password):
+        return False
+    if not any(c.isdigit() for c in password):
+        return False
+    if not any(c in "!@#$%^&*()_+-=[]{}|;:',.<>?/`~" for c in password):
+        return False
+    return True
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -457,12 +497,13 @@ def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 def create_jwt_token(user_id: str, email: str, role: str) -> str:
+    now = datetime.now(timezone.utc)
     payload = {
         "user_id": user_id,
         "email": email,
         "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
-        "iat": datetime.now(timezone.utc)
+        "exp": now + timedelta(hours=JWT_EXPIRY_HOURS),
+        "iat": now
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -475,13 +516,68 @@ def decode_jwt_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-async def get_current_user(request: Request) -> dict:
-    # Check cookie first, then Authorization header
-    session_token = request.cookies.get("session_token")
-    access_token_cookie = request.cookies.get("access_token")
+async def log_security_event(event_type: str, details: dict, request: Request = None):
+    """Log security-relevant events to security_audit_log collection."""
+    client_ip = "unknown"
+    user_agent = ""
+    if request:
+        client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+        user_agent = request.headers.get("user-agent", "")
     
+    event = {
+        "event_id": f"sec_{uuid.uuid4().hex[:12]}",
+        "event_type": event_type,
+        "details": details,
+        "ip_address": client_ip,
+        "user_agent": user_agent,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await db.security_audit_log.insert_one(event)
+
+async def get_current_user(request: Request) -> dict:
+    # Check Authorization header for JWT (primary auth method)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        try:
+            payload = decode_jwt_token(token)
+            user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
+            if user:
+                # Check if password was changed after this token was issued
+                pw_changed = user.get("password_changed_at")
+                token_iat = payload.get("iat")
+                if pw_changed and token_iat:
+                    if isinstance(pw_changed, str):
+                        pw_changed_dt = datetime.fromisoformat(pw_changed)
+                    else:
+                        pw_changed_dt = pw_changed
+                    if pw_changed_dt.tzinfo is None:
+                        pw_changed_dt = pw_changed_dt.replace(tzinfo=timezone.utc)
+                    token_issued = datetime.fromtimestamp(token_iat, tz=timezone.utc)
+                    if pw_changed_dt > token_issued:
+                        raise HTTPException(status_code=401, detail="Password changed. Please login again.")
+                # Check if account is locked
+                if user.get("account_locked"):
+                    locked_until = user.get("account_locked_until", "")
+                    if locked_until:
+                        if isinstance(locked_until, str):
+                            locked_until = datetime.fromisoformat(locked_until)
+                        if locked_until.tzinfo is None:
+                            locked_until = locked_until.replace(tzinfo=timezone.utc)
+                        if locked_until > datetime.now(timezone.utc):
+                            raise HTTPException(status_code=403, detail="Account is temporarily locked due to too many failed login attempts.")
+                        else:
+                            # Unlock the account
+                            await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"account_locked": False}, "$unset": {"account_locked_until": ""}})
+                return user
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+    
+    # Check cookie-based sessions (session_token)
+    session_token = request.cookies.get("session_token")
     if session_token:
-        # Verify session token from Google OAuth or JWT session
         session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
         if session:
             expires_at = session.get("expires_at")
@@ -494,25 +590,13 @@ async def get_current_user(request: Request) -> dict:
                 if user:
                     return user
             else:
-                # Session expired, clean it up
                 await db.user_sessions.delete_one({"session_token": session_token})
     
     # Check access_token cookie (JWT)
+    access_token_cookie = request.cookies.get("access_token")
     if access_token_cookie:
         try:
             payload = decode_jwt_token(access_token_cookie)
-            user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
-            if user:
-                return user
-        except Exception:
-            pass  # Token invalid, try other methods
-    
-    # Check Authorization header for JWT
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.split(" ")[1]
-        try:
-            payload = decode_jwt_token(token)
             user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
             if user:
                 return user
@@ -558,6 +642,11 @@ async def create_notification(user_id: str, title: str, message: str,
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, request: Request):
+    # Validate password strength
+    is_valid, error_msg = validate_password_strength(user_data.password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
     # Check if user exists
     existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
     if existing:
@@ -605,13 +694,50 @@ async def register(user_data: UserCreate, request: Request):
 async def login(credentials: UserLogin, request: Request, response: Response):
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     
+    # Check if account is locked
+    if user and user.get("account_locked"):
+        locked_until = user.get("account_locked_until", "")
+        if locked_until:
+            if isinstance(locked_until, str):
+                locked_until_dt = datetime.fromisoformat(locked_until)
+            else:
+                locked_until_dt = locked_until
+            if locked_until_dt.tzinfo is None:
+                locked_until_dt = locked_until_dt.replace(tzinfo=timezone.utc)
+            if locked_until_dt > datetime.now(timezone.utc):
+                remaining = int((locked_until_dt - datetime.now(timezone.utc)).total_seconds() / 60)
+                await log_security_event("LOGIN_BLOCKED", {"email": credentials.email, "reason": "account_locked", "remaining_minutes": remaining}, request)
+                raise HTTPException(status_code=403, detail=f"Account is locked due to too many failed login attempts. Try again in {remaining} minutes.")
+            else:
+                # Unlock - lock period expired
+                await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"account_locked": False, "failed_login_attempts": 0}, "$unset": {"account_locked_until": ""}})
+    
     # Support both 'password' and 'password_hash' fields for compatibility
     stored_password = user.get("password") or user.get("password_hash", "") if user else ""
     if not user or not verify_password(credentials.password, stored_password):
+        # Log failed login attempt
+        await log_security_event("LOGIN_FAILED", {"email": credentials.email, "reason": "invalid_credentials"}, request)
+        
+        # Increment failed login counter for account lockout
+        if user:
+            failed_attempts = user.get("failed_login_attempts", 0) + 1
+            update_fields = {"failed_login_attempts": failed_attempts, "last_failed_login": datetime.now(timezone.utc).isoformat()}
+            if failed_attempts >= 5:
+                update_fields["account_locked"] = True
+                update_fields["account_locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+                await log_security_event("ACCOUNT_LOCKED", {"email": credentials.email, "user_id": user["user_id"], "failed_attempts": failed_attempts}, request)
+                await db.users.update_one({"user_id": user["user_id"]}, {"$set": update_fields})
+                raise HTTPException(status_code=403, detail="Account locked due to too many failed login attempts. Try again in 30 minutes.")
+            await db.users.update_one({"user_id": user["user_id"]}, {"$set": update_fields})
+        
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     if not user.get("is_active", True):
+        await log_security_event("LOGIN_FAILED", {"email": credentials.email, "reason": "account_deactivated"}, request)
         raise HTTPException(status_code=403, detail="Account is deactivated")
+    
+    # Reset failed login counter on successful login
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"failed_login_attempts": 0, "last_login": datetime.now(timezone.utc).isoformat()}, "$unset": {"account_locked": "", "account_locked_until": ""}})
     
     # Invalidate existing sessions (single session enforcement)
     await db.user_sessions.delete_many({"user_id": user["user_id"]})
@@ -623,16 +749,13 @@ async def login(credentials: UserLogin, request: Request, response: Response):
     session_doc = {
         "user_id": user["user_id"],
         "session_token": session_token,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)).isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.user_sessions.insert_one(session_doc)
     
     # Set cookie - detect if running over HTTPS
     is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
-    
-    # Use 'none' for cross-site cookie delivery (required for mobile WebView + different API domain)
-    # 'none' requires secure=True
     samesite_setting = "none" if is_secure else "lax"
     
     response.set_cookie(
@@ -642,10 +765,9 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         secure=is_secure,
         samesite=samesite_setting,
         path="/",
-        max_age=7*24*60*60  # 7 days
+        max_age=JWT_EXPIRY_HOURS*60*60
     )
     
-    # Also set the JWT token as a cookie for redundancy
     response.set_cookie(
         key="access_token",
         value=token,
@@ -653,7 +775,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         secure=is_secure,
         samesite=samesite_setting,
         path="/",
-        max_age=7*24*60*60  # 7 days
+        max_age=JWT_EXPIRY_HOURS*60*60
     )
     
     user_response = UserResponse(
@@ -668,8 +790,11 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         department_id=user.get("department_id")
     )
     
-    # Check if user must change password (first login)
+    # Check if user must change password (first login or weak password)
     must_change_password = user.get("must_change_password", False)
+    
+    # Log successful login
+    await log_security_event("LOGIN_SUCCESS", {"email": credentials.email, "user_id": user["user_id"], "must_change_password": must_change_password}, request)
     
     return TokenResponse(
         access_token=token,
@@ -829,7 +954,7 @@ async def refresh_token(request: Request, response: Response):
         if session_token:
             await db.user_sessions.update_one(
                 {"session_token": session_token},
-                {"$set": {"expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()}}
+                {"$set": {"expires_at": (datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)).isoformat()}}
             )
         
         # Detect if running over HTTPS
@@ -844,7 +969,7 @@ async def refresh_token(request: Request, response: Response):
             secure=is_secure,
             samesite=samesite_setting,
             path="/",
-            max_age=7*24*60*60
+            max_age=JWT_EXPIRY_HOURS*60*60
         )
         
         # Also refresh the session token cookie
@@ -855,7 +980,7 @@ async def refresh_token(request: Request, response: Response):
             secure=is_secure,
             samesite=samesite_setting,
             path="/",
-            max_age=7*24*60*60
+            max_age=JWT_EXPIRY_HOURS*60*60
         )
         
         return {"access_token": token, "message": "Token refreshed"}
@@ -887,12 +1012,14 @@ async def change_password(data: ChangePasswordRequest, request: Request):
         if not verify_password(data.current_password, stored_password):
             raise HTTPException(status_code=400, detail="Current password is incorrect")
     
-    # Validate new password
-    if len(data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    # Validate new password strength
+    is_valid, error_msg = validate_password_strength(data.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Hash and update password
     new_hash = hash_password(data.new_password)
+    now = datetime.now(timezone.utc).isoformat()
     
     await db.users.update_one(
         {"user_id": user["user_id"]},
@@ -900,11 +1027,18 @@ async def change_password(data: ChangePasswordRequest, request: Request):
             "password": new_hash,
             "password_hash": new_hash,
             "must_change_password": False,
-            "password_changed_at": datetime.now(timezone.utc).isoformat()
-        }}
+            "password_changed_at": now,
+            "failed_login_attempts": 0
+        }, "$unset": {"account_locked": "", "account_locked_until": ""}}
     )
     
-    return {"message": "Password changed successfully"}
+    # Invalidate all existing sessions (force re-login with new password)
+    await db.user_sessions.delete_many({"user_id": user["user_id"]})
+    
+    # Log security event
+    await log_security_event("PASSWORD_CHANGED", {"user_id": user["user_id"], "email": user.get("email", ""), "forced": must_change}, request)
+    
+    return {"message": "Password changed successfully. Please login with your new password."}
 
 
 # ==================== EMPLOYEE ROUTES ====================
@@ -4373,6 +4507,89 @@ async def list_audit_logs(
     logs = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
     return logs
 
+# ==================== SECURITY AUDIT LOGS ====================
+
+@api_router.get("/security-audit-logs")
+async def list_security_audit_logs(
+    request: Request,
+    event_type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50
+):
+    """View security audit logs (super_admin only)"""
+    user = await get_current_user(request)
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Not authorized to view security logs")
+    
+    query = {}
+    if event_type:
+        query["event_type"] = event_type
+    
+    logs = await db.security_audit_log.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.security_audit_log.count_documents(query)
+    return {"logs": logs, "total": total}
+
+@api_router.get("/security-audit-logs/summary")
+async def security_audit_summary(request: Request):
+    """Get security event summary for dashboard (super_admin only)"""
+    user = await get_current_user(request)
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Last 24 hours
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    
+    pipeline = [
+        {"$match": {"timestamp": {"$gte": since}}},
+        {"$group": {"_id": "$event_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    
+    results = await db.security_audit_log.aggregate(pipeline).to_list(None)
+    summary = {r["_id"]: r["count"] for r in results}
+    
+    # Get locked accounts count
+    locked_count = await db.users.count_documents({"account_locked": True})
+    
+    return {"events_24h": summary, "locked_accounts": locked_count}
+
+@api_router.post("/security/unlock-account")
+async def unlock_account(data: dict, request: Request):
+    """Unlock a locked user account (super_admin only)"""
+    user = await get_current_user(request)
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    user_id = data.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+    
+    result = await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"account_locked": False, "failed_login_attempts": 0}, "$unset": {"account_locked_until": ""}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found or not locked")
+    
+    await log_security_event("ACCOUNT_UNLOCKED", {"user_id": user_id, "unlocked_by": user["user_id"]}, request)
+    return {"message": "Account unlocked successfully"}
+
+@api_router.get("/security/password-policy")
+async def get_password_policy(request: Request):
+    """Return password policy rules for frontend display"""
+    return {
+        "min_length": 8,
+        "require_uppercase": True,
+        "require_lowercase": True,
+        "require_number": True,
+        "require_special": True,
+        "blocked_common_passwords": True,
+        "token_expiry_hours": JWT_EXPIRY_HOURS,
+        "account_lockout_attempts": 5,
+        "account_lockout_duration_minutes": 30
+    }
+
 # ==================== SEED DATA ====================
 
 @api_router.post("/seed/initial")
@@ -4991,6 +5208,37 @@ async def start_scheduler():
             logger.error(f"Error in performance auto-seed: {e}")
     
     asyncio.create_task(seed_performance())
+
+    # Flag existing users with weak passwords to force password change
+    async def flag_weak_passwords():
+        try:
+            await asyncio.sleep(4)
+            # Find users that don't have must_change_password already set
+            users = await db.users.find(
+                {"must_change_password": {"$ne": True}, "password": {"$exists": True, "$ne": None}},
+                {"user_id": 1, "email": 1, "password": 1, "password_hash": 1, "_id": 0}
+            ).to_list(None)
+            
+            flagged_count = 0
+            # We can't check bcrypt hashes against policy (they're hashed),
+            # so we flag ALL users who haven't changed password since the policy was enacted
+            for u in users:
+                # If no password_changed_at field, it means password was set before policy
+                if not await db.users.find_one({"user_id": u["user_id"], "password_changed_at": {"$exists": True}}):
+                    await db.users.update_one(
+                        {"user_id": u["user_id"]},
+                        {"$set": {"must_change_password": True, "password_policy_enforced": True}}
+                    )
+                    flagged_count += 1
+            
+            if flagged_count > 0:
+                logger.info(f"SECURITY: Flagged {flagged_count} users to change password (new password policy)")
+            else:
+                logger.info("SECURITY: All users comply with password policy")
+        except Exception as e:
+            logger.error(f"Error in password policy migration: {e}")
+    
+    asyncio.create_task(flag_weak_passwords())
 
 
 @app.on_event("shutdown")

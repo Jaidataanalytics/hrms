@@ -233,12 +233,16 @@ export const AuthProvider = ({ children }) => {
       throw new Error(data?.detail || 'Login failed');
     }
 
-    if (data?.user) {
-      setUser(data.user);
-      lastActivityRef.current = Date.now();
-    }
+    // Store token for API calls (needed for password change)
     if (data?.access_token) {
       localStorage.setItem('access_token', data.access_token);
+    }
+
+    // Only set user state if NOT required to change password
+    // Setting user triggers routing that would redirect away from login page
+    if (data?.user && !data?.must_change_password) {
+      setUser(data.user);
+      lastActivityRef.current = Date.now();
     }
     initialCheckDone.current = true;
 

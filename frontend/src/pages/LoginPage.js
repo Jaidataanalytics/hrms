@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
@@ -15,7 +15,7 @@ import {
 } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Loader2, KeyRound } from 'lucide-react';
+import { Mail, Lock, Loader2, KeyRound, Check, X, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -27,8 +27,21 @@ const LoginPage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Password strength validation
+  const passwordChecks = useMemo(() => ({
+    minLength: newPassword.length >= 8,
+    hasUpper: /[A-Z]/.test(newPassword),
+    hasLower: /[a-z]/.test(newPassword),
+    hasNumber: /[0-9]/.test(newPassword),
+    hasSpecial: /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?/`~]/.test(newPassword),
+    matches: newPassword.length > 0 && newPassword === confirmPassword,
+  }), [newPassword, confirmPassword]);
+
+  const allChecksPassed = Object.values(passwordChecks).every(Boolean);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,8 +83,8 @@ const LoginPage = () => {
       return;
     }
     
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!allChecksPassed) {
+      toast.error('Password does not meet all requirements');
       return;
     }
 
@@ -88,10 +101,14 @@ const LoginPage = () => {
       });
 
       if (response.ok) {
-        toast.success('Password changed successfully!');
+        toast.success('Password changed! Logging in with new password...');
         setShowChangePassword(false);
-        // Now complete the login process with the new password
-        await login(email, newPassword);
+        // Re-login with new password (this time must_change_password will be false)
+        const newData = await login(email, newPassword);
+        if (newData?.must_change_password) {
+          toast.error('Password still does not meet requirements');
+          return;
+        }
         navigate('/dashboard');
       } else {
         const data = await response.json();
@@ -253,13 +270,21 @@ const LoginPage = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   id="new-password"
-                  type="password"
+                  type={showNewPassword ? "text" : "password"}
                   placeholder="Enter new password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   data-testid="new-password-input"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  data-testid="toggle-password-visibility"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
             
@@ -279,15 +304,35 @@ const LoginPage = () => {
               </div>
             </div>
             
-            <p className="text-xs text-slate-500">
-              Password must be at least 6 characters long.
-            </p>
+            {/* Password Requirements Checklist */}
+            <div className="rounded-lg border bg-slate-50 p-3 space-y-1.5" data-testid="password-requirements">
+              <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-2">
+                <ShieldCheck className="w-3.5 h-3.5" /> Password Requirements
+              </p>
+              {[
+                { key: 'minLength', label: 'At least 8 characters' },
+                { key: 'hasUpper', label: 'One uppercase letter (A-Z)' },
+                { key: 'hasLower', label: 'One lowercase letter (a-z)' },
+                { key: 'hasNumber', label: 'One number (0-9)' },
+                { key: 'hasSpecial', label: 'One special character (!@#$%...)' },
+                { key: 'matches', label: 'Passwords match' },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-2 text-xs" data-testid={`pw-check-${key}`}>
+                  {passwordChecks[key] ? (
+                    <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                  )}
+                  <span className={passwordChecks[key] ? 'text-green-700' : 'text-slate-500'}>{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <DialogFooter>
             <Button 
               onClick={handleChangePassword} 
-              disabled={changingPassword}
+              disabled={changingPassword || !allChecksPassed}
               className="w-full"
               data-testid="change-password-btn"
             >
