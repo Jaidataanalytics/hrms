@@ -78,33 +78,66 @@ class CORSEverythingMiddleware(BaseHTTPMiddleware):
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
 
+        # Security headers - prevent clickjacking, XSS, MIME sniffing, etc.
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+
         return response
 
 app.add_middleware(CORSEverythingMiddleware)
 
-# --- RATE LIMITING ---
-# Protect against brute force and abuse from foreign IPs
+# --- RATE LIMITING + SECURITY ---
 from collections import defaultdict
 import time as _time
 
 _rate_limit_store = defaultdict(list)
-_RATE_LIMIT = 60          # max requests
-_RATE_WINDOW = 60         # per N seconds
-_LOGIN_RATE_LIMIT = 10    # max login attempts
+_failed_login_store = defaultdict(int)
+_blocked_ips = {}
+_RATE_LIMIT = 60          # max requests per window
+_RATE_WINDOW = 60         # per 60 seconds
+_LOGIN_RATE_LIMIT = 5     # max login attempts (stricter)
 _LOGIN_RATE_WINDOW = 300  # per 5 minutes
+_BLOCK_DURATION = 900     # block IP for 15 min after exceeding limits
+_MAX_REQUEST_SIZE = 50 * 1024 * 1024  # 50MB max request body
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
+class SecurityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
         path = request.url.path
         now = _time.time()
+
+        # Check if IP is blocked
+        if client_ip in _blocked_ips:
+            if now < _blocked_ips[client_ip]:
+                return JSONResponse(status_code=403, content={"detail": "Access temporarily blocked due to suspicious activity."})
+            else:
+                del _blocked_ips[client_ip]
+
+        # Request size limit
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > _MAX_REQUEST_SIZE:
+            return JSONResponse(status_code=413, content={"detail": "Request too large."})
 
         # Stricter limit for login endpoint
         if "/auth/login" in path and request.method == "POST":
             key = f"login:{client_ip}"
             _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < _LOGIN_RATE_WINDOW]
             if len(_rate_limit_store[key]) >= _LOGIN_RATE_LIMIT:
-                return JSONResponse(status_code=429, content={"detail": "Too many login attempts. Try again later."})
+                _blocked_ips[client_ip] = now + _BLOCK_DURATION
+                logging.warning(f"SECURITY: IP {client_ip} blocked after {_LOGIN_RATE_LIMIT} failed login attempts")
+                return JSONResponse(status_code=429, content={"detail": "Too many login attempts. Access blocked for 15 minutes."})
+            _rate_limit_store[key].append(now)
+        # Stricter limit for data management endpoints
+        elif "/data-management" in path:
+            key = f"dm:{client_ip}"
+            _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < 60]
+            if len(_rate_limit_store[key]) >= 10:
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded for data operations."})
             _rate_limit_store[key].append(now)
         else:
             key = f"api:{client_ip}"
@@ -113,17 +146,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
             _rate_limit_store[key].append(now)
 
+        response = await call_next(request)
+
+        # Log failed login attempts
+        if "/auth/login" in path and request.method == "POST" and response.status_code == 401:
+            _failed_login_store[client_ip] = _failed_login_store.get(client_ip, 0) + 1
+            if _failed_login_store[client_ip] >= 20:
+                _blocked_ips[client_ip] = now + _BLOCK_DURATION * 4
+                logging.warning(f"SECURITY: IP {client_ip} hard-blocked after 20 cumulative failed logins")
+
         # Clean old entries periodically
-        if len(_rate_limit_store) > 10000:
+        if len(_rate_limit_store) > 5000:
             cutoff = now - max(_RATE_WINDOW, _LOGIN_RATE_WINDOW)
             for k in list(_rate_limit_store.keys()):
                 _rate_limit_store[k] = [t for t in _rate_limit_store[k] if t > cutoff]
                 if not _rate_limit_store[k]:
                     del _rate_limit_store[k]
 
-        return await call_next(request)
+        return response
 
-app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityMiddleware)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
