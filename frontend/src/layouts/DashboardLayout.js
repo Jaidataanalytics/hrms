@@ -94,30 +94,37 @@ const DashboardLayout = () => {
 
   const baseMenuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
-    { name: 'Attendance', path: '/dashboard/attendance', icon: Clock },
-    { name: 'My Calendar', path: '/dashboard/my-calendar', icon: CalendarDays },
-    { name: 'Meetings', path: '/dashboard/meetings', icon: UsersRound },
-    { name: 'Leave', path: '/dashboard/leave', icon: Calendar },
-    { name: 'Performance', path: '/dashboard/performance', icon: Target },
-    { name: 'Announcements', path: '/dashboard/announcements', icon: Megaphone },
-    { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
-    { name: 'SOPs', path: '/dashboard/sop', icon: FileSpreadsheet },
-    { name: 'Training', path: '/dashboard/training', icon: GraduationCap },
-    { name: 'Tour Management', path: '/dashboard/tour-management', icon: Plane },
+  ];
+
+  const peopleItems = [
+    { name: 'Employees', path: '/dashboard/employees', icon: Users },
     { name: 'Org Chart', path: '/dashboard/org-chart', icon: Network },
   ];
 
-  const hrMenuItems = [{ name: 'Employees', path: '/dashboard/employees', icon: Users }];
-  const hrOnlyItems = [{ name: 'Payroll', path: '/dashboard/payroll', icon: CreditCard }];
+  const timeItems = [
+    { name: 'Attendance', path: '/dashboard/attendance', icon: Clock },
+    { name: 'Leave', path: '/dashboard/leave', icon: Calendar },
+    { name: 'My Calendar', path: '/dashboard/my-calendar', icon: CalendarDays },
+    { name: 'Tour Management', path: '/dashboard/tour-management', icon: Plane },
+  ];
 
-  const menuItems = isHR 
-    ? [baseMenuItems[0], ...hrMenuItems, ...baseMenuItems.slice(1, 4), ...hrOnlyItems, ...baseMenuItems.slice(4)] 
-    : baseMenuItems;
+  const compensationItems = [
+    { name: 'Payroll', path: '/dashboard/payroll', icon: CreditCard },
+    { name: 'Expenses', path: '/dashboard/expenses', icon: Receipt },
+  ];
+
+  const workItems = [
+    { name: 'Performance', path: '/dashboard/performance', icon: Target },
+    { name: 'Meetings', path: '/dashboard/meetings', icon: UsersRound },
+    { name: 'SOPs', path: '/dashboard/sop', icon: FileSpreadsheet },
+    { name: 'Training', path: '/dashboard/training', icon: GraduationCap },
+    { name: 'Helpdesk', path: '/dashboard/helpdesk', icon: HelpCircle },
+    { name: 'Announcements', path: '/dashboard/announcements', icon: Megaphone },
+  ];
 
   const adminMenuItems = [
     { name: 'Documents', path: '/dashboard/documents', icon: FolderOpen },
     { name: 'Assets', path: '/dashboard/assets', icon: Package },
-    { name: 'Expenses', path: '/dashboard/expenses', icon: Receipt },
     { name: 'Recruitment', path: '/dashboard/recruitment', icon: Briefcase },
     { name: 'Onboarding', path: '/dashboard/onboarding', icon: UserMinus },
     { name: 'Contract Labour', path: '/dashboard/labour', icon: HardHat },
@@ -131,6 +138,15 @@ const DashboardLayout = () => {
     { name: 'API Manager', path: '/dashboard/biometric', icon: Settings },
     { name: 'Holidays', path: '/dashboard/holidays', icon: CalendarDays },
     { name: 'Events', path: '/dashboard/events', icon: PartyPopper },
+  ];
+
+  // Build grouped navigation sections
+  const navSections = [
+    { items: baseMenuItems },
+    ...(isHR ? [{ label: 'People', items: peopleItems }] : []),
+    { label: 'Time & Attendance', items: isHR ? timeItems : timeItems.filter(i => i.name !== 'Tour Management') },
+    ...(isHR ? [{ label: 'Compensation', items: compensationItems }] : []),
+    { label: 'Workplace', items: isHR ? workItems : workItems.filter(i => !['SOPs'].includes(i.name)) },
   ];
 
   const isActive = (path, exact = false) => {
@@ -194,16 +210,25 @@ const DashboardLayout = () => {
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
-        <nav className="space-y-0.5">
-          {menuItems.map((item) => (
-            <NavLink key={item.path} item={item} mobile={mobile} />
-          ))}
-        </nav>
+        {navSections.map((section, sIdx) => (
+          <div key={sIdx} className={section.label ? 'mt-4 first:mt-0' : ''}>
+            {section.label && (
+              <p className="px-3 mb-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.12em]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                {section.label}
+              </p>
+            )}
+            <nav className="space-y-0.5">
+              {section.items.map((item) => (
+                <NavLink key={item.path} item={item} mobile={mobile} />
+              ))}
+            </nav>
+          </div>
+        ))}
 
         {(user?.role === 'super_admin' || user?.role === 'hr_admin') && (
-          <div className="mt-6 pt-5 border-t border-white/[0.06]">
-            <p className="px-3 mb-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.12em]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              // Administration
+          <div className="mt-4 pt-4 border-t border-white/[0.06]">
+            <p className="px-3 mb-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.12em]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+              Administration
             </p>
             <nav className="space-y-0.5">
               {adminMenuItems.map((item) => (
@@ -213,7 +238,7 @@ const DashboardLayout = () => {
           </div>
         )}
 
-        <div className="mt-6 pt-5 border-t border-white/[0.06]">
+        <div className="mt-4 pt-4 border-t border-white/[0.06]">
           <NavLink item={{ name: 'Settings', path: '/dashboard/settings', icon: Settings }} mobile={mobile} />
         </div>
       </ScrollArea>
