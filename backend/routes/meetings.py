@@ -880,7 +880,9 @@ async def get_employee_meeting_stats(employee_id: str, request: Request):
 @router.get("/notifications/pending")
 async def get_pending_meeting_notifications(request: Request):
     """Get meetings that need notification reminders (for background job)"""
-    # This endpoint is for the notification service/background job
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
     now = datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
     current_time = now.strftime("%H:%M")
@@ -932,6 +934,9 @@ async def get_pending_meeting_notifications(request: Request):
 @router.post("/notifications/send")
 async def send_meeting_notifications(request: Request):
     """Send meeting notifications (called by background job)"""
+    user = await get_current_user(request)
+    if user.get("role") not in ["super_admin", "hr_admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
     pending = await get_pending_meeting_notifications(request)
     
     sent_count = 0

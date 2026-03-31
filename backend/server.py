@@ -82,6 +82,49 @@ class CORSEverythingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(CORSEverythingMiddleware)
 
+# --- RATE LIMITING ---
+# Protect against brute force and abuse from foreign IPs
+from collections import defaultdict
+import time as _time
+
+_rate_limit_store = defaultdict(list)
+_RATE_LIMIT = 60          # max requests
+_RATE_WINDOW = 60         # per N seconds
+_LOGIN_RATE_LIMIT = 10    # max login attempts
+_LOGIN_RATE_WINDOW = 300  # per 5 minutes
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+        path = request.url.path
+        now = _time.time()
+
+        # Stricter limit for login endpoint
+        if "/auth/login" in path and request.method == "POST":
+            key = f"login:{client_ip}"
+            _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < _LOGIN_RATE_WINDOW]
+            if len(_rate_limit_store[key]) >= _LOGIN_RATE_LIMIT:
+                return JSONResponse(status_code=429, content={"detail": "Too many login attempts. Try again later."})
+            _rate_limit_store[key].append(now)
+        else:
+            key = f"api:{client_ip}"
+            _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < _RATE_WINDOW]
+            if len(_rate_limit_store[key]) >= _RATE_LIMIT:
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+            _rate_limit_store[key].append(now)
+
+        # Clean old entries periodically
+        if len(_rate_limit_store) > 10000:
+            cutoff = now - max(_RATE_WINDOW, _LOGIN_RATE_WINDOW)
+            for k in list(_rate_limit_store.keys()):
+                _rate_limit_store[k] = [t for t in _rate_limit_store[k] if t > cutoff]
+                if not _rate_limit_store[k]:
+                    del _rate_limit_store[k]
+
+        return await call_next(request)
+
+app.add_middleware(RateLimitMiddleware)
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
@@ -4292,7 +4335,10 @@ async def list_audit_logs(
 
 @api_router.post("/seed/initial")
 async def seed_initial_data(request: Request):
-    """Seed initial data for the HRMS"""
+    """Seed initial data for the HRMS — requires super_admin auth"""
+    user = await get_current_user(request)
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     
     # Create default roles
     default_roles = [
@@ -4613,6 +4659,8 @@ api_router.include_router(push_router)
 @api_router.get("/thought-of-the-day")
 async def thought_of_the_day(request: Request):
     """Return a daily motivational thought — generated fresh each day via LLM, context-aware"""
+    # Auth required - prevent unauthorized LLM usage
+    user = await get_current_user(request)
     today = str(datetime.now(timezone.utc).date())
 
     # Check cache first

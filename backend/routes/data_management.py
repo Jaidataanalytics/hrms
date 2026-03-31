@@ -131,6 +131,7 @@ async def get_data_stats(request: Request):
 
 @router.post("/bulk-delete")
 async def bulk_delete(request: Request, data: dict):
+    await verify_admin_access(request)
     """
     Bulk delete records with filters
     
@@ -461,6 +462,7 @@ async def export_all_data(request: Request):
 
 @router.post("/import-all")
 async def import_all_data(request: Request, data: dict = None):
+    await verify_admin_access(request)
     """
     Import bulk data into ALL collections. Replaces existing data.
     Used by sync-to-deployed and sync-from-deployed.
@@ -758,6 +760,7 @@ STATUS_NORMALIZATION = {
 
 @router.post("/fix/attendance-status")
 async def fix_attendance_status(request: Request, data: dict = None):
+    await verify_admin_access(request)
     """
     Fix corrupted attendance status values.
     
