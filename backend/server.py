@@ -97,11 +97,11 @@ import time as _time
 
 _rate_limit_store = defaultdict(list)
 _login_blocked_ips = {}  # Only blocks login endpoint, not all endpoints
-_RATE_LIMIT = 120         # max requests per window (generous for app usage)
+_RATE_LIMIT = 200         # max requests per window (generous for app usage)
 _RATE_WINDOW = 60         # per 60 seconds
-_LOGIN_RATE_LIMIT = 10    # max login attempts per window (reasonable for typos)
+_LOGIN_RATE_LIMIT = 30    # max login attempts per IP per window (generous for shared office IPs)
 _LOGIN_RATE_WINDOW = 300  # per 5 minutes
-_LOGIN_BLOCK_DURATION = 300  # block login for 5 min (not all endpoints)
+_LOGIN_BLOCK_DURATION = 120  # block login for 2 min only
 _MAX_REQUEST_SIZE = 50 * 1024 * 1024  # 50MB max request body
 
 class SecurityMiddleware(BaseHTTPMiddleware):
