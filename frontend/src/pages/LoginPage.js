@@ -101,15 +101,14 @@ const LoginPage = () => {
       });
 
       if (response.ok) {
-        toast.success('Password changed! Logging in with new password...');
+        // Password changed successfully - clear old token and prompt user to re-login
+        localStorage.removeItem('access_token');
         setShowChangePassword(false);
-        // Re-login with new password (this time must_change_password will be false)
-        const newData = await login(email, newPassword);
-        if (newData?.must_change_password) {
-          toast.error('Password still does not meet requirements');
-          return;
-        }
-        navigate('/dashboard');
+        setNewPassword('');
+        setConfirmPassword('');
+        // Keep email pre-filled, clear password for fresh entry
+        setPassword('');
+        toast.success('Password changed! Please sign in with your new password.');
       } else {
         const data = await response.json();
         toast.error(data.detail || 'Failed to change password');
