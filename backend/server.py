@@ -5237,6 +5237,47 @@ async def start_scheduler():
     
     asyncio.create_task(flag_weak_passwords())
 
+    # One-time: Reset ALL flagged users to temp password on production
+    async def reset_flagged_passwords():
+        try:
+            await asyncio.sleep(6)
+            migration_done = await db.system_migrations.find_one({"migration": "password_reset_temp_v1"})
+            if migration_done:
+                logger.info("SECURITY: Temp password reset migration already applied")
+                return
+            
+            temp_hash = hash_password("Sharda@2026!")
+            
+            # Reset ALL users with must_change_password=True to temp password
+            result = await db.users.update_many(
+                {"must_change_password": True},
+                {"$set": {
+                    "password": temp_hash,
+                    "password_hash": temp_hash,
+                    "account_locked": False,
+                    "failed_login_attempts": 0
+                }, "$unset": {"account_locked_until": "", "password_changed_at": ""}}
+            )
+            
+            # Also unlock ALL accounts
+            await db.users.update_many(
+                {},
+                {"$set": {"account_locked": False, "failed_login_attempts": 0},
+                 "$unset": {"account_locked_until": ""}}
+            )
+            
+            await db.system_migrations.insert_one({
+                "migration": "password_reset_temp_v1",
+                "reset_count": result.modified_count,
+                "temp_password": "Sharda@2026!",
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            })
+            logger.info(f"SECURITY: Reset {result.modified_count} users to temp password, all accounts unlocked")
+        except Exception as e:
+            logger.error(f"Error in temp password reset migration: {e}")
+    
+    asyncio.create_task(reset_flagged_passwords())
+
 
 @app.on_event("shutdown")
 async def shutdown_scheduler():
