@@ -96,13 +96,12 @@ from collections import defaultdict
 import time as _time
 
 _rate_limit_store = defaultdict(list)
-_failed_login_store = defaultdict(int)
-_blocked_ips = {}
-_RATE_LIMIT = 60          # max requests per window
+_login_blocked_ips = {}  # Only blocks login endpoint, not all endpoints
+_RATE_LIMIT = 120         # max requests per window (generous for app usage)
 _RATE_WINDOW = 60         # per 60 seconds
-_LOGIN_RATE_LIMIT = 5     # max login attempts (stricter)
+_LOGIN_RATE_LIMIT = 10    # max login attempts per window (reasonable for typos)
 _LOGIN_RATE_WINDOW = 300  # per 5 minutes
-_BLOCK_DURATION = 900     # block IP for 15 min after exceeding limits
+_LOGIN_BLOCK_DURATION = 300  # block login for 5 min (not all endpoints)
 _MAX_REQUEST_SIZE = 50 * 1024 * 1024  # 50MB max request body
 
 class SecurityMiddleware(BaseHTTPMiddleware):
@@ -111,34 +110,35 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         now = _time.time()
 
-        # Check if IP is blocked
-        if client_ip in _blocked_ips:
-            if now < _blocked_ips[client_ip]:
-                return JSONResponse(status_code=403, content={"detail": "Access temporarily blocked due to suspicious activity."})
-            else:
-                del _blocked_ips[client_ip]
-
         # Request size limit
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > _MAX_REQUEST_SIZE:
             return JSONResponse(status_code=413, content={"detail": "Request too large."})
 
-        # Stricter limit for login endpoint
+        # Login-specific rate limiting (only blocks login, not all endpoints)
         if "/auth/login" in path and request.method == "POST":
+            # Check if login is blocked for this IP
+            if client_ip in _login_blocked_ips:
+                if now < _login_blocked_ips[client_ip]:
+                    return JSONResponse(status_code=429, content={"detail": "Too many login attempts. Please wait a few minutes."})
+                else:
+                    del _login_blocked_ips[client_ip]
+
             key = f"login:{client_ip}"
             _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < _LOGIN_RATE_WINDOW]
             if len(_rate_limit_store[key]) >= _LOGIN_RATE_LIMIT:
-                _blocked_ips[client_ip] = now + _BLOCK_DURATION
-                logging.warning(f"SECURITY: IP {client_ip} blocked after {_LOGIN_RATE_LIMIT} failed login attempts")
-                return JSONResponse(status_code=429, content={"detail": "Too many login attempts. Access blocked for 15 minutes."})
+                _login_blocked_ips[client_ip] = now + _LOGIN_BLOCK_DURATION
+                logging.warning(f"SECURITY: Login rate-limited for IP {client_ip}")
+                return JSONResponse(status_code=429, content={"detail": "Too many login attempts. Please wait a few minutes."})
             _rate_limit_store[key].append(now)
-        # Stricter limit for data management endpoints
+        # Data management rate limit
         elif "/data-management" in path:
             key = f"dm:{client_ip}"
             _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < 60]
             if len(_rate_limit_store[key]) >= 10:
                 return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded for data operations."})
             _rate_limit_store[key].append(now)
+        # General API rate limit (high threshold, just prevents abuse)
         else:
             key = f"api:{client_ip}"
             _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < _RATE_WINDOW]
@@ -147,13 +147,6 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             _rate_limit_store[key].append(now)
 
         response = await call_next(request)
-
-        # Log failed login attempts
-        if "/auth/login" in path and request.method == "POST" and response.status_code == 401:
-            _failed_login_store[client_ip] = _failed_login_store.get(client_ip, 0) + 1
-            if _failed_login_store[client_ip] >= 20:
-                _blocked_ips[client_ip] = now + _BLOCK_DURATION * 4
-                logging.warning(f"SECURITY: IP {client_ip} hard-blocked after 20 cumulative failed logins")
 
         # Clean old entries periodically
         if len(_rate_limit_store) > 5000:
@@ -722,12 +715,12 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         if user:
             failed_attempts = user.get("failed_login_attempts", 0) + 1
             update_fields = {"failed_login_attempts": failed_attempts, "last_failed_login": datetime.now(timezone.utc).isoformat()}
-            if failed_attempts >= 5:
+            if failed_attempts >= 10:
                 update_fields["account_locked"] = True
-                update_fields["account_locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+                update_fields["account_locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
                 await log_security_event("ACCOUNT_LOCKED", {"email": credentials.email, "user_id": user["user_id"], "failed_attempts": failed_attempts}, request)
                 await db.users.update_one({"user_id": user["user_id"]}, {"$set": update_fields})
-                raise HTTPException(status_code=403, detail="Account locked due to too many failed login attempts. Try again in 30 minutes.")
+                raise HTTPException(status_code=403, detail="Account locked due to too many failed login attempts. Try again in 15 minutes.")
             await db.users.update_one({"user_id": user["user_id"]}, {"$set": update_fields})
         
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -4586,8 +4579,8 @@ async def get_password_policy(request: Request):
         "require_special": True,
         "blocked_common_passwords": True,
         "token_expiry_hours": JWT_EXPIRY_HOURS,
-        "account_lockout_attempts": 5,
-        "account_lockout_duration_minutes": 30
+        "account_lockout_attempts": 10,
+        "account_lockout_duration_minutes": 15
     }
 
 # ==================== SEED DATA ====================
@@ -5209,32 +5202,34 @@ async def start_scheduler():
     
     asyncio.create_task(seed_performance())
 
-    # Flag existing users with weak passwords to force password change
+    # One-time password policy migration (runs only once, skips if already done)
     async def flag_weak_passwords():
         try:
             await asyncio.sleep(4)
-            # Find users that don't have must_change_password already set
-            users = await db.users.find(
-                {"must_change_password": {"$ne": True}, "password": {"$exists": True, "$ne": None}},
-                {"user_id": 1, "email": 1, "password": 1, "password_hash": 1, "_id": 0}
-            ).to_list(None)
+            # Check if migration already ran
+            migration_done = await db.system_migrations.find_one({"migration": "password_policy_v1"})
+            if migration_done:
+                logger.info("SECURITY: Password policy migration already applied")
+                return
             
-            flagged_count = 0
-            # We can't check bcrypt hashes against policy (they're hashed),
-            # so we flag ALL users who haven't changed password since the policy was enacted
-            for u in users:
-                # If no password_changed_at field, it means password was set before policy
-                if not await db.users.find_one({"user_id": u["user_id"], "password_changed_at": {"$exists": True}}):
-                    await db.users.update_one(
-                        {"user_id": u["user_id"]},
-                        {"$set": {"must_change_password": True, "password_policy_enforced": True}}
-                    )
-                    flagged_count += 1
+            # Flag users without password_changed_at to change password on next login
+            result = await db.users.update_many(
+                {"password_changed_at": {"$in": [None]}, "password": {"$exists": True, "$ne": None}},
+                {"$set": {"must_change_password": True, "password_policy_enforced": True}}
+            )
+            result2 = await db.users.update_many(
+                {"password_changed_at": {"$exists": False}, "password": {"$exists": True, "$ne": None}},
+                {"$set": {"must_change_password": True, "password_policy_enforced": True}}
+            )
+            flagged = result.modified_count + result2.modified_count
             
-            if flagged_count > 0:
-                logger.info(f"SECURITY: Flagged {flagged_count} users to change password (new password policy)")
-            else:
-                logger.info("SECURITY: All users comply with password policy")
+            # Mark migration as complete
+            await db.system_migrations.insert_one({
+                "migration": "password_policy_v1",
+                "flagged_users": flagged,
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            })
+            logger.info(f"SECURITY: Password policy migration complete. Flagged {flagged} users.")
         except Exception as e:
             logger.error(f"Error in password policy migration: {e}")
     
