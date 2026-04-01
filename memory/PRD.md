@@ -93,6 +93,8 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 
 ## Credentials
 - Admin: admin@shardahr.com / Sharda@2026!
-- HR: hr@shardahr.com / password (must change on next login)
+- HR: hr@shardahr.com / HrAdmin@2026! (already changed)
+- Jai: jai@j.com / Jai@Sharda2026! (already changed)
+- All other 94 flagged users: temp password `Sharda@2026!` (must change on login)
 - Production Backend: https://sharda-hr-system.emergent.host
 - Production Frontend: https://shardahrms.com

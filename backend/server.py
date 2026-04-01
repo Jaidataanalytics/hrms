@@ -547,7 +547,8 @@ async def get_current_user(request: Request) -> dict:
                     if pw_changed_dt.tzinfo is None:
                         pw_changed_dt = pw_changed_dt.replace(tzinfo=timezone.utc)
                     token_issued = datetime.fromtimestamp(token_iat, tz=timezone.utc)
-                    if pw_changed_dt > token_issued:
+                    # Add 2 second grace period to handle same-second re-login after password change
+                    if pw_changed_dt > token_issued + timedelta(seconds=2):
                         raise HTTPException(status_code=401, detail="Password changed. Please login again.")
                 # Check if account is locked
                 if user.get("account_locked"):
