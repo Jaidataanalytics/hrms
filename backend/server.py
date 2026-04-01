@@ -89,8 +89,6 @@ class CORSEverythingMiddleware(BaseHTTPMiddleware):
 
         return response
 
-app.add_middleware(CORSEverythingMiddleware)
-
 # --- RATE LIMITING + SECURITY ---
 from collections import defaultdict
 import time as _time
@@ -158,7 +156,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 
         return response
 
+# Middleware order: SecurityMiddleware (inner) → CORSEverythingMiddleware (outer)
+# CORS must be outermost so ALL responses get CORS headers, including rate-limit rejections
 app.add_middleware(SecurityMiddleware)
+app.add_middleware(CORSEverythingMiddleware)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
