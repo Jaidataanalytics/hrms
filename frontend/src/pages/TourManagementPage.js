@@ -127,31 +127,14 @@ const TourManagementPage = () => {
     }
   };
 
-  const getCurrentLocation = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported'));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          });
-        },
-        (error) => {
-          reject(error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
-        }
-      );
-    });
+  const getCurrentLocation = async () => {
+    try {
+      const { getCurrentPosition } = await import('../services/nativeServices');
+      const pos = await getCurrentPosition();
+      return { latitude: pos.lat, longitude: pos.lng, accuracy: 0 };
+    } catch (err) {
+      throw err;
+    }
   };
 
   const handleRemoteCheckin = async (punchType) => {

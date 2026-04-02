@@ -30,6 +30,9 @@
     },
     "CapacitorHttp": {
       "enabled": false
+    },
+    "Geolocation": {
+      "enableHighAccuracy": true
     }
   }
 }

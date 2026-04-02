@@ -179,17 +179,30 @@ const Dashboard = () => {
   const handleRemoteCheckin = async (punchType) => {
     setRemoteLoading(true);
     try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-      });
+      // Use Capacitor geolocation on native, browser API on web
+      let latitude, longitude;
+      try {
+        const { getCurrentPosition } = await import('../services/nativeServices');
+        const pos = await getCurrentPosition();
+        latitude = pos.lat;
+        longitude = pos.lng;
+      } catch (locErr) {
+        if (locErr?.code === 1 || locErr?.message?.includes('permission')) {
+          toast.error('Location permission denied. Please enable location in your phone settings.');
+        } else {
+          toast.error('Failed to get location. Please ensure GPS is enabled.');
+        }
+        setRemoteLoading(false);
+        return;
+      }
       const response = await fetch(`${API_URL}/travel/remote-check-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         
         body: JSON.stringify({
           punch_type: punchType,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude,
+          longitude,
           tour_request_id: tourStatus?.tour?.request_id
         }),
       });
@@ -202,8 +215,7 @@ const Dashboard = () => {
         toast.error(err.detail || 'Failed to record check-in');
       }
     } catch (error) {
-      if (error.code === 1) toast.error('Location permission denied. Please enable GPS.');
-      else toast.error('Failed to get location for remote check-in');
+      toast.error('Failed to record check-in');
     } finally {
       setRemoteLoading(false);
     }

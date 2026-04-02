@@ -58,6 +58,11 @@ export const getCurrentPosition = async () => {
   if (isNative()) {
     try {
       const { Geolocation } = await import('@capacitor/geolocation');
+      // Request permission first (required on Android)
+      const permStatus = await Geolocation.requestPermissions();
+      if (permStatus.location !== 'granted' && permStatus.coarseLocation !== 'granted') {
+        throw new Error('Location permission denied');
+      }
       const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
       return { lat: pos.coords.latitude, lng: pos.coords.longitude };
     } catch (err) {
