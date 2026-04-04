@@ -49,6 +49,7 @@ export const AuthProvider = ({ children }) => {
   const refreshIntervalRef = useRef(null);
   const lastActivityRef = useRef(Date.now());
   const isRefreshing = useRef(false);
+  const justLoggedInRef = useRef(false);
 
   // Track user activity
   const updateActivity = useCallback(() => {
@@ -73,7 +74,6 @@ export const AuthProvider = ({ children }) => {
     // Only refresh if there was recent activity (within last 30 mins)
     const timeSinceActivity = Date.now() - lastActivityRef.current;
     if (timeSinceActivity > 30 * 60 * 1000) {
-      // Token refresh skipped - no recent activity
       return;
     }
     
@@ -93,14 +93,15 @@ export const AuthProvider = ({ children }) => {
         const data = await safeParseJson(response);
         if (data?.access_token) {
           localStorage.setItem('access_token', data.access_token);
-          // Token refreshed
         }
       } else if (response.status === 401) {
-        // Session expired, redirect to login
-        // Session expired
-        setUser(null);
-        localStorage.removeItem('access_token');
-        navigate('/login');
+        // Only force logout if we don't have a stored token (prevents race condition on mobile)
+        const storedToken = localStorage.getItem('access_token');
+        if (!storedToken) {
+          setUser(null);
+          navigate('/login');
+        }
+        // If token exists, the session might still be valid - wait for next auth check
       }
     } catch (error) {
       // Network error — don't log out, just retry next cycle (mobile may have intermittent connectivity)
@@ -113,8 +114,12 @@ export const AuthProvider = ({ children }) => {
   // Set up automatic token refresh
   useEffect(() => {
     if (user) {
-      // Refresh immediately when user logs in
-      refreshToken();
+      // Skip immediate refresh if user just logged in (token is fresh)
+      if (!justLoggedInRef.current) {
+        refreshToken();
+      } else {
+        justLoggedInRef.current = false;
+      }
       
       // Set up interval for periodic refresh
       refreshIntervalRef.current = setInterval(refreshToken, TOKEN_REFRESH_INTERVAL);
@@ -233,14 +238,17 @@ export const AuthProvider = ({ children }) => {
       throw new Error(data?.detail || 'Login failed');
     }
 
-    // Store token for API calls (needed for password change)
-    if (data?.access_token) {
-      localStorage.setItem('access_token', data.access_token);
+    if (!data || !data.access_token) {
+      throw new Error('Invalid login response');
     }
+
+    // Store token for API calls (needed for password change)
+    localStorage.setItem('access_token', data.access_token);
 
     // Only set user state if NOT required to change password
     // Setting user triggers routing that would redirect away from login page
-    if (data?.user && !data?.must_change_password) {
+    if (data.user && !data.must_change_password) {
+      justLoggedInRef.current = true;
       setUser(data.user);
       lastActivityRef.current = Date.now();
     }

@@ -63,10 +63,19 @@ const LoginPage = () => {
         return;
       }
       
+      // Verify we got valid user data before navigating
+      if (!data?.user || !data?.access_token) {
+        toast.error('Login failed: Invalid response from server');
+        return;
+      }
+
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      // Small delay to ensure state is flushed before navigation
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 100);
     } catch (error) {
-      toast.error(error.message || 'Login failed');
+      toast.error(error.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
