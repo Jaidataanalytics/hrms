@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://mis-compliance-v2.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://login-flow-test-6.preview.emergentagent.com').rstrip('/')
 
 class TestStationeryAPI:
     """Stationery Inventory Management API Tests"""

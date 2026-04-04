@@ -10,7 +10,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://mis-compliance-v2.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://login-flow-test-6.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@shardahr.com"

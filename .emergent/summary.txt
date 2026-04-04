@@ -1,153 +1,150 @@
-<analysis>**original_problem_statement**: The user initially requested a complete overhaul of the Performance Management page. Over the session, this evolved into several distinct feature requests and bug fixes:
-1.  **Performance Module Overhaul**: Create a personalized MIS/KPI/KRA system for employees based on provided Excel files. This included building a Performance Insights dashboard.
-2.  **Deployment Failure**: The user provided build logs for a failing production deployment and requested a fix. The root cause was a missing health check endpoint.
-3.  **Production Data Seeding**: The user reported that the performance data seeded in the preview environment was missing in the production deployment. This required a robust, automated seeding solution.
-4.  **Contract Worker Management**: The user provided an Excel template and requested functionality to download this template and bulk-upload contract worker data.
-5.  **Work From Home (WFH) Requests**: The user noted that employees had no way to apply for WFH and requested an approval flow similar to the existing leave management system.
-6.  **New Employee Data**: The user uploaded several batches of Excel files containing KPI and MIS data for new employees (Ashish, Vicky, Vishal, Rahul, Surendra, Abritee, Preeti, Shainy) and asked to integrate them.
-7.  **Achievement Tracker**: As part of the KPI discussion, the user requested a new feature for employees to log achievements, which would then require manager endorsement.
-8.  **Smart MIS & Auto-Calculation**: The user requested that the MIS for three marketing employees be redesigned to be less direct and that their KPIs be auto-calculated from this data.
-9.  **Dynamic Theming**: The most recent request is to implement dynamic theming for the dashboard.
+<analysis>**original_problem_statement**: 
+The user requested stricter security protocols throughout the app, specifically enforcing strong password rules and forcing non-compliant users to change their passwords. Additionally, the user needed help resolving a critical CORS issue on the production site, fixing missing location permissions for the mobile app's remote check-in feature, and resolving a new issue where the mobile app says sign in successful but fails to open the dashboard. PRODUCT REQUIREMENTS: Secure the app, implement strict password policies, ensure the mobile APK has native location permissions, and fix the mobile authentication redirect flow.
 
-**User's preferred language**: English
+**User's preferred language**: English (INSTRUCT next agent to respond in English only)
 
-**what currently exists?**
-The application is a full-stack React/FastAPI/MongoDB HR management system. The agent has successfully implemented a series of major features:
--   A completely rebuilt, highly detailed performance management module with data seeded for 29 employees.
--   A Performance Insights dashboard providing analytics on performance data.
--   An automated, migration-based database seeding mechanism that runs on application startup, ensuring production deployments are correctly populated.
--   A feature for bulk-uploading and exporting contract workers via an Excel template.
--   A complete Work From Home (WFH) request and approval system, fully integrated into the UI and backend.
--   A new Achievement Tracker feature within the performance module, with an employee submission and manager endorsement flow.
--   A smart KPI auto-calculation engine that computes scores for specific roles based on indirect daily log entries (MIS).
--   A fix for a critical deployment issue by implementing a root-level  endpoint.
+**what currently exists?** 
+The application is a full-stack HRMS (FastAPI, React, MongoDB). It now features robust security including strict password requirements (min 8 chars, uppercase, lowercase, number, special char), account lockout policies, and rate-limiting middleware. The CORS middleware has been reordered to ensure headers are applied even on rate-limited/error responses. The Android mobile app configuration () now includes geolocation permissions, and Capacitor plugins are integrated for remote check-ins. 
 
-**Last working item**:
--   **Last item agent was working**: The user requested to work on dynamic dashboard theming. The agent had just started to analyze the codebase to plan the implementation.
--   **Status**: NOT STARTED
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Frontend testing agent
--   **User Testing Done**: N
+**Last working item**: 
+- Last item agent was working: Investigating and fixing a mobile app authentication routing bug. The user reported that on the mobile app, login says successful but doesn't redirect or open the dashboard. The agent was reviewing , , and  to fix the redirect logic and implement the user's request to Show a toast message and stay on login screen upon failure.
+- Status: IN PROGRESS
+- Agent Testing Done: N
+- Which testing method agent to use? Frontend testing agent / manual testing by curl / screenshot tool.
+- User Testing Done: N
 
-**All Pending/In progress Issue list**:
--   **Issue 1: Mobile APK build failure (P2)**
-    -   Description: A known backlog item where the Android build process is failing.
-    -   Status: NOT STARTED
-    -   Is recurring issue?: Y
-    -   Should Test frontend/backend/both after fix?: Both.
--   **Issue 2: Frontend Routing Bug (P2)**
-    -   Description: An intermittent bug where navigating to the  page sometimes loads the dashboard content instead.
-    -   Status: NOT STARTED
-    -   Is recurring issue?: Y
-    -   Should Test frontend/backend/both after fix?: Frontend.
--   **Issue 3: Frontend ESLint Warnings (P3)**
-    -   Description: The frontend codebase has numerous  warnings.
-    -   Status: NOT STARTED
-    -   Is recurring issue?: Y
-    -   Should Test frontend/backend/both after fix?: Frontend.
+**All Pending/In progress Issue list**: 
+  Issue 1: Mobile App Login Redirect Failure (P0)
+  Issue 2: React hook dependencies warnings in frontend (P1)
+  Issue 3: Reduce function and component complexity (P2)
+  
+  Issues Detail:
+  - Issue 1: Mobile App Login Redirect Failure
+     - Attempted fixes: Agent reviewed  and  but session ended before making code changes.
+     - Next debug checklist: Check , , and . Ensure the mobile app environment correctly handles the auth token, redirects to  upon success, and shows an appropriate toast message if it fails or gets stuck. Verify if  is resolving correctly in the mobile build.
+     - Why fix this issue and what will be achieved with the fix? Users are currently blocked from using the mobile app despite successful authentication.
+     - Status: IN PROGRESS
+     - Is recurring issue? Y (Mobile login flows have had recurring edge cases)
+     - Should Test frontend/backend/both after fix? Frontend
 
-**In progress Task List**:
--   None.
+  - Issue 2: Fix missing React hook dependencies
+     - Attempted fixes: Identified in build warnings previously.
+     - Next debug checklist: Check components across  (e.g., , , etc.) for missing / dependencies. 
+     - Why fix this issue and what will be achieved with the fix? Prevents stale closures and infinite re-renders.
+     - Status: NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Frontend
+
+  - Issue 3: Reduce function and component complexity
+     - Attempted fixes: None. Identified in previous code quality reports.
+     - Next debug checklist: Break down  (>1600 lines) and  into smaller components. Refactor .
+     - Why fix this issue and what will be achieved with the fix? Maintainability and cleaner architecture.
+     - Status: NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Both
+
+**In progress Task List**: 
+None currently (Feature tasks are either done or in backlog).
 
 **Upcoming and Future Tasks**
-*   **Upcoming Tasks**:
-    *   **(P0) Implement Dynamic Dashboard Theming**: This is the immediate next task as requested by the user. The agent needs to investigate the frontend architecture (, , ) to add theme-switching capabilities.
-*   **Future Tasks**:
-    *   (P2) Fix Mobile App build and remote check-in functionality.
-    *   (P2) Complete Helpdesk Phase 2 UI for feedback and survey analytics.
+    Upcoming Tasks:
+    - (P1) Employee Profile Popup on Org Chart.
+    - (P1) MIS Compliance Alerts: Create an automated notification system for MIS submissions.
+    - (P1) 360 Feedback Reminders: Add an automated system to nudge reviewers to complete feedback.
+    Future Tasks:
+    - (P2) Fully automated payroll integration.
+    - (P3) AI-Powered HR Chatbot for answering policy questions.
+    - (P3) Employee Mood Tracker.
+    - (P3) Gamification & Recognition Wall.
 
 **Completed work in this session**
--   **Performance Insights Dashboard Verification**: Successfully wired the frontend component to the backend and verified its functionality.
--   **Deployment Health Check Fix**: Resolved a critical deployment blocker by adding a root  endpoint in .
--   **Database Auto-Seeding on Startup**: Implemented a robust, migration-based seeding mechanism ( in ) to ensure production databases are populated automatically and safely on startup.
--   **Contract Worker Template Management**: Added backend APIs in  and frontend UI in  for downloading an Excel template and bulk-uploading/exporting contract workers.
--   **Work From Home (WFH) Approval Flow**: Built a complete request and approval system for WFH, mirroring the leave system. This involved adding APIs to  and a new tab with full functionality to .
--   **Achievement Tracker**: Created a new feature for logging and endorsing employee achievements, including backend APIs in  and a new  component on the .
--   **New Employee Data Integration**: Analyzed and seeded KPI/MIS data for 8 new employees (Ashish, Vicky, Vishal, Rahul, Surendra, Abritee, Preeti, Shainy) into the  seed script.
--   **Smart MIS & KPI Auto-Calculation**: Redesigned the MIS for three marketing employees to be indirect and created a backend engine () to automatically calculate their KPI scores from the MIS data.
+- Implemented strict password policy and change-password enforcement UI flow (DONE)
+- Fixed IP-level rate-limiter blocking all endpoints; scoped it specifically to login attempts (DONE)
+- Fixed token invalidation race condition between  and  (DONE)
+- Fixed  and  ordering in  to ensure CORS headers on all responses (DONE)
+- Added  and  to Android Manifest for mobile app check-in (DONE)
+- Migrated Dashboard and Tour Management to use Capacitor Geolocation for mobile compatibility (DONE)
 
 **Earlier issues found/mentioned but not fixed**
--   **Mobile APK build failure**: A recurring issue from previous sessions that remains unaddressed.
--   **Frontend Routing Bug**: An intermittent issue on the  page, not yet debugged.
--   **Frontend ESLint Warnings**: Identified but not prioritized for fixing.
+   - Issue 1: Large file refactoring (Code Quality Report)
+   - Debug checklist: Break down  and  into smaller components. Refactor  to reduce cyclomatic complexity.
+   - Why to solve this issue and what will be achieved with this? Maintainability and avoiding ESLint warnings.
+   - Should Test frontend/backend/both after fix: Both
+   - Is recurring issue? N
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork**: Payroll calculation discrepancies.
--   **Recurrence count**: 3+
--   **Status**: RESOLVED (The specific SEWA advance bug, a form of this issue, was fixed in a previous session).
+  - Issue recurrence in previous fork: Mobile APK login failures.
+  - Recurrence count: 4
+  - Status: IN PROGRESS (Currently experiencing a variation where login succeeds but the app doesn't redirect/open).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Migration-Based DB Seeding**: A robust system using a  collection in MongoDB to ensure the large performance data seed script runs only once per version update, preventing data loss on server restarts. The logic is in  in .
--   **KPI Auto-Calculation Engine**: A backend service () that processes MIS form submissions against predefined formulas ( in the KPI model) to compute scores automatically, abstracting complexity from the user.
--   **Indirect Data Collection (Smart MIS)**: Designing MIS forms to capture operational data (e.g., enquiries followed up) rather than asking direct, potentially negative questions (e.g., overdue enquiries), and then using that data to calculate performance metrics.
--   **FastAPI Route Ordering**: Resolved a 404 error by ensuring static API routes (e.g., ) are defined before dynamic routes with path parameters (e.g., ).
+- **Middleware Ordering:**  MUST be the outermost middleware (added *after* ) in  so that rate-limit rejections still receive CORS headers.
+- **Capacitor Geolocation:** The mobile app requires explicit Capacitor Geolocation plugin calls and Android Manifest permissions (, ) rather than relying solely on native .
+- **Password Policy Enforcement:** Users without a  timestamp are flagged with  upon login and forced through a UI dialog to update their credentials before proceeding.
 
 **key DB schema**
--   : 
--   : 
--   : 
--   : 
--   :  (Used for one-time data seeding)
--   : 
+  - : {email, password_hash, role, failed_login_attempts, account_locked, password_changed_at, must_change_password}
 
 **changes in tech stack**
--   None.
+  - None, but ensured Capacitor Geolocation plugin is utilized.
 
 **All files of reference**
--   **Performance & Seeding**: 
--   **WFH & Leave**: 
--   **Contract Labour**: 
--   **Server Config**: 
--   **Performance UI**: , 
--   **Leave/WFH UI**: 
--   **Contract Labour UI**: 
--   **Product Requirements**: 
+  1. 
+  2. 
+  3. 
+  4. 
+  5. 
+
+**Areas that need refactoring**: 
+  - Massive React components (, ).
+  - Broad React Hook dependencies warnings () across multiple frontend pages.
+
+**key api endpoints**
+  - 
+  - 
+  - 
 
 **Critical Info for New Agent**
--   Your immediate task is **implementing dynamic dashboard theming**. You should begin by investigating the frontend codebase, particularly , , and , to determine the best way to manage and apply theme variables (e.g., CSS variables).
--   The database seeding is now handled by a migration-based system that runs on startup. To add new permanent data, you must add it to the  dictionary in  and **increment the migration version** () in the same file. This ensures the new data is seeded only once in production.
--   The user highly values smart features that simplify user workflows while enabling complex backend logic, like the KPI auto-calculation engine. Keep this philosophy in mind when proposing solutions.
+- **Immediate Blocker:** The mobile app login says successful but doesn't redirect to the dashboard. The user requested: Show a toast message and stay on login screen. Check I dont know, if its not right fix it". You need to investigate `LoginPage.js`, `AuthContext.js`, and `App.js` to fix the redirect logic for mobile.
+- The user builds the APK locally on their machine. If you make changes to Capacitor configs or native Android files, remind the user to run `npm run build` and `npx cap sync android`.
+- Do NOT run the temporary password reset migration (`Sharda@2026!`) on production. The user specifically asked to leave production passwords alone since the app is currently working fine for them online.
+- Do NOT share or hardcode any preview URLs into the configuration files.
 
 **documents and test reports created in this job**
--   
--   
--   
--   
--    (updated multiple times)
+  - `/app/test_reports/iteration_62.json`
+  - `/app/memory/PRD.md`
 
-**Last 10 User Messages and any pending HUMAN messages**
-1.  **LATEST**:  - The user's request to begin the next major task. **(Status: Not Started)**
-2.   - User approved the smart MIS plan and asked the agent to link them to KPIs for auto-calculation. **(Status: Completed)**
-3.   - User asked to create MIS sheets for 3 marketing employees to enable auto-calculation for their KPIs. **(Status: Completed)**
-4.   - User uploaded KPIs for 3 marketing employees (Abritee, Preeti, Shainy). **(Status: Completed)**
-5.   - User provided KPIs for 5 new employees and initiated the discussion for the Achievement Tracker and a better auto-seeding method. **(Status: Completed)**
-6.   - User confirmed they want a full request/approval flow for WFH, not a simple button. **(Status: Completed)**
-7.   - User identified that the employee-facing WFH feature was missing. **(Status: Completed)**
-8.   - User provided the Excel template for the contract worker import/export feature. **(Status: Completed)**
-9.   - User reported that data seeded in preview was missing in production, which led to the creation of the auto-seeding system. **(Status: Resolved)**
-10.  - User provided deployment logs for a failing build, which led to the health check fix. **(Status: Resolved)**
+**Last 10 User Messages and any pending HUMAN messages** 
+ - LATEST: "1. Show a toast message and stay on login screen. 2. Check i dont know, if its not right fix it" (Status: Pending)
+ - "The app is not working, it says sign in successful but doesnt open (Status: Pending)
+ - User shell logs executing  inside the wrong folder. (Status: Addressed)
+ - User shell logs for  showing ESLint warnings. (Status: Addressed)
+ - User shell logs running . (Status: Addressed)
+ - User shell logs attempting  and encountering peer dependency errors. (Status: Addressed)
+ - guide step by step into upadting the apk (Status: Addressed)
+ - the location permission is not showing in phone settings for app and the online check in not working without it (Status: Resolved)
+ - the password didnt reset an all , but the app is working fine so dont chnage it unless it will get broken without chnage . examine the situation properly . (Status: Addressed)
+ - Log output showing CORS and 520 errors on the deployed production site. (Status: Addressed)
 
 **Project Health Check:**
--   **Broken**: The mobile APK build process.
--   **Mocked**: None.
--   **Incomplete**: The Dynamic Dashboard Theming task is pending.
+- Broken: Mobile app authentication routing (Login success but no redirect).
+- Mocked: None.
 
 **3rd Party Integrations**
--   **Capacitor**: Used for the (currently broken) web-to-mobile app build process.
--   **openpyxl**: Used in the backend for reading and writing  files for the contract worker feature.
+  - OpenAI GPT-4o-mini (Thought of the Day) — uses Emergent LLM Key.
+  - Capacitor (Mobile build & Geolocation) — local dependency.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES. The agent was used successfully after implementing the WFH flow and the Achievement Tracker, achieving 100% pass rates on all tests.
--   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None.
--   **Known regressions**: None.
+  - Testing agent used after significant changes: YES
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None
+  - Known regressions: Mobile app login successful but fails to redirect to the dashboard.
 
 **Credentials to test flow:**
--   **Admin Login**:  / 
--   **HR Login**:  / 
+  - Admin:  /  (Note: In your local test DB environment, password rules may force you to change this to something like  upon first login).
 
 **What agent forgot to execute**
-The agent has been thorough and has not forgotten any user requests or outstanding tasks from the approved plans. All completed work was tested either manually or with the testing agent.</analysis>
+The agent was in the middle of diagnosing the mobile app login redirect issue and did not implement the fix or the requested toast message behavior before the session ended. React hook dependency warnings were also left unresolved.</analysis>

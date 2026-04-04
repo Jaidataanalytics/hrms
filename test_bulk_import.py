@@ -5,7 +5,7 @@ import sys
 
 def test_bulk_import_endpoints():
     """Test bulk import specific endpoints"""
-    base_url = "https://mis-compliance-v2.preview.emergentagent.com/api"
+    base_url = "https://login-flow-test-6.preview.emergentagent.com/api"
     
     # Login first
     login_response = requests.post(f"{base_url}/auth/login", json={
