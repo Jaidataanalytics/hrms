@@ -18,16 +18,22 @@ export const useAuth = () => {
   return context;
 };
 
-// Safe JSON parse helper - uses clone() to avoid "body stream already read" errors
-// from fetch wrappers (e.g., emergent-main.js analytics interceptor)
+// Safe JSON parse helper — tries response.json() first (works on native/mobile),
+// then falls back to clone+text (handles body-already-read from emergent-main.js on web)
 const safeParseJson = async (response) => {
+  // Try direct json() first — works in Capacitor WebView and standard browsers
   try {
-    const cloned = response.clone();
-    const text = await cloned.text();
-    if (!text) return null;
-    return JSON.parse(text);
+    return await response.json();
   } catch {
-    return null;
+    // Fallback: clone and read as text (handles body-already-read scenarios)
+    try {
+      const cloned = response.clone();
+      const text = await cloned.text();
+      if (!text) return null;
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
   }
 };
 
@@ -232,14 +238,15 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await safeParseJson(response);
-
     if (!response.ok) {
-      throw new Error(data?.detail || 'Login failed');
+      const errData = await safeParseJson(response);
+      throw new Error(errData?.detail || 'Login failed');
     }
 
+    const data = await safeParseJson(response);
+
     if (!data || !data.access_token) {
-      throw new Error('Invalid login response');
+      throw new Error('Server returned an empty response. Please try again.');
     }
 
     // Store token for API calls (needed for password change)

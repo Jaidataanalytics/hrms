@@ -4,6 +4,7 @@
   "webDir": "build",
   "server": {
     "cleartext": false,
+    "androidScheme": "https",
     "allowNavigation": [
       "shardahrms.com",
       "*.shardahrms.com",

@@ -8,13 +8,16 @@ import App from "@/App";
 // consume response bodies for analytics. This causes "body stream already read" errors
 // when app code calls response.json(). This patch ensures every fetch response has
 // a readable body by caching it upfront.
+// SKIP in Capacitor mobile — no emergent-main.js in the APK, and the Proxy
+// breaks response.clone() in some Android WebView implementations.
 (function patchFetch() {
+  if (window.Capacitor?.isNativePlatform?.()) return;
+
   const _nativeFetch = window.fetch;
   window.fetch = async function (...args) {
     const response = await _nativeFetch.apply(this, args);
     try {
       const clone = response.clone();
-      // Return a proxy that uses the clone for body reading
       const patched = new Proxy(response, {
         get(target, prop) {
           if (prop === 'json') return () => clone.json();
