@@ -20,53 +20,41 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 - 360 feedback, salary structures, one-time deductions, payroll rules
 
 ### March 2026 Session
-- **MIS Compliance Redesign**: Revamped UI with tabs and date navigator
-- **Contract Worker Biometric Attendance**: Auto-sync via biometric API
-- **Stationery Inventory Management**: Full CRUD under Assets page
-- **LLM-Powered Thought of the Day**: Dynamic daily quote modal
-- **Searchable Employee Dropdown**: In asset/stationery dialogs
-- **Global CORS Fix**: Custom CORSEverythingMiddleware for all environments
-- **Global Fetch Patch**: Proxy-based fix for "body stream already read" errors
-- **Login Fix**: Single login call (eliminated double fetch)
-- **SEWA Advance Bulk Upload**: Template download + bulk upload with validation
-- **Asset Employee List Fix**: Removed 50-employee limit, now returns all employees
-- **Sidebar Navigation Grouping**: Organized 17+ flat items into labeled sections
-- **Org Chart Redesign**: Modern animated tree with depth-colored nodes
-- **Code Quality Fixes**: eval() removal, secret migration, circular import fix
+- MIS Compliance Redesign, Contract Worker Biometric, Stationery Inventory
+- LLM-Powered Thought of the Day, Searchable Employee Dropdown
+- Global CORS Fix, Global Fetch Patch, Login Fix (single call)
+- SEWA Advance Bulk Upload, Asset Employee List Fix
+- Sidebar Navigation Grouping, Org Chart Redesign, Code Quality Fixes
 
 ### Security Hardening (March 2026)
 - Security Headers, Rate Limiting, IP Blocking
-- Strong Password Policy (8+ chars, upper/lower/number/special)
-- Account-Level Lockout (30 min after 5 failed attempts)
-- JWT Token Expiry reduced to 24 hours
-- Token Invalidation on Password Change
-- Security Audit Logging
-- Frontend Password Requirements UI
-- Admin Security Dashboard
+- Strong Password Policy, Account-Level Lockout, JWT 24hr Expiry
+- Token Invalidation on Password Change, Security Audit Logging
+- Frontend Password Requirements UI, Admin Security Dashboard
 
-### April 2026 - Mobile Login Fix
-- **Fixed mobile app login redirect failure** (login showed "successful" but didn't open dashboard)
-  - Root cause: `refreshToken()` fired immediately after login, causing race condition in Capacitor WebView
-  - Added `justLoggedInRef` flag to skip immediate token refresh after login
-  - Hardened `refreshToken` to not clear user state on 401 if token exists in localStorage
-  - Added `setTimeout(100ms)` for navigate to ensure React state flush before routing
-  - Added response validation (checks for user + token before navigating)
-  - Added `replace: true` to navigate to prevent back-button returning to login
+### April 2026 — Mobile APK Login Fix (COMPLETE)
+**Root cause**: Global fetch Proxy in `index.js` wrapped Response objects for emergent-main.js compatibility. In Android WebView (Capacitor), the Proxy broke `response.clone()` chain → `safeParseJson` returned null → "Invalid login response" error.
+
+**Fixes applied:**
+1. **`index.js`**: Skip fetch Proxy in Capacitor (`window.Capacitor?.isNativePlatform?.()` check)
+2. **`AuthContext.js`**: `safeParseJson` now tries `response.json()` directly first (works in WebView), falls back to clone+text only if needed
+3. **`AuthContext.js`**: Login validates response before proceeding; `refreshToken` doesn't immediately logout on 401 if token exists; `justLoggedInRef` skips post-login refresh race condition
+4. **`LoginPage.js`**: `setTimeout(100ms)` + `replace: true` for navigation; validates user+token before redirect
+5. **`backend/.env`**: Added `https://localhost`, `capacitor://localhost`, `http://localhost` to CORS_ORIGINS
+6. **`capacitor.config.json`**: Added `androidScheme: "https"` for consistent WebView origin
 
 ## Key Technical Decisions
 1. **Pure Bearer Token Auth**: No `credentials: 'include'` anywhere. All auth via `Authorization: Bearer <token>` header.
 2. **Custom CORS Middleware**: `CORSEverythingMiddleware` in server.py handles CORS at application level.
-3. **Global Fetch Patch**: `index.js` patches `window.fetch` with Proxy to prevent body-already-read errors.
-4. **APK Bundled Assets**: Removed `server.url` from capacitor.config.json. APK bundles frontend locally.
-5. **Mobile Login Safety**: `justLoggedInRef` prevents race condition where token refresh could log user out immediately after login.
+3. **Conditional Fetch Patch**: `index.js` patches `window.fetch` with Proxy ONLY on web (skips Capacitor). Prevents body-already-read errors from platform interceptor without breaking mobile WebView.
+4. **APK Bundled Assets**: No `server.url` in capacitor.config.json. APK bundles frontend locally.
+5. **Mobile Login Safety**: `justLoggedInRef` prevents race condition; `safeParseJson` uses direct json() first.
 
 ## Deferred Code Quality Items
-- **React Hook Dependencies**: 85 instances — needs case-by-case analysis
-- **Component Splitting**: AttendancePage (1614 lines), ContractLabourPage (1386 lines), AssetsPage (1043 lines), Dashboard (923 lines)
+- **React Hook Dependencies**: 85 instances
+- **Component Splitting**: AttendancePage (1614), ContractLabourPage (1386), AssetsPage (1043), Dashboard (923 lines)
 - **Function Complexity**: 331 flagged functions
-- **Nested Ternaries**: 295 instances across frontend
-- **useMemo Optimization**: 81 instances
-- **Unused Imports**: 66+ files
+- **Nested Ternaries**: 295 instances
 
 ## Upcoming Tasks (P1)
 - Employee Profile Popup on Org Chart
