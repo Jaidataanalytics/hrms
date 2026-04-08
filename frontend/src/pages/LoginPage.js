@@ -37,7 +37,7 @@ const LoginPage = () => {
     hasUpper: /[A-Z]/.test(newPassword),
     hasLower: /[a-z]/.test(newPassword),
     hasNumber: /[0-9]/.test(newPassword),
-    hasSpecial: /[!@#$%^&*()_+\-=\[\]{}|;:',.<>?/`~]/.test(newPassword),
+    hasSpecial: /[!@#$%^&*()_+\-=[\]{}|;:',.<>?/`~]/.test(newPassword),
     matches: newPassword.length > 0 && newPassword === confirmPassword,
   }), [newPassword, confirmPassword]);
 
@@ -45,7 +45,6 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
@@ -53,27 +52,16 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      // Single login call via AuthContext - avoids double fetch / body-already-read errors
       const data = await login(email, password);
-      
-      // Check if user must change password
+
       if (data?.must_change_password) {
         setShowChangePassword(true);
         toast.info('Please change your password to continue');
         return;
       }
-      
-      // Verify we got valid user data before navigating
-      if (!data?.user || !data?.access_token) {
-        toast.error('Login failed: Invalid response from server');
-        return;
-      }
 
       toast.success('Welcome back!');
-      // Small delay to ensure state is flushed before navigation
-      setTimeout(() => {
-        navigate('/dashboard', { replace: true });
-      }, 100);
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       toast.error(error.message || 'Login failed. Please try again.');
     } finally {
@@ -86,12 +74,10 @@ const LoginPage = () => {
       toast.error('Please fill in all fields');
       return;
     }
-    
     if (newPassword !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
-    
     if (!allChecksPassed) {
       toast.error('Password does not meet all requirements');
       return;
@@ -101,28 +87,29 @@ const LoginPage = () => {
     try {
       const response = await fetch(`${API_URL}/auth/change-password`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         },
-        
         body: JSON.stringify({ new_password: newPassword }),
       });
 
       if (response.ok) {
-        // Password changed successfully - clear old token and prompt user to re-login
         localStorage.removeItem('access_token');
         setShowChangePassword(false);
         setNewPassword('');
         setConfirmPassword('');
-        // Keep email pre-filled, clear password for fresh entry
         setPassword('');
         toast.success('Password changed! Please sign in with your new password.');
       } else {
-        const data = await response.json();
-        toast.error(data.detail || 'Failed to change password');
+        let detail = 'Failed to change password';
+        try {
+          const d = await response.clone().text();
+          if (d) { const j = JSON.parse(d); detail = j.detail || detail; }
+        } catch { /* use default message */ }
+        toast.error(detail);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to change password');
     } finally {
       setChangingPassword(false);
@@ -145,7 +132,6 @@ const LoginPage = () => {
           animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
         />
-        {/* Glowing arc */}
         <motion.div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-[500px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.3 }}>
           <svg viewBox="0 0 500 120" fill="none">
             <defs>
@@ -160,11 +146,10 @@ const LoginPage = () => {
             <motion.path d="M0 110 Q125 10, 250 10 Q375 10, 500 110" stroke="url(#loginArc)" strokeWidth="1.5" fill="none" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.2, delay: 0.5 }} />
           </svg>
         </motion.div>
-        {/* Noise overlay */}
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")", backgroundRepeat: 'repeat', backgroundSize: '256px' }} />
       </div>
-      
-      <motion.div 
+
+      <motion.div
         initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
@@ -172,11 +157,7 @@ const LoginPage = () => {
       >
         <Card className="shadow-2xl border-white/[0.08] bg-white/[0.04] backdrop-blur-xl" style={{ background: 'hsl(222.2 60% 8% / 0.8)', borderColor: 'hsl(0 0% 100% / 0.08)' }}>
           <CardHeader className="text-center pb-4">
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }}
-            >
+            <motion.div initial={{ scale: 0.5, opacity: 0, rotate: -10 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }}>
               <div className="relative h-16 w-16 mx-auto mb-5">
                 <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
                 <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-white/10">
@@ -185,75 +166,31 @@ const LoginPage = () => {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <CardTitle className="text-2xl font-bold text-white">
-                Welcome Back
-              </CardTitle>
-              <CardDescription className="text-slate-400 mt-1">
-                Sign in to your Sharda HR account
-              </CardDescription>
+              <CardTitle className="text-2xl font-bold text-white">Welcome Back</CardTitle>
+              <CardDescription className="text-slate-400 mt-1">Sign in to your Sharda HR account</CardDescription>
             </motion.div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Email/Password Form */}
-            <motion.form 
-              onSubmit={handleSubmit} 
-              className="space-y-4"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
+            <motion.form onSubmit={handleSubmit} className="space-y-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-slate-500 focus:border-primary/50 focus:bg-white/[0.08] h-11"
-                    data-testid="email-input"
-                  />
+                  <Input id="email" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-slate-500 focus:border-primary/50 focus:bg-white/[0.08] h-11" data-testid="email-input" />
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-slate-500 focus:border-primary/50 focus:bg-white/[0.08] h-11"
-                    data-testid="password-input"
-                  />
+                  <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 bg-white/[0.05] border-white/10 text-white placeholder:text-slate-500 focus:border-primary/50 focus:bg-white/[0.08] h-11" data-testid="password-input" />
                 </div>
               </div>
-
-              <Button 
-                type="submit" 
-                className="w-full h-11 font-semibold rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300" 
-                disabled={loading}
-                data-testid="login-submit-btn"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
+              <Button type="submit" className="w-full h-11 font-semibold rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300" disabled={loading} data-testid="login-submit-btn">
+                {loading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</>) : 'Sign In'}
               </Button>
             </motion.form>
-
-            <p className="text-center text-sm text-slate-500">
-              Contact HR administrator if you need access
-            </p>
+            <p className="text-center text-sm text-slate-500">Contact HR administrator if you need access</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -266,53 +203,26 @@ const LoginPage = () => {
               <KeyRound className="w-5 h-5 text-primary" />
               Change Your Password
             </DialogTitle>
-            <DialogDescription>
-              For security reasons, you must change your password before continuing.
-            </DialogDescription>
+            <DialogDescription>For security reasons, you must change your password before continuing.</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  id="new-password"
-                  type={showNewPassword ? "text" : "password"}
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  data-testid="new-password-input"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  data-testid="toggle-password-visibility"
-                >
+                <Input id="new-password" type={showNewPassword ? "text" : "password"} placeholder="Enter new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="pl-10 pr-10" data-testid="new-password-input" />
+                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" data-testid="toggle-password-visibility">
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-            
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
-                  data-testid="confirm-password-input"
-                />
+                <Input id="confirm-password" type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10" data-testid="confirm-password-input" />
               </div>
             </div>
-            
-            {/* Password Requirements Checklist */}
             <div className="rounded-lg border bg-slate-50 p-3 space-y-1.5" data-testid="password-requirements">
               <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-2">
                 <ShieldCheck className="w-3.5 h-3.5" /> Password Requirements
@@ -326,32 +236,15 @@ const LoginPage = () => {
                 { key: 'matches', label: 'Passwords match' },
               ].map(({ key, label }) => (
                 <div key={key} className="flex items-center gap-2 text-xs" data-testid={`pw-check-${key}`}>
-                  {passwordChecks[key] ? (
-                    <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                  ) : (
-                    <X className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                  )}
+                  {passwordChecks[key] ? <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" /> : <X className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
                   <span className={passwordChecks[key] ? 'text-green-700' : 'text-slate-500'}>{label}</span>
                 </div>
               ))}
             </div>
           </div>
-
           <DialogFooter>
-            <Button 
-              onClick={handleChangePassword} 
-              disabled={changingPassword || !allChecksPassed}
-              className="w-full"
-              data-testid="change-password-btn"
-            >
-              {changingPassword ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Changing Password...
-                </>
-              ) : (
-                'Change Password & Continue'
-              )}
+            <Button onClick={handleChangePassword} disabled={changingPassword || !allChecksPassed} className="w-full" data-testid="change-password-btn">
+              {changingPassword ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Changing Password...</>) : 'Change Password & Continue'}
             </Button>
           </DialogFooter>
         </DialogContent>

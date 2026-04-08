@@ -2,45 +2,42 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
-
-// Token refresh interval (every 25 minutes - before typical 30 min server timeout)
-const TOKEN_REFRESH_INTERVAL = 25 * 60 * 1000;
-// Activity check interval (every 5 minutes)
-const ACTIVITY_CHECK_INTERVAL = 5 * 60 * 1000;
+const REFRESH_INTERVAL = 25 * 60 * 1000; // 25 minutes
 
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
-// Safe JSON parse helper — tries response.json() first (works on native/mobile),
-// then falls back to clone+text (handles body-already-read from emergent-main.js on web)
-const safeParseJson = async (response) => {
-  // Try direct json() first — works in Capacitor WebView and standard browsers
+// Robust response parser — works in all environments:
+// - Capacitor WebView (no Proxy, direct Response)
+// - Web with fetch Proxy (clone-based access to body)
+// - Web with interceptor (body may be pre-consumed)
+async function parseRes(response) {
+  // Strategy 1: clone + text (works through Proxy — creates fresh clone from original)
+  try {
+    const text = await response.clone().text();
+    if (text) return JSON.parse(text);
+  } catch { /* fall through */ }
+  // Strategy 2: direct json (works in Capacitor and standard browsers)
   try {
     return await response.json();
-  } catch {
-    // Fallback: clone and read as text (handles body-already-read scenarios)
-    try {
-      const cloned = response.clone();
-      const text = await cloned.text();
-      if (!text) return null;
-      return JSON.parse(text);
-    } catch {
-      return null;
-    }
-  }
-};
+  } catch { /* fall through */ }
+  // Strategy 3: direct text
+  try {
+    const text = await response.text();
+    if (text) return JSON.parse(text);
+  } catch { /* fall through */ }
+  return null;
+}
 
-// Helper to get auth headers
+// Get auth headers from stored token
 const getAuthHeaders = () => {
   const token = localStorage.getItem('access_token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 export const AuthProvider = ({ children }) => {
@@ -48,310 +45,155 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Refs to prevent race conditions
-  const authCheckInProgress = useRef(false);
-  const initialCheckDone = useRef(false);
-  const refreshIntervalRef = useRef(null);
-  const lastActivityRef = useRef(Date.now());
-  const isRefreshing = useRef(false);
-  const justLoggedInRef = useRef(false);
+  const refreshRef = useRef(null);
 
-  // Track user activity
-  const updateActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
-  }, []);
-
-  // Add activity listeners
+  // ─── Initial auth check on mount ───
   useEffect(() => {
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-    events.forEach(event => window.addEventListener(event, updateActivity, { passive: true }));
-    
-    return () => {
-      events.forEach(event => window.removeEventListener(event, updateActivity));
-    };
-  }, [updateActivity]);
-
-  // Refresh token to extend session
-  const refreshToken = useCallback(async () => {
-    // Skip if no user or already refreshing
-    if (!user || isRefreshing.current) return;
-    
-    // Only refresh if there was recent activity (within last 30 mins)
-    const timeSinceActivity = Date.now() - lastActivityRef.current;
-    if (timeSinceActivity > 30 * 60 * 1000) {
-      return;
-    }
-    
-    isRefreshing.current = true;
-    
-    try {
-      const response = await fetch(`${API_URL}/auth/refresh`, {
-        method: 'POST',
-        
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await safeParseJson(response);
-        if (data?.access_token) {
-          localStorage.setItem('access_token', data.access_token);
-        }
-      } else if (response.status === 401) {
-        // Only force logout if we don't have a stored token (prevents race condition on mobile)
-        const storedToken = localStorage.getItem('access_token');
-        if (!storedToken) {
-          setUser(null);
-          navigate('/login');
-        }
-        // If token exists, the session might still be valid - wait for next auth check
-      }
-    } catch (error) {
-      // Network error — don't log out, just retry next cycle (mobile may have intermittent connectivity)
-      console.warn('Token refresh network error (will retry):', error.message);
-    } finally {
-      isRefreshing.current = false;
-    }
-  }, [user, navigate]);
-
-  // Set up automatic token refresh
-  useEffect(() => {
-    if (user) {
-      // Skip immediate refresh if user just logged in (token is fresh)
-      if (!justLoggedInRef.current) {
-        refreshToken();
-      } else {
-        justLoggedInRef.current = false;
-      }
-      
-      // Set up interval for periodic refresh
-      refreshIntervalRef.current = setInterval(refreshToken, TOKEN_REFRESH_INTERVAL);
-      
-      return () => {
-        if (refreshIntervalRef.current) {
-          clearInterval(refreshIntervalRef.current);
-        }
-      };
-    }
-  }, [user, refreshToken]);
-
-  // Handle visibility change (tab focus)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && user) {
-        // Tab became visible, check if we need to refresh
-        const timeSinceActivity = Date.now() - lastActivityRef.current;
-        if (timeSinceActivity > 5 * 60 * 1000) { // More than 5 mins
-          refreshToken();
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [user, refreshToken]);
-
-  // Check authentication status
-  const checkAuth = useCallback(async (forceCheck = false) => {
-    // Skip if already checking
-    if (authCheckInProgress.current) {
-      return;
-    }
-    
-    // Skip if already done initial check (unless forced)
-    if (initialCheckDone.current && !forceCheck) {
-      return;
-    }
-
-    const publicPaths = ['/', '/login', '/register', '/auth/callback'];
-    const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
-    
-    authCheckInProgress.current = true;
-
-    try {
-      const response = await fetch(`${API_URL}/auth/me`, {
-        
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const userData = await safeParseJson(response);
-        if (userData) {
-          setUser(userData);
-          lastActivityRef.current = Date.now();
-        }
-      } else {
-        setUser(null);
-        localStorage.removeItem('access_token');
-        if (!isPublicPath) {
-          navigate('/login');
-        }
-      }
-    } catch (error) {
-      console.error('Auth check error:', error);
-      // On network error, don't force logout if we have a stored token (mobile connectivity issues)
-      const storedToken = localStorage.getItem('access_token');
-      if (!storedToken) {
-        setUser(null);
-        if (!isPublicPath) {
-          navigate('/login');
-        }
-      } else {
-        console.warn('Network error during auth check — keeping session (stored token exists)');
-      }
-    } finally {
-      setLoading(false);
-      authCheckInProgress.current = false;
-      initialCheckDone.current = true;
-    }
-  }, [location.pathname, navigate]);
-
-  // Initial auth check on mount
-  useEffect(() => {
-    // Handle session_id in hash (Google OAuth callback)
+    // Google OAuth callback — skip auth check, AuthCallback handles it
     if (location.hash?.includes('session_id=')) {
       setLoading(false);
       return;
     }
-
-    // Handle user passed from AuthCallback
+    // User passed from AuthCallback via navigation state
     if (location.state?.user) {
       setUser(location.state.user);
       setLoading(false);
-      initialCheckDone.current = true;
-      lastActivityRef.current = Date.now();
       return;
     }
+    // No stored token — not logged in
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    // Validate stored token
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await parseRes(res);
+          if (data) { setUser(data); }
+          else { localStorage.removeItem('access_token'); }
+        } else {
+          localStorage.removeItem('access_token');
+        }
+      } catch {
+        // Network error — keep token (mobile may have intermittent connectivity)
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    checkAuth();
-  }, []); // Only run on mount
+  // ─── Token refresh interval ───
+  useEffect(() => {
+    if (!user) return;
+    refreshRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        });
+        if (res.ok) {
+          const data = await parseRes(res);
+          if (data?.access_token) localStorage.setItem('access_token', data.access_token);
+        }
+        // Never log out on refresh failure — stale tokens are caught by /auth/me on next page load
+      } catch { /* network error — retry next cycle */ }
+    }, REFRESH_INTERVAL);
+    return () => clearInterval(refreshRef.current);
+  }, [user]);
 
-  // Login with email/password
+  // ─── Login ───
   const login = async (email, password) => {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      
       body: JSON.stringify({ email, password }),
     });
+    const data = await parseRes(res);
+    if (!res.ok) throw new Error(data?.detail || 'Login failed');
+    if (!data?.access_token) throw new Error('Server error. Please try again.');
 
-    if (!response.ok) {
-      const errData = await safeParseJson(response);
-      throw new Error(errData?.detail || 'Login failed');
-    }
-
-    const data = await safeParseJson(response);
-
-    if (!data || !data.access_token) {
-      throw new Error('Server returned an empty response. Please try again.');
-    }
-
-    // Store token for API calls (needed for password change)
     localStorage.setItem('access_token', data.access_token);
-
-    // Only set user state if NOT required to change password
-    // Setting user triggers routing that would redirect away from login page
     if (data.user && !data.must_change_password) {
-      justLoggedInRef.current = true;
       setUser(data.user);
-      lastActivityRef.current = Date.now();
     }
-    initialCheckDone.current = true;
-
     return data;
   };
 
-  // Register new user
+  // ─── Register ───
   const register = async (name, email, password) => {
-    const response = await fetch(`${API_URL}/auth/register`, {
+    const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      
       body: JSON.stringify({ name, email, password }),
     });
-
-    const data = await safeParseJson(response);
-
-    if (!response.ok) {
-      throw new Error(data?.detail || 'Registration failed');
-    }
-
-    if (data?.user) {
-      setUser(data.user);
-      lastActivityRef.current = Date.now();
-    }
-    if (data?.access_token) {
-      localStorage.setItem('access_token', data.access_token);
-    }
-    initialCheckDone.current = true;
-
+    const data = await parseRes(res);
+    if (!res.ok) throw new Error(data?.detail || 'Registration failed');
+    if (data?.user) setUser(data.user);
+    if (data?.access_token) localStorage.setItem('access_token', data.access_token);
     return data;
   };
 
-  // Process Google OAuth session
+  // ─── Google OAuth ───
   const processGoogleSession = async (sessionId) => {
-    const response = await fetch(`${API_URL}/auth/google-session`, {
+    const res = await fetch(`${API_URL}/auth/google-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      
       body: JSON.stringify({ session_id: sessionId }),
     });
-
-    const data = await safeParseJson(response);
-
-    if (!response.ok) {
-      throw new Error(data?.detail || 'Google authentication failed');
-    }
-
-    if (data) {
-      setUser(data);
-      lastActivityRef.current = Date.now();
-    }
-    initialCheckDone.current = true;
-
+    const data = await parseRes(res);
+    if (!res.ok) throw new Error(data?.detail || 'Google authentication failed');
+    if (data) setUser(data);
     return data;
   };
 
-  // Initiate Google login
   const loginWithGoogle = () => {
     window.location.href = `${API_URL}/auth/google`;
   };
 
-  // Logout
-  const logout = async () => {
+  // ─── Check auth (callable from components) ───
+  const checkAuth = useCallback(async () => {
     try {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
+      const res = await fetch(`${API_URL}/auth/me`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await parseRes(res);
+        if (data) { setUser(data); return; }
+      }
       setUser(null);
       localStorage.removeItem('access_token');
-      initialCheckDone.current = false;
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
+    } catch { /* keep current state on network error */ }
+  }, []);
+
+  // ─── Manual refresh (callable from components) ───
+  const refreshToken = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await parseRes(res);
+        if (data?.access_token) localStorage.setItem('access_token', data.access_token);
       }
-      navigate('/login');
-    }
+    } catch { /* silent */ }
+  }, []);
+
+  // ─── Logout ───
+  const logout = async () => {
+    try {
+      await fetch(`${API_URL}/auth/logout`, { method: 'POST', headers: getAuthHeaders() });
+    } catch { /* ignore */ }
+    setUser(null);
+    localStorage.removeItem('access_token');
+    clearInterval(refreshRef.current);
+    navigate('/login');
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    loginWithGoogle,
-    processGoogleSession,
-    checkAuth,
-    refreshToken, // Expose this so components can manually refresh if needed
-    getAuthHeaders, // Expose for API calls
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout, loginWithGoogle, processGoogleSession, checkAuth, refreshToken, getAuthHeaders }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

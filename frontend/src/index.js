@@ -4,21 +4,19 @@ import "@/index.css";
 import App from "@/App";
 
 // --- Global Fetch Patch ---
-// The Emergent platform injects emergent-main.js which wraps window.fetch and may
-// consume response bodies for analytics. This causes "body stream already read" errors
-// when app code calls response.json(). This patch ensures every fetch response has
-// a readable body by caching it upfront.
-// SKIP in Capacitor mobile — no emergent-main.js in the APK, and the Proxy
-// breaks response.clone() in some Android WebView implementations.
+// Needed ONLY on the Emergent web platform where emergent-main.js can consume
+// response bodies. In Capacitor mobile, there is no interceptor, so skip entirely.
 (function patchFetch() {
-  if (window.Capacitor?.isNativePlatform?.()) return;
+  try {
+    if (window.Capacitor?.isNativePlatform?.()) return;
+  } catch { /* not in Capacitor */ }
 
   const _nativeFetch = window.fetch;
   window.fetch = async function (...args) {
     const response = await _nativeFetch.apply(this, args);
     try {
       const clone = response.clone();
-      const patched = new Proxy(response, {
+      return new Proxy(response, {
         get(target, prop) {
           if (prop === 'json') return () => clone.json();
           if (prop === 'text') return () => clone.text();
@@ -29,62 +27,17 @@ import App from "@/App";
           return typeof val === 'function' ? val.bind(target) : val;
         }
       });
-      return patched;
     } catch {
       return response;
     }
   };
 })();
 
-// Suppress ResizeObserver loop error - this is a benign error from Radix UI components
-// It doesn't affect functionality and is caused by the way ResizeObserver handles rapid resizes
-const resizeObserverError = /ResizeObserver loop/;
-
-// Suppress in console.error
-const originalError = console.error;
-console.error = (...args) => {
-  if (args[0] && typeof args[0] === 'string' && resizeObserverError.test(args[0])) {
-    return;
-  }
-  originalError.apply(console, args);
-};
-
-// Suppress in window error handler - must use capture phase to intercept before React
-window.addEventListener('error', (event) => {
-  if (event.message && resizeObserverError.test(event.message)) {
-    event.stopImmediatePropagation();
-    event.preventDefault();
-    return false;
-  }
-}, true);
-
-// Also suppress unhandled rejection for ResizeObserver
-window.addEventListener('unhandledrejection', (event) => {
-  if (event.reason && event.reason.message && resizeObserverError.test(event.reason.message)) {
-    event.stopImmediatePropagation();
-    event.preventDefault();
-    return false;
-  }
-}, true);
-
-// Patch ResizeObserver to prevent the loop error entirely
-const OriginalResizeObserver = window.ResizeObserver;
-window.ResizeObserver = class ResizeObserver extends OriginalResizeObserver {
-  constructor(callback) {
-    super((entries, observer) => {
-      // Use requestAnimationFrame to prevent loop errors
-      window.requestAnimationFrame(() => {
-        try {
-          callback(entries, observer);
-        } catch (e) {
-          // Silently ignore ResizeObserver errors
-        }
-      });
-    });
-  }
-};
+// Suppress benign ResizeObserver loop errors (Radix UI)
+const reObs = /ResizeObserver loop/;
+const _err = console.error;
+console.error = (...a) => { if (typeof a[0] === 'string' && reObs.test(a[0])) return; _err.apply(console, a); };
+window.addEventListener('error', (e) => { if (e.message && reObs.test(e.message)) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
-  <App />
-);
+root.render(<App />);

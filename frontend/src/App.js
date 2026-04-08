@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 
 // Pages
@@ -44,6 +44,16 @@ import EventsManagementPage from "./pages/EventsManagementPage";
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
+// Detect Capacitor native platform — determines router type
+// Capacitor injects window.Capacitor before any JS runs
+const isCapacitorNative = (() => {
+  try { return !!window.Capacitor?.isNativePlatform?.(); } catch { return false; }
+})();
+
+// Use HashRouter for mobile (survives WebView reload — no server needed for /#/dashboard)
+// Use BrowserRouter for web (clean URLs, server handles SPA fallback)
+const Router = isCapacitorNative ? HashRouter : BrowserRouter;
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -53,7 +63,7 @@ const ProtectedRoute = ({ children }) => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-slate-600 font-medium">Loading...</p>
         </div>
       </div>
@@ -75,7 +85,7 @@ const PublicRoute = ({ children }) => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-slate-600 font-medium">Loading...</p>
         </div>
       </div>
@@ -89,23 +99,20 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// App Router - Handles session_id detection synchronously
+// App Router
 function AppRouter() {
   const location = useLocation();
 
-  // CRITICAL: Check URL fragment for session_id synchronously during render
-  // This prevents race conditions with ProtectedRoute
-  if (location.hash?.includes('session_id=')) {
+  // Google OAuth callback detection (web only — hash contains session_id)
+  if (!isCapacitorNative && location.hash?.includes('session_id=')) {
     return <AuthCallback />;
   }
 
   return (
     <Routes>
-      {/* Login as default - redirect to dashboard if authenticated */}
       <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       
-      {/* Protected Routes with Dashboard Layout */}
       <Route
         path="/dashboard"
         element={
@@ -152,7 +159,6 @@ function AppRouter() {
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
-      {/* Fallback to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
@@ -160,12 +166,12 @@ function AppRouter() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
         <AppRouter />
         <Toaster position="top-right" richColors />
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   );
 }
 
