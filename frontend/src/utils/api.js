@@ -1,10 +1,7 @@
-// Universal API client — works in ALL environments
-// Capacitor native: Uses CapacitorHttp directly (native Android HTTP, no WebView, no CORS, no Cloudflare issues)
-// Web browser: Uses standard fetch with robust response parsing
-
-let _isNative = false;
-try { _isNative = !!window.Capacitor?.isNativePlatform?.(); } catch {}
-export const isNative = _isNative;
+// Universal API client
+// With CapacitorHttp enabled in capacitor.config.json, Capacitor patches
+// window.fetch to use native HTTP automatically. So we just use fetch
+// everywhere — no direct CapacitorHttp calls, no dynamic imports.
 
 // Get auth headers from stored token — used across all pages
 export const getAuthHeaders = () => {
@@ -12,7 +9,10 @@ export const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Normalize response to { ok, status, data }
+let _isNative = false;
+try { _isNative = !!window.Capacitor?.isNativePlatform?.(); } catch {}
+export const isNative = _isNative;
+
 export async function apiRequest(url, options = {}) {
   const token = localStorage.getItem('access_token');
   const method = (options.method || 'GET').toUpperCase();
@@ -22,62 +22,31 @@ export async function apiRequest(url, options = {}) {
     ...options.headers,
   };
 
-  if (isNative) {
-    return nativeRequest(url, method, headers, options.body);
-  } else {
-    return webRequest(url, { ...options, method, headers });
-  }
-}
-
-// ── Capacitor Native HTTP ──
-// Calls Android's native HTTP client directly via CapacitorHttp
-// No fetch, no Response object, no clone, no WebView quirks
-async function nativeRequest(url, method, headers, body) {
-  const { CapacitorHttp } = await import('@capacitor/core');
-
-  let data = undefined;
-  if (body) {
-    try { data = typeof body === 'string' ? JSON.parse(body) : body; }
-    catch { data = body; }
-  }
-
+  let response;
   try {
-    const res = await CapacitorHttp.request({ url, method, headers, data });
-    // res.data is already parsed by CapacitorHttp (JSON → object, text → string)
-    // res.status is the HTTP status code
-    let parsedData = res.data;
-    // If data came back as string, try parsing as JSON
-    if (typeof parsedData === 'string') {
-      try { parsedData = JSON.parse(parsedData); } catch {}
-    }
-    return {
-      ok: res.status >= 200 && res.status < 300,
-      status: res.status,
-      data: parsedData,
-    };
+    response = await fetch(url, { ...options, method, headers });
   } catch (err) {
-    console.error('[apiRequest:native] Error:', err);
+    // fetch threw — genuine network error
+    console.error('[apiRequest] fetch error:', err?.message || err);
     throw new Error('Cannot reach server. Check your internet connection.');
   }
-}
 
-// ── Web Fetch ──
-// Standard fetch with robust response parsing for web platform
-async function webRequest(url, options) {
-  const response = await fetch(url, options);
+  // Parse response body — try text first (most reliable), then json
   let data = null;
-
-  // Try parsing response body
   try {
-    data = await response.clone().text();
-    data = data ? JSON.parse(data) : null;
+    const text = await response.text();
+    if (text) {
+      try { data = JSON.parse(text); }
+      catch { data = null; } // Response was not JSON (e.g. HTML)
+    }
   } catch {
+    // text() failed — try json() as fallback
     try { data = await response.json(); }
     catch { data = null; }
   }
 
   return {
-    ok: response.ok,
+    ok: response.status >= 200 && response.status < 300,
     status: response.status,
     data,
   };
