@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { apiRequest } from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -85,16 +86,12 @@ const LoginPage = () => {
 
     setChangingPassword(true);
     try {
-      const response = await fetch(`${API_URL}/auth/change-password`, {
+      const { ok, data } = await apiRequest(`${API_URL}/auth/change-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        },
         body: JSON.stringify({ new_password: newPassword }),
       });
 
-      if (response.ok) {
+      if (ok) {
         localStorage.removeItem('access_token');
         setShowChangePassword(false);
         setNewPassword('');
@@ -102,12 +99,7 @@ const LoginPage = () => {
         setPassword('');
         toast.success('Password changed! Please sign in with your new password.');
       } else {
-        let detail = 'Failed to change password';
-        try {
-          const d = await response.clone().text();
-          if (d) { const j = JSON.parse(d); detail = j.detail || detail; }
-        } catch { /* use default message */ }
-        toast.error(detail);
+        toast.error(data?.detail || 'Failed to change password');
       }
     } catch {
       toast.error('Failed to change password');
