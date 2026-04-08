@@ -6,7 +6,7 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 ## Core Architecture
 - **Frontend**: React (CRA) + Tailwind CSS + Shadcn/UI
 - **Backend**: FastAPI (Python) + MongoDB
-- **Mobile**: Capacitor (Android APK)
+- **Mobile**: Capacitor 6 (Android APK) with HashRouter
 - **LLM Integration**: OpenAI GPT-4o-mini via emergentintegrations (Thought of the Day)
 - **Auth**: JWT Bearer token (no cookies/credentials:include)
 
@@ -19,42 +19,48 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 - MIS compliance, contract labour management, assets management
 - 360 feedback, salary structures, one-time deductions, payroll rules
 
-### March 2026 Session
+### March 2026
 - MIS Compliance Redesign, Contract Worker Biometric, Stationery Inventory
-- LLM-Powered Thought of the Day, Searchable Employee Dropdown
-- Global CORS Fix, Global Fetch Patch, Login Fix (single call)
-- SEWA Advance Bulk Upload, Asset Employee List Fix
-- Sidebar Navigation Grouping, Org Chart Redesign, Code Quality Fixes
+- LLM Thought of the Day, Searchable Employee Dropdown, Global CORS Fix
+- SEWA Advance Bulk Upload, Sidebar Grouping, Org Chart Redesign, Code Quality
 
 ### Security Hardening (March 2026)
-- Security Headers, Rate Limiting, IP Blocking
-- Strong Password Policy, Account-Level Lockout, JWT 24hr Expiry
-- Token Invalidation on Password Change, Security Audit Logging
-- Frontend Password Requirements UI, Admin Security Dashboard
+- Security Headers, Rate Limiting, IP Blocking, Strong Password Policy
+- Account Lockout, JWT 24hr Expiry, Token Invalidation, Audit Logging
 
-### April 2026 — Mobile APK Login Fix (COMPLETE)
-**Root cause**: Global fetch Proxy in `index.js` wrapped Response objects for emergent-main.js compatibility. In Android WebView (Capacitor), the Proxy broke `response.clone()` chain → `safeParseJson` returned null → "Invalid login response" error.
+### April 2026 — Mobile APK Complete Rewrite (DONE)
+**Root causes identified and fixed:**
 
-**Fixes applied:**
-1. **`index.js`**: Skip fetch Proxy in Capacitor (`window.Capacitor?.isNativePlatform?.()` check)
-2. **`AuthContext.js`**: `safeParseJson` now tries `response.json()` directly first (works in WebView), falls back to clone+text only if needed
-3. **`AuthContext.js`**: Login validates response before proceeding; `refreshToken` doesn't immediately logout on 401 if token exists; `justLoggedInRef` skips post-login refresh race condition
-4. **`LoginPage.js`**: `setTimeout(100ms)` + `replace: true` for navigation; validates user+token before redirect
-5. **`backend/.env`**: Added `https://localhost`, `capacitor://localhost`, `http://localhost` to CORS_ORIGINS
-6. **`capacitor.config.json`**: Added `androidScheme: "https"` for consistent WebView origin
+1. **BrowserRouter in Capacitor → HashRouter**
+   - `BrowserRouter` uses `history.pushState` to navigate (e.g., `/dashboard`). When Android WebView reloads (background/memory pressure), it tries to load `https://localhost/dashboard` — which doesn't exist as a file. Result: blank page.
+   - Fix: `App.js` now detects Capacitor native (`window.Capacitor.isNativePlatform()`) and uses `HashRouter`. URLs become `/#/dashboard` — the WebView always loads `index.html` and React handles the hash route.
+
+2. **Fetch Proxy breaking Android WebView**
+   - `index.js` wrapped all fetch responses in a `Proxy` (needed for Emergent platform's analytics interceptor). In Capacitor's WebView, the Proxy interfered with `Response.clone()` and body reading.
+   - Fix: The fetch Proxy now skips entirely in Capacitor native. Mobile fetch works directly.
+
+3. **AuthContext race conditions**
+   - Complex ref chains (`authCheckInProgress`, `initialCheckDone`, `justLoggedInRef`, `isRefreshing`, `lastActivityRef`) created race conditions where `refreshToken` could fire immediately after login and log the user out.
+   - Fix: Complete rewrite with minimal state. One `useEffect` for initial auth check, one for refresh interval. `parseRes()` with 3-strategy fallback (clone+text → json → text) works in all environments.
+
+**Files rewritten from scratch:**
+- `App.js` — Conditional HashRouter/BrowserRouter
+- `AuthContext.js` — Simplified auth with robust response parsing
+- `LoginPage.js` — Clean login flow
+- `index.js` — Capacitor-aware fetch patch
 
 ## Key Technical Decisions
-1. **Pure Bearer Token Auth**: No `credentials: 'include'` anywhere. All auth via `Authorization: Bearer <token>` header.
-2. **Custom CORS Middleware**: `CORSEverythingMiddleware` in server.py handles CORS at application level.
-3. **Conditional Fetch Patch**: `index.js` patches `window.fetch` with Proxy ONLY on web (skips Capacitor). Prevents body-already-read errors from platform interceptor without breaking mobile WebView.
-4. **APK Bundled Assets**: No `server.url` in capacitor.config.json. APK bundles frontend locally.
-5. **Mobile Login Safety**: `justLoggedInRef` prevents race condition; `safeParseJson` uses direct json() first.
+1. **Pure Bearer Token Auth**: No `credentials: 'include'`. All auth via `Authorization: Bearer <token>`.
+2. **Conditional Router**: HashRouter for Capacitor (survives WebView reload), BrowserRouter for web (clean URLs).
+3. **Conditional Fetch Patch**: Proxy only on web (for platform interceptor). Skipped in Capacitor.
+4. **3-Strategy Response Parsing**: `parseRes()` tries clone+text → direct json → direct text. Works with Proxy, without Proxy, and in WebView.
+5. **No Immediate Token Refresh**: Token refresh runs on interval only, never immediately after login. Prevents race conditions.
 
-## Deferred Code Quality Items
-- **React Hook Dependencies**: 85 instances
-- **Component Splitting**: AttendancePage (1614), ContractLabourPage (1386), AssetsPage (1043), Dashboard (923 lines)
-- **Function Complexity**: 331 flagged functions
-- **Nested Ternaries**: 295 instances
+## Mobile App Setup
+- **Capacitor 6** with `androidScheme: "https"` (serves from `https://localhost`)
+- **Geolocation**: `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` in AndroidManifest. Capacitor Geolocation plugin in `nativeServices.js`.
+- **Build steps**: `npm run build` → `npx cap sync android` → Android Studio Build
+- **REACT_APP_BACKEND_URL** must point to production backend in local `.env` before build
 
 ## Upcoming Tasks (P1)
 - Employee Profile Popup on Org Chart
@@ -62,20 +68,16 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 - 360 Feedback Reminders (automated nudges)
 
 ## Future/Backlog (P2-P3)
+- Component splitting (AttendancePage, ContractLabourPage)
+- React Hook dependency cleanup (85 instances)
 - Fully automated payroll integration
 - AI-Powered HR Chatbot
 - Employee Mood Tracker
 - Gamification & Recognition Wall
 
-## Key Collections (MongoDB)
-- `employees`, `attendance`, `payroll_runs`, `salary_structures`
-- `sewa_advances`, `stationery_items`, `stationery_transactions`
-- `daily_thoughts`, `contract_worker_attendance`, `security_audit_log`
-
 ## Credentials
 - Admin: admin@shardahr.com / Sharda@2026!
 - HR: hr@shardahr.com / HrAdmin@2026!
 - Jai: jai@j.com / Jai@Sharda2026!
-- All other 94 flagged users: temp password `Sharda@2026!` (must change on login)
 - Production Backend: https://sharda-hr-system.emergent.host
 - Production Frontend: https://shardahrms.com
