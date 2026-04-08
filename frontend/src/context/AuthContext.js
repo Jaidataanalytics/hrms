@@ -13,24 +13,27 @@ export const useAuth = () => {
 };
 
 // Robust response parser — works in all environments:
-// - Capacitor WebView (no Proxy, direct Response)
+// - Capacitor with CapacitorHttp (native HTTP, standard-like Response)
 // - Web with fetch Proxy (clone-based access to body)
 // - Web with interceptor (body may be pre-consumed)
 async function parseRes(response) {
-  // Strategy 1: clone + text (works through Proxy — creates fresh clone from original)
-  try {
-    const text = await response.clone().text();
-    if (text) return JSON.parse(text);
-  } catch { /* fall through */ }
-  // Strategy 2: direct json (works in Capacitor and standard browsers)
+  let rawText = '';
+  // Strategy 1: direct json — simplest, works with CapacitorHttp and standard fetch
   try {
     return await response.json();
   } catch { /* fall through */ }
+  // Strategy 2: clone + text (works through web Proxy — creates fresh clone from original)
+  try {
+    rawText = await response.clone().text();
+    if (rawText) return JSON.parse(rawText);
+  } catch { /* fall through */ }
   // Strategy 3: direct text
   try {
-    const text = await response.text();
-    if (text) return JSON.parse(text);
+    rawText = await response.text();
+    if (rawText) return JSON.parse(rawText);
   } catch { /* fall through */ }
+  // All strategies failed — log for debugging (visible in Android Studio logcat)
+  console.warn('[parseRes] Failed to parse response. Status:', response.status, 'Raw:', rawText?.substring(0, 200));
   return null;
 }
 
@@ -72,7 +75,7 @@ export const AuthProvider = ({ children }) => {
         const res = await fetch(`${API_URL}/auth/me`, { headers: getAuthHeaders() });
         if (res.ok) {
           const data = await parseRes(res);
-          if (data) { setUser(data); }
+          if (data && data.email) { setUser(data); }
           else { localStorage.removeItem('access_token'); }
         } else {
           localStorage.removeItem('access_token');
@@ -106,14 +109,23 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Login ───
   const login = async (email, password) => {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    let res;
+    try {
+      res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (networkErr) {
+      console.error('[login] Network error:', networkErr);
+      throw new Error('Cannot reach server. Check your internet connection.');
+    }
     const data = await parseRes(res);
     if (!res.ok) throw new Error(data?.detail || 'Login failed');
-    if (!data?.access_token) throw new Error('Server error. Please try again.');
+    if (!data?.access_token) {
+      console.error('[login] Missing access_token. Status:', res.status, 'Data:', data);
+      throw new Error('Unexpected server response. Please try again.');
+    }
 
     localStorage.setItem('access_token', data.access_token);
     if (data.user && !data.must_change_password) {
