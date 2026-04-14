@@ -6,30 +6,26 @@ A comprehensive HR management system (HRMS) for Sharda Group with features inclu
 ## Core Architecture
 - **Frontend**: React (CRA) + Tailwind CSS + Shadcn/UI
 - **Backend**: FastAPI (Python) + MongoDB
-- **Mobile**: Capacitor 6 (Android APK) — HashRouter + CapacitorHttp (native HTTP)
+- **Mobile**: Capacitor 6 (Android APK) — HashRouter + standard fetch (CapacitorHttp/Cookies DISABLED)
 - **LLM**: OpenAI GPT-4o-mini via emergentintegrations (Thought of the Day)
 - **Auth**: JWT Bearer token
 
-## April 2026 — Mobile APK Definitive Fix (DONE)
+## April 2026 — Mobile APK Fixes (DONE)
 
-**Root cause chain:**
-1. Production backend behind Cloudflare → sets `__cf_bm` bot management cookie
-2. Capacitor WebView's `fetch` doesn't handle Cloudflare cookies properly
-3. Cloudflare serves HTML challenge pages (200 status) instead of JSON API responses
-4. `response.json()` / `response.clone().text()` fails on HTML → parse returns null
-5. Login code sees `data = null` → "Server error" / "Unexpected server response"
+**Root cause chain (login failures):**
+1. `CapacitorHttp` corrupts HTTP 401/403 → 200, hiding auth errors
+2. `CapacitorCookies` consumes fetch response bodies, breaking `.json()` parsing
+3. ~52 files used `process.env.REACT_APP_BACKEND_URL` which resolves to `undefined` in APK
+4. `BrowserRouter` breaks on Android WebView reload (virtual paths vs localhost)
 
-**Definitive solution — Universal API Client (`utils/api.js`):**
-- **Capacitor native**: Uses `CapacitorHttp.request()` directly from `@capacitor/core`. This calls Android's native HTTP client (OkHttp). No WebView, no CORS, no fetch, no Response objects. Response data is already parsed.
-- **Web browser**: Uses standard `fetch` with robust clone+text→json parsing.
-- **AuthContext.js**: All auth calls (`login`, `register`, `me`, `refresh`, `logout`) use `apiRequest()` — zero direct `fetch` calls.
-
-**Supporting changes:**
-- `App.js`: HashRouter for Capacitor (survives WebView reload), BrowserRouter for web
-- `index.js`: Fetch Proxy skipped in Capacitor
-- `capacitor.config.json`: CapacitorHttp=true, CapacitorCookies=true, androidScheme=https
-- `AndroidManifest.xml`: Added ACCESS_NETWORK_STATE, networkSecurityConfig
-- `network_security_config.xml`: HTTPS-only for production domains
+**Fixes applied:**
+- Disabled `CapacitorHttp` and `CapacitorCookies` in `capacitor.config.json` (MUST stay false)
+- Switched to `HashRouter` for Capacitor builds
+- Created `src/config.js` centralizing API URL with native Capacitor fallback
+- Created `.env.production` baking URL into builds
+- **Refactored all 51 files** to import `API_URL`/`BACKEND_BASE` from `config.js` instead of `process.env.REACT_APP_BACKEND_URL`
+- `utils/api.js`: Standard fetch wrapper, no Capacitor plugins
+- `AuthContext.js`: All auth calls use `apiRequest()` via config.js URL
 
 ## Mobile App Build Steps
 1. Set `REACT_APP_BACKEND_URL=https://sharda-hr-system.emergent.host` in local `.env`
