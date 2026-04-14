@@ -17,8 +17,7 @@ import {
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Loader2, KeyRound, Check, X, Eye, EyeOff, ShieldCheck } from 'lucide-react';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API_URL, BACKEND_BASE } from '../config';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -185,7 +184,7 @@ const LoginPage = () => {
               </Button>
             </motion.form>
             <p className="text-center text-sm text-slate-500">Contact HR administrator if you need access</p>
-            <p className="text-center text-[10px] text-slate-600/40 mt-2 font-mono select-all" data-testid="api-url-debug">{API_URL.replace('/api', '')}</p>
+            <p className="text-center text-[10px] text-slate-600/40 mt-2 font-mono select-all" data-testid="api-url-debug">{BACKEND_BASE || 'NOT SET'}</p>
           </CardContent>
         </Card>
       </motion.div>

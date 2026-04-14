@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiRequest } from '../utils/api';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API_URL } from '../config';
 const REFRESH_INTERVAL = 25 * 60 * 1000; // 25 minutes
 
 const AuthContext = createContext(null);

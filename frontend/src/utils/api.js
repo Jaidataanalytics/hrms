@@ -10,7 +10,8 @@ export const getAuthHeaders = () => {
 
 let _isNative = false;
 try { _isNative = !!window.Capacitor?.isNativePlatform?.(); } catch {}
-export const isNative = _isNative;
+// Re-export for backward compatibility (some files import isNative from here)
+export { _isNative as isNative };
 
 export async function apiRequest(url, options = {}) {
   const token = localStorage.getItem('access_token');
