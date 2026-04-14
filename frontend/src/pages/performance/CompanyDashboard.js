@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Badge } from '../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Users, Building2, AlertTriangle, Award, RefreshCw } from 'lucide-react';
+import { API_URL } from '../../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
+const API = API_URL + '/performance';
 
 const EXECS = [
   { name: 'Nandini Kumari', role: 'HR Head', focus: 'People & Compliance', id: 'EMPC6B9A606' },

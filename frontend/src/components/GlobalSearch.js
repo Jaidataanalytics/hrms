@@ -12,8 +12,8 @@ import {
 } from '../components/ui/dialog';
 import { Search, User, Building, Mail, Phone, X, Loader2 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const GlobalSearch = ({ isOpen, onClose }) => {
   const navigate = useNavigate();

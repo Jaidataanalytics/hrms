@@ -50,8 +50,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Days of week
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

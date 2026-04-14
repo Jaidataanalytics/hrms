@@ -14,8 +14,9 @@ import {
   AlertTriangle, IndianRupee, Edit, Trash2, FileText, ClipboardList, CheckCircle,
   XCircle, Clock, Send
 } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api/stationery';
+const API = API_URL + '/stationery';
 
 const StationeryTab = ({ authHeaders, isAdmin, userId }) => {
   const hdrs = { headers: { ...authHeaders, 'Content-Type': 'application/json' } };

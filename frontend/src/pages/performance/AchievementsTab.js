@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Plus, Award, CheckCircle2, XCircle, RefreshCw, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_URL } from '../../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
+const API = API_URL + '/performance';
 const CATEGORIES = ['Innovation', 'Achievement', 'Improvement', 'IT', 'Planning', 'Training', 'Quality', 'Other'];
 const IMPACTS = ['High', 'Medium', 'Low'];
 

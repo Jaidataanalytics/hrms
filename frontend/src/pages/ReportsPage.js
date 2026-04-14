@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { BarChart3, Users, TrendingDown, IndianRupee, Calendar, RefreshCw, Download, PieChart, ArrowUp, ArrowDown } from 'lucide-react';
 
 import { getAuthHeaders } from '../utils/api';
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API_URL } from '../config';
 
 const ReportsPage = () => {
   const { user } = useAuth();

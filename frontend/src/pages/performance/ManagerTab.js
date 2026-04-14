@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { toast } from 'sonner';
 import { Users, CheckCircle2, XCircle, Eye, RefreshCw, UserCheck, Clock } from 'lucide-react';
+import { API_URL } from '../../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
+const API = API_URL + '/performance';
 
 const ManagerTab = ({ authHeaders }) => {
   const [teamDate, setTeamDate] = useState(new Date().toISOString().split('T')[0]);

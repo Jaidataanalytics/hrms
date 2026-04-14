@@ -12,8 +12,8 @@ import {
   Search, ZoomIn, ZoomOut, ChevronDown, ChevronRight,
   Users, Building2, Mail, Phone, User, Briefcase, MapPin
 } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const DEPTH_PALETTE = [
   { ring: 'ring-blue-500/30', bg: 'bg-gradient-to-br from-blue-500 to-blue-600', card: 'border-blue-200/60 bg-blue-50/40', badge: 'bg-blue-100 text-blue-700', line: 'bg-blue-300' },

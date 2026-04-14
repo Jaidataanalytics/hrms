@@ -14,8 +14,9 @@ import {
   CheckCircle2, RefreshCw, BarChart3, Database, Trash2, Search, TrendingUp,
   Pencil, Users, Clock, X as XIcon, UserCheck, UserX, ChevronLeft, ChevronRight, Calendar
 } from 'lucide-react';
+import { API_URL } from '../../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
+const API = API_URL + '/performance';
 
 const scoreColor = p => p >= 90 ? 'text-emerald-600' : p >= 70 ? 'text-blue-600' : p >= 50 ? 'text-amber-600' : 'text-red-600';
 const scoreBg = p => p >= 90 ? 'bg-emerald-50 border-emerald-200' : p >= 70 ? 'bg-blue-50 border-blue-200' : p >= 50 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200';

@@ -64,8 +64,8 @@ import {
 } from 'lucide-react';
 import FeedbackTab from '../components/FeedbackTab';
 import SurveyAnalyticsDashboard from '../components/SurveyAnalyticsDashboard';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const HelpdeskPage = () => {
   const { user } = useAuth();

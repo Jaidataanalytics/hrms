@@ -7,8 +7,9 @@ import {
   BarChart3, AlertTriangle, CheckCircle2, XCircle, Users, Target,
   Award, TrendingUp, Shield, RefreshCw, Activity, Zap
 } from 'lucide-react';
+import { API_URL } from '../../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
+const API = API_URL + '/performance';
 
 const severityStyle = s => s === 'high' ? 'bg-red-50 border-red-200 text-red-800' : s === 'medium' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-blue-50 border-blue-200 text-blue-800';
 

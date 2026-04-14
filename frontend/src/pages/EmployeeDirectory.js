@@ -64,8 +64,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../components/ui/alert-dialog';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Helper to get auth headers from localStorage
 const getAuthHeaders = () => {

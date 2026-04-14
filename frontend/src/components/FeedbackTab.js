@@ -20,8 +20,8 @@ import {
   Users, Plus, Star, Clock, CheckCircle2, BarChart3, Send,
   Trash2, Eye, UserCheck, UserPlus, ChevronRight, Target
 } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const FeedbackTab = () => {
   const { user } = useAuth();

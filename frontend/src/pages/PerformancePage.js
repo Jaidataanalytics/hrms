@@ -14,9 +14,9 @@ import ManagerTab from './performance/ManagerTab';
 import CompanyDashboard from './performance/CompanyDashboard';
 import InsightsTab from './performance/InsightsTab';
 import AchievementsTab from './performance/AchievementsTab';
+import { API_URL } from '../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api/performance';
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+const API = API_URL + '/performance';
 
 const PERIODS = [
   { value: 'weekly', label: 'Weekly' },

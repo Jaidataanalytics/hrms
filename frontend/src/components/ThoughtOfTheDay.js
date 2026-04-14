@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from './ui/dialog';
 import { Sparkles } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+const API = API_URL;
 
 const ThoughtOfTheDay = ({ authHeaders }) => {
   const [thought, setThought] = useState(null);

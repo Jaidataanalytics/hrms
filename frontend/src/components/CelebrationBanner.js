@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { getAuthHeaders } from '../utils/api';
 import { Gift, PartyPopper, Heart, Star, ChevronRight, X } from 'lucide-react';
 import { Button } from './ui/button';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const CELEBRATION_CONFIG = {
   birthday: {

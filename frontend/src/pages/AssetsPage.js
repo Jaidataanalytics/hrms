@@ -56,8 +56,8 @@ import {
   Pencil
 } from 'lucide-react';
 import StationeryTab from './StationeryTab';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const AssetsPage = () => {
   const { user, getAuthHeaders } = useAuth();

@@ -41,8 +41,8 @@ import CelebrationBanner from '../components/CelebrationBanner';
 import CelebrationModal from '../components/CelebrationModal';
 import WidgetCustomizer, { CustomizeButton, getWidgetPrefs, isWidgetEnabled } from '../components/WidgetCustomizer';
 import ThoughtOfTheDay from '../components/ThoughtOfTheDay';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const Dashboard = () => {
   const { user } = useAuth();

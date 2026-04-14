@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Plane, Plus, RefreshCw, MapPin, Calendar, IndianRupee, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
 
 import { getAuthHeaders } from '../utils/api';
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API_URL } from '../config';
 
 const TravelPage = () => {
   const { user } = useAuth();

@@ -52,8 +52,8 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const LeavePage = () => {
   const { user } = useAuth();

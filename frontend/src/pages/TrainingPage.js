@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { GraduationCap, Plus, RefreshCw, Award, BookOpen, Users, CheckCircle, Pencil, Trash2, UserPlus, UserMinus, Eye } from 'lucide-react';
 
 import { getAuthHeaders } from '../utils/api';
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API_URL } from '../config';
 
 const TrainingPage = () => {
   const { user } = useAuth();

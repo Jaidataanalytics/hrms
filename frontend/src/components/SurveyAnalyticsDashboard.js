@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Star, Download, BarChart3, Users, CheckCircle2, Clock, FileText } from 'lucide-react';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const SurveyAnalyticsDashboard = ({ surveyId, isOpen, onClose }) => {
   const [data, setData] = useState(null);

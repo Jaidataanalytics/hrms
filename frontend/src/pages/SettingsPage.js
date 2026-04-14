@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
+import { BACKEND_BASE } from '../config';
 import {
   User,
   Mail,
@@ -26,7 +27,7 @@ import {
   Download
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = BACKEND_BASE;
 
 const SettingsPage = () => {
   const { user, getAuthHeaders } = useAuth();

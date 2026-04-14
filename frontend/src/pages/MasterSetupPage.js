@@ -45,8 +45,8 @@ import {
   Tag
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const MasterSetupPage = () => {
   const { user } = useAuth();

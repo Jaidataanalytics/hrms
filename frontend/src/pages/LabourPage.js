@@ -42,8 +42,8 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Generate month options for the last 24 months
 const generateMonthOptions = () => {

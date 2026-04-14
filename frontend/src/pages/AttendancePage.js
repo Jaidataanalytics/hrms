@@ -63,8 +63,8 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '../utils/api';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const AttendancePage = () => {
   const { user } = useAuth();

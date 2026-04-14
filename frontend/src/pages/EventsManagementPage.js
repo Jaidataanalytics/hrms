@@ -18,8 +18,8 @@ import {
   Trash2, Search, Calendar, Users, Clock, Filter
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/api';
+import { API_URL } from '../config';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const EVENT_TYPES = {
   birthday: { label: 'Birthday', icon: Gift, color: 'amber' },
