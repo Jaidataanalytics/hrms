@@ -64,7 +64,9 @@ const LoginPage = () => {
       toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
     } catch (error) {
-      toast.error(error.message || 'Login failed. Please try again.');
+      console.error('[LoginPage] Login error:', error);
+      // Show the actual error from the server
+      toast.error(error.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -183,6 +185,7 @@ const LoginPage = () => {
               </Button>
             </motion.form>
             <p className="text-center text-sm text-slate-500">Contact HR administrator if you need access</p>
+            <p className="text-center text-[10px] text-slate-600/40 mt-2 font-mono select-all" data-testid="api-url-debug">{API_URL.replace('/api', '')}</p>
           </CardContent>
         </Card>
       </motion.div>

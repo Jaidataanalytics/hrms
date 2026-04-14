@@ -84,11 +84,14 @@ export const AuthProvider = ({ children }) => {
     });
 
     if (!ok) {
-      throw new Error(data?.detail || 'Invalid email or password');
+      // Show the exact error from backend (e.g. "Invalid email or password", "Account is deactivated")
+      throw new Error(data?.detail || `Login failed (${status})`);
     }
     if (!data?.access_token) {
-      console.error('[login] Response missing access_token. Status:', status, 'Data:', JSON.stringify(data)?.substring(0, 300));
-      throw new Error('Login failed. Please try again.');
+      // This means we got 200 but no token — log full details for debugging
+      const preview = typeof data === 'string' ? data.substring(0, 100) : JSON.stringify(data)?.substring(0, 100);
+      console.error('[login] No access_token in response. Status:', status, 'Preview:', preview);
+      throw new Error('Invalid response from server. Check app version.');
     }
 
     localStorage.setItem('access_token', data.access_token);

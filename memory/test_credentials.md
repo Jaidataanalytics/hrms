@@ -1,21 +1,16 @@
 # Test Credentials
 
-## Admin Account
-- Email: admin@shardahr.com
-- Password: Sharda@2026!
-- Role: super_admin
-
-## HR Account
-- Email: hr@shardahr.com
-- Password: HrAdmin@2026!
-- Role: hr
-
-## Regular User
+## Production Account (CONFIRMED WORKING)
 - Email: jai@j.com
-- Password: Jai@Sharda2026!
-- Role: employee
+- Password: j
+- Role: super_admin
+- Backend: https://sharda-hr-system.emergent.host
+
+## Preview/Test Accounts
+- Admin: admin@shardahr.com / Sharda@2026! (preview only)
+- HR: hr@shardahr.com / HrAdmin@2026! (preview only)
 
 ## Notes
-- All other ~94 users have temp password `Sharda@2026!` and must change on first login
-- Production backend: https://sharda-hr-system.emergent.host
+- Production admin@shardahr.com is DEACTIVATED on production
+- Production and preview have separate databases
 - Production frontend: https://shardahrms.com
